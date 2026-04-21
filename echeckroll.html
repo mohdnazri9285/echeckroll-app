@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eCheckroll - Pengiraan Gaji</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f5f5f5; }
+        .navbar {
+            background: #1b5e20;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar h1 { font-size: 22px; }
+        .nav-links { display: flex; gap: 20px; }
+        .nav-links a { color: white; text-decoration: none; }
+        .btn-logout {
+            background: #c62828;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .container { max-width: 98%; margin: 20px auto; padding: 0 15px; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .selector-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+        .selector-group { display: flex; flex-direction: column; gap: 5px; }
+        .selector-group label { font-weight: 500; font-size: 13px; color: #666; }
+        .selector-group select, .selector-group input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            min-width: 150px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .btn-primary { background: #2e7d32; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: #333; }
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            overflow-x: auto;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        table {
+            border-collapse: collapse;
+            min-width: 1500px;
+            font-size: 12px;
+        }
+        th, td {
+            padding: 8px 5px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+        th {
+            background: #1b5e20;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        td { background: white; }
+        .worker-info { background: #f8f9fa; font-weight: 500; text-align: left; }
+        .attendance-select { width: 70px; padding: 4px; font-size: 11px; border: 1px solid #ddd; border-radius: 4px; }
+        .quantity-input { width: 70px; padding: 4px; text-align: right; border: 1px solid #ddd; border-radius: 4px; }
+        .kadar-input { width: 90px; padding: 4px; text-align: right; border: 1px solid #ddd; border-radius: 4px; background: #fff3cd; }
+        .total-cell { font-weight: bold; background: #e8f5e9; }
+        .checkbox-afc, .checkbox-fc { transform: scale(1.2); margin: 0 3px; }
+        .status-message {
+            padding: 10px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .status-info { background: #d1ecf1; color: #0c5460; }
+        .status-success { background: #d4edda; color: #155724; }
+        .status-error { background: #f8d7da; color: #721c24; }
+        .action-bar { display: flex; gap: 10px; margin-top: 20px; }
+        .loading { text-align: center; padding: 50px; color: #666; }
+        .section-title {
+            background: #e8f5e9;
+            font-weight: bold;
+        }
+        .weekend { background-color: #fff9c4 !important; }
+        .public-holiday { background-color: #c8e6c9 !important; }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>🌴 eCheckroll - Pengiraan Gaji</h1>
+        <div class="nav-links">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="workers.html">Pekerja</a>
+            <a href="work-groups.html">Kumpulan</a>
+            <a href="incentives.html">Insentif</a>
+            <a href="echeckroll.html">eCheckroll</a>
+        </div>
+        <button class="btn-logout" onclick="logout()">Log Keluar</button>
+    </div>
+
+    <div class="container">
+        <div class="selector-panel">
+            <div class="selector-group">
+                <label>Bulan</label>
+                <select id="bulanSelect"></select>
+            </div>
+            <div class="selector-group">
+                <label>Tahun</label>
+                <input type="number" id="tahunInput" min="2020" max="2030" value="2026">
+            </div>
+            <div class="selector-group">
+                <label>Kumpulan Kerja</label>
+                <select id="workGroupSelect">
+                    <option value="">Pilih Kumpulan</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="loadOrCreateBatch()">📅 Papar / Cipta</button>
+            <button class="btn btn-secondary" onclick="addActivityRow()">➕ Tambah Aktiviti</button>
+            <button class="btn btn-success" onclick="saveAllData()">💾 Simpan Semua</button>
+        </div>
+
+        <div id="statusMessage" class="status-message" style="display: none;"></div>
+
+        <div class="table-container" id="tableContainer">
+            <table id="echeckrollTable">
+                <thead id="tableHeader">
+                    <tr><th colspan="10" class="loading">Pilih Bulan, Tahun & Kumpulan Kerja</th></tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+
+        <div class="action-bar">
+            <button class="btn btn-warning" onclick="checkAllAFC()">✅ Semak Semua AFC</button>
+            <button class="btn btn-warning" onclick="checkAllFC()">✔️ Sahkan Semua FC</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+        const SUPABASE_URL = 'https://pkoqxybumxevmcnukiye.supabase.co'
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrb3F4eWJ1bXhldm1jbnVraXllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMzYxMDUsImV4cCI6MjA5MTgxMjEwNX0.OLcQrto5pL9o13NSaLcNFQKmJj6Z9wMsSful6NCjols'
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+        const savedUser = localStorage.getItem('echeckroll_user')
+        if (!savedUser) window.location.href = 'login.html'
+        const user = JSON.parse(savedUser)
+        const rancanganId = user.rancangan_id
+
+        let currentBatchId = null
+        let currentWorkGroup = null
+        let attendanceCodes = []
+        let ratesList = []
+        let workersList = []
+        let currentMonth = new Date().getMonth() + 1
+        let currentYear = new Date().getFullYear()
+        let tableData = []
+        let daysInMonth = 30
+
+        window.logout = async () => {
+            await supabase.auth.signOut()
+            localStorage.removeItem('echeckroll_user')
+            window.location.href = 'login.html'
+        }
+
+        // Initialize
+        async function init() {
+            await loadAttendanceCodes()
+            await loadRates()
+            await loadWorkGroups()
+            populateMonthSelect()
+
+            document.getElementById('bulanSelect').value = currentMonth
+            document.getElementById('tahunInput').value = currentYear
+        }
+
+        function populateMonthSelect() {
+            const months = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember']
+            const select = document.getElementById('bulanSelect')
+            select.innerHTML = months.map((m, i) => `<option value="${i+1}">${m}</option>`).join('')
+        }
+
+        async function loadAttendanceCodes() {
+            const { data } = await supabase.from('attendance_codes').select('*').order('kod')
+            attendanceCodes = data || []
+        }
+
+        async function loadRates() {
+            const { data } = await supabase.from('rates').select('*').eq('rancangan_id', rancanganId)
+            ratesList = data || []
+        }
+
+        async function loadWorkGroups() {
+            const { data } = await supabase.from('work_groups').select('*').eq('rancangan_id', rancanganId)
+            const select = document.getElementById('workGroupSelect')
+            select.innerHTML = '<option value="">Pilih Kumpulan</option>'
+            data?.forEach(g => {
+                select.innerHTML += `<option value="${g.id}" data-hari="${g.hari_minggu}">${g.nama_kumpulan} (${g.hari_minggu})</option>`
+            })
+        }
+
+        async function loadWorkersForGroup(groupId) {
+            const { data } = await supabase
+                .from('work_group_members')
+                .select('worker_id, workers(*)')
+                .eq('work_group_id', groupId)
+            workersList = data?.map(d => d.workers).filter(w => w.status === 'AKTIF') || []
+        }
+
+        window.loadOrCreateBatch = async () => {
+            const bulan = parseInt(document.getElementById('bulanSelect').value)
+            const tahun = parseInt(document.getElementById('tahunInput').value)
+            const workGroupId = document.getElementById('workGroupSelect').value
+
+            if (!workGroupId) { alert('Sila pilih Kumpulan Kerja'); return }
+
+            currentMonth = bulan
+            currentYear = tahun
+            daysInMonth = new Date(tahun, bulan, 0).getDate()
+
+            const select = document.getElementById('workGroupSelect')
+            currentWorkGroup = {
+                id: workGroupId,
+                nama: select.options[select.selectedIndex].text,
+                hari_minggu: select.options[select.selectedIndex].dataset.hari
+            }
+
+            await loadWorkersForGroup(workGroupId)
+
+            // Check existing batch
+            const { data: batch } = await supabase
+                .from('payroll_batches')
+                .select('*')
+                .eq('rancangan_id', rancanganId)
+                .eq('work_group_id', workGroupId)
+                .eq('bulan', bulan)
+                .eq('tahun', tahun)
+                .maybeSingle()
+
+            if (batch) {
+                currentBatchId = batch.id
+                showMessage('📂 Batch sedia ada dimuatkan', 'info')
+                await loadExistingData()
+            } else {
+                // Create new batch
+                const { data: newBatch, error } = await supabase
+                    .from('payroll_batches')
+                    .insert({ rancangan_id: rancanganId, work_group_id: workGroupId, bulan, tahun })
+                    .select('id')
+                    .single()
+
+                if (error) { showMessage('Gagal cipta batch: ' + error.message, 'error'); return }
+
+                currentBatchId = newBatch.id
+                showMessage('🆕 Batch baru dicipta', 'success')
+                buildEmptyTable()
+            }
+        }
+
+        async function loadExistingData() {
+            const { data: details } = await supabase
+                .from('payroll_details')
+                .select('*, workers(*), rates(*)')
+                .eq('batch_id', currentBatchId)
+                .order('worker_id')
+
+            tableData = details || []
+            renderTable()
+        }
+
+        function buildEmptyTable() {
+            tableData = []
+            workersList.forEach(worker => {
+                // Add default H01 for all days
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+                    tableData.push({
+                        worker_id: worker.id,
+                        workers: worker,
+                        tarikh,
+                        attendance_code: 'H01',
+                        rate_id: null,
+                        rates: null,
+                        kuantiti: 0,
+                        kadar_asal: 0,
+                        kadar_diguna: 0,
+                        status_afc: false,
+                        status_fc: false
+                    })
+                }
+            })
+            renderTable()
+        }
+
+        function renderTable() {
+            const thead = document.getElementById('tableHeader')
+            const tbody = document.getElementById('tableBody')
+
+            if (workersList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" class="loading">Tiada pekerja dalam kumpulan ini</td></tr>'
+                return
+            }
+
+            // Build header
+            let headerHtml = `<tr>
+                <th rowspan="2">Nama Pekerja</th>
+                <th rowspan="2">No Passport</th>
+                <th rowspan="2">No Pekerja</th>
+                <th rowspan="2">Aktiviti</th>`
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const date = new Date(currentYear, currentMonth-1, d)
+                const dayName = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'][date.getDay()]
+                const isWeekend = dayName === currentWorkGroup.hari_minggu
+                headerHtml += `<th style="${isWeekend ? 'background:#b8860b;' : ''}">${d}<br>${dayName}</th>`
+            }
+
+            headerHtml += `<th rowspan="2">Jml Hari</th>
+                <th rowspan="2">Kadar (RM)</th>
+                <th rowspan="2">Jumlah (RM)</th>
+                <th rowspan="2">AFC</th>
+                <th rowspan="2">FC</th>
+            </tr>`
+
+            // AFC/FC row
+            headerHtml += `<tr>`
+            for (let d = 1; d <= daysInMonth; d++) {
+                headerHtml += `<th style="font-size:10px;">
+                    <input type="checkbox" class="checkbox-afc" onchange="toggleAllAFC(${d})"> AFC
+                    <input type="checkbox" class="checkbox-fc" onchange="toggleAllFC(${d})"> FC
+                </th>`
+            }
+            headerHtml += `</tr>`
+
+            thead.innerHTML = headerHtml
+
+            // Build body
+            let bodyHtml = ''
+            const workersMap = new Map()
+
+            tableData.forEach(row => {
+                const workerId = row.worker_id
+                if (!workersMap.has(workerId)) {
+                    workersMap.set(workerId, { worker: row.workers, rows: [] })
+                }
+                workersMap.get(workerId).rows.push(row)
+            })
+
+            workersMap.forEach((data, workerId) => {
+                const worker = data.worker
+                const rows = data.rows
+
+                // Sort by tarikh
+                rows.sort((a, b) => new Date(a.tarikh) - new Date(b.tarikh))
+
+                // Worker info row (first row)
+                let rowspan = rows.length
+                let firstRow = true
+
+                rows.forEach((row, idx) => {
+                    bodyHtml += `<tr>`
+
+                    if (firstRow) {
+                        bodyHtml += `<td rowspan="${rowspan}" class="worker-info">${worker.nama}</td>`
+                        bodyHtml += `<td rowspan="${rowspan}" class="worker-info">${worker.no_passport || '-'}</td>`
+                        bodyHtml += `<td rowspan="${rowspan}" class="worker-info">${worker.no_pekerja}</td>`
+                        firstRow = false
+                    }
+
+                    // Activity dropdown
+                    bodyHtml += `<td>
+                        <select class="activity-select" data-worker="${workerId}" data-row="${idx}" onchange="updateRate(this)">
+                            <option value="">Pilih Aktiviti</option>
+                            ${ratesList.map(r => `<option value="${r.id}" data-harga="${r.harga}">${r.perincian || r.jenis_kerja}</option>`).join('')}
+                        </select>
+                    </td>`
+
+                    // Daily inputs
+                    let totalHari = 0
+                    let totalKuantiti = 0
+
+                    for (let d = 1; d <= daysInMonth; d++) {
+                        const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+                        const dayRow = rows.find(r => r.tarikh === tarikh) || { attendance_code: 'H01', kuantiti: 0 }
+
+                        if (['H01','H02','H03'].includes(dayRow.attendance_code)) {
+                            totalHari++
+                        }
+                        totalKuantiti += parseFloat(dayRow.kuantiti) || 0
+
+                        const date = new Date(currentYear, currentMonth-1, d)
+                        const dayName = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'][date.getDay()]
+                        const isWeekend = dayName === currentWorkGroup.hari_minggu
+                        const cellClass = isWeekend ? 'weekend' : ''
+
+                        bodyHtml += `<td class="${cellClass}">
+                            <select class="attendance-select" data-worker="${workerId}" data-tarikh="${tarikh}" data-row="${idx}">
+                                ${attendanceCodes.map(c => `<option value="${c.kod}" ${dayRow.attendance_code === c.kod ? 'selected' : ''}>${c.kod}</option>`).join('')}
+                            </select>
+                            <input type="number" class="quantity-input" value="${dayRow.kuantiti || 0}" step="0.01" min="0"
+                                data-worker="${workerId}" data-tarikh="${tarikh}" data-row="${idx}">
+                        </td>`
+                    }
+
+                    const kadar = row.kadar_diguna || row.kadar_asal || 0
+                    const jumlah = totalKuantiti * kadar
+
+                    bodyHtml += `<td class="total-cell">${totalHari}</td>`
+                    bodyHtml += `<td><input type="number" class="kadar-input" value="${kadar.toFixed(2)}" step="0.01" min="0" data-worker="${workerId}" data-row="${idx}"></td>`
+                    bodyHtml += `<td class="total-cell">${jumlah.toFixed(2)}</td>`
+
+                    // AFC/FC checkbox summary
+                    const afcChecked = rows.every(r => r.status_afc)
+                    const fcChecked = rows.every(r => r.status_fc)
+
+                    bodyHtml += `<td><input type="checkbox" ${afcChecked ? 'checked' : ''} onchange="toggleWorkerAFC('${workerId}')"></td>`
+                    bodyHtml += `<td><input type="checkbox" ${fcChecked ? 'checked' : ''} onchange="toggleWorkerFC('${workerId}')"></td>`
+
+                    bodyHtml += `</tr>`
+                })
+            })
+
+            tbody.innerHTML = bodyHtml
+        }
+
+        window.updateRate = (select) => {
+            const option = select.options[select.selectedIndex]
+            const harga = option.dataset.harga
+            const row = select.closest('tr')
+            const kadarInput = row.querySelector('.kadar-input')
+            if (kadarInput && harga) {
+                kadarInput.value = parseFloat(harga).toFixed(2)
+            }
+        }
+
+        window.toggleAllAFC = (day) => {
+            const checkboxes = document.querySelectorAll(`.checkbox-afc[data-day="${day}"]`)
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked)
+            checkboxes.forEach(cb => cb.checked = !allChecked)
+        }
+
+        window.toggleAllFC = (day) => {
+            const checkboxes = document.querySelectorAll(`.checkbox-fc[data-day="${day}"]`)
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked)
+            checkboxes.forEach(cb => cb.checked = !allChecked)
+        }
+
+        window.checkAllAFC = () => {
+            document.querySelectorAll('.checkbox-afc').forEach(cb => cb.checked = true)
+        }
+
+        window.checkAllFC = () => {
+            document.querySelectorAll('.checkbox-fc').forEach(cb => cb.checked = true)
+        }
+
+        window.addActivityRow = () => {
+            alert('Fungsi tambah aktiviti akan datang!')
+        }
+
+        window.saveAllData = async () => {
+            showMessage('⏳ Menyimpan data...', 'info')
+
+            // Collect data from table
+            const detailsToSave = []
+
+            document.querySelectorAll('tbody tr').forEach(row => {
+                // Parse row data
+                const workerId = row.querySelector('[data-worker]')?.dataset.worker
+                const activitySelect = row.querySelector('.activity-select')
+                const rateId = activitySelect?.value
+
+                row.querySelectorAll('.attendance-select').forEach((select, idx) => {
+                    const tarikh = select.dataset.tarikh
+                    const kuantiti = row.querySelectorAll('.quantity-input')[idx]?.value || 0
+                    const kadarInput = row.querySelector('.kadar-input')
+
+                    detailsToSave.push({
+                        batch_id: currentBatchId,
+                        worker_id: workerId,
+                        tarikh,
+                        attendance_code: select.value,
+                        rate_id: rateId || null,
+                        kuantiti: parseFloat(kuantiti),
+                        kadar_asal: rateId ? parseFloat(activitySelect?.options[activitySelect.selectedIndex]?.dataset.harga) : 0,
+                        kadar_diguna: parseFloat(kadarInput?.value) || 0,
+                        status_afc: false,
+                        status_fc: false
+                    })
+                })
+            })
+
+            const { error } = await supabase.from('payroll_details').upsert(detailsToSave, {
+                onConflict: 'batch_id, worker_id, tarikh, rate_id'
+            })
+
+            if (error) {
+                showMessage('❌ Gagal simpan: ' + error.message, 'error')
+            } else {
+                showMessage('✅ Data berjaya disimpan!', 'success')
+            }
+        }
+
+        function showMessage(msg, type) {
+            const msgDiv = document.getElementById('statusMessage')
+            msgDiv.textContent = msg
+            msgDiv.className = `status-message status-${type}`
+            msgDiv.style.display = 'block'
+            setTimeout(() => msgDiv.style.display = 'none', 5000)
+        }
+
+        init()
+    </script>
+</body>
+</html>
