@@ -176,12 +176,12 @@
       
       console.log('Auth success:', authData.user.id)
       
-      // 2. Dapatkan maklumat user dari table users
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*, wilayah(nama), rancangan(nama), negeri(nama)')
-        .eq('auth_id', authData.user.id)
-        .single()
+      // 2. Dapatkan maklumat user dari table users guna no_kakitangan
+const { data: userData, error: userError } = await supabase
+  .from('users')
+  .select('*, wilayah(nama), rancangan(nama), negeri(nama)')
+  .eq('no_kakitangan', noKakitangan)
+  .single()
       
       console.log('User data query result:', { userData, userError })
       
