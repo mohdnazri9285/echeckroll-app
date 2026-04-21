@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>eCheckroll - Insentif Bulanan</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f5f5f5; }
+    .navbar {
+      background: #1b5e20;
+      color: white;
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .navbar h1 { font-size: 22px; }
+    .nav-links { display: flex; gap: 20px; }
+    .nav-links a { color: white; text-decoration: none; }
+    .btn-logout {
+      background: #c62828;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .container { max-width: 800px; margin: 30px auto; padding: 0 20px; }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    .header h2 { color: #333; }
+    .month-selector {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .month-selector select, .month-selector input {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .btn-primary { background: #2e7d32; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .btn-success { background: #28a745; color: white; }
+    .btn-warning { background: #ffc107; color: #333; }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .incentive-list { margin-top: 20px; }
+    .incentive-item {
+      display: flex;
+      align-items: center;
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+    }
+    .incentive-item:last-child { border-bottom: none; }
+    .incentive-name {
+      flex: 1;
+      font-weight: 500;
+    }
+    .incentive-input {
+      width: 150px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+      text-align: right;
+      margin: 0 15px;
+    }
+    .incentive-input:disabled {
+      background: #f5f5f5;
+      color: #666;
+    }
+    .currency { color: #666; margin-right: 5px; }
+    .locked-badge {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+    .status-message {
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    .status-info { background: #d1ecf1; color: #0c5460; }
+    .status-success { background: #d4edda; color: #155724; }
+    .loading { text-align: center; padding: 50px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <h1>🌴 eCheckroll - Insentif Bulanan</h1>
+    <div class="nav-links">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="workers.html">Pekerja</a>
+      <a href="incentives.html">Insentif</a>
+      <a href="#">Kumpulan Kerja</a>
+    </div>
+    <button class="btn-logout" onclick="logout()">Log Keluar</button>
+  </div>
+
+  <div class="container">
+    <div class="header">
+      <h2>💰 Daftar Insentif Bulanan</h2>
+      <div class="month-selector">
+        <select id="bulanSelect">
+          <option value="1">Januari</option>
+          <option value="2">Februari</option>
+          <option value="3">Mac</option>
+          <option value="4">April</option>
+          <option value="5">Mei</option>
+          <option value="6">Jun</option>
+          <option value="7">Julai</option>
+          <option value="8">Ogos</option>
+          <option value="9">September</option>
+          <option value="10">Oktober</option>
+          <option value="11">November</option>
+          <option value="12">Disember</option>
+        </select>
+        <input type="number" id="tahunInput" min="2020" max="2030" style="width: 100px;">
+        <button class="btn btn-primary" onclick="loadIncentives()">📅 Papar</button>
+        <button class="btn btn-secondary" onclick="resetToCurrentMonth()">📍 Bulan Ini</button>
+      </div>
+    </div>
+
+    <div id="statusMessage" class="status-message" style="display: none;"></div>
+
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3 id="periodTitle">Insentif Bulanan</h3>
+        <span id="lockedStatus"></span>
+      </div>
+
+      <div id="incentiveContainer">
+        <div class="loading">Pilih bulan dan tahun...</div>
+      </div>
+
+      <div style="margin-top: 25px; display: flex; gap: 10px; justify-content: flex-end;">
+        <button class="btn btn-success" id="saveBtn" onclick="saveIncentives()" style="display: none;">💾 Simpan</button>
+        <button class="btn btn-warning" id="lockBtn" onclick="lockIncentives()" style="display: none;">🔒 Kunci & Sahkan</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+    const SUPABASE_URL = 'https://pkoqxybumxevmcnukiye.supabase.co'
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrb3F4eWJ1bXhldm1jbnVraXllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMzYxMDUsImV4cCI6MjA5MTgxMjEwNX0.OLcQrto5pL9o13NSaLcNFQKmJj6Z9wMsSful6NCjols'
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+    const savedUser = localStorage.getItem('echeckroll_user')
+    if (!savedUser) window.location.href = 'login.html'
+    const user = JSON.parse(savedUser)
+    const rancanganId = user.rancangan_id
+
+    let currentIncentives = []
+    let isLocked = false
+
+    const defaultIncentives = [
+      'Kadar upah Kerja menuai 50%',
+      'Kadar upah Kerja menuai 100%',
+      'Kadar upah Kerja Harian 50%',
+      'Kadar upah Kerja Harian 100%'
+    ]
+
+    window.logout = async () => {
+      await supabase.auth.signOut()
+      localStorage.removeItem('echeckroll_user')
+      window.location.href = 'login.html'
+    }
+
+    window.resetToCurrentMonth = () => {
+      const now = new Date()
+      document.getElementById('bulanSelect').value = now.getMonth() + 1
+      document.getElementById('tahunInput').value = now.getFullYear()
+      loadIncentives()
+    }
+
+    window.loadIncentives = async () => {
+      const bulan = parseInt(document.getElementById('bulanSelect').value)
+      const tahun = parseInt(document.getElementById('tahunInput').value)
+
+      const monthNames = ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis']
+      document.getElementById('periodTitle').textContent = `Insentif ${monthNames[bulan-1]} ${tahun}`
+
+      const container = document.getElementById('incentiveContainer')
+      container.innerHTML = '<div class="loading">Loading...</div>'
+
+      const { data, error } = await supabase
+        .from('incentives')
+        .select('*')
+        .eq('rancangan_id', rancanganId)
+        .eq('bulan', bulan)
+        .eq('tahun', tahun)
+        .order('nama')
+
+      if (error) {
+        container.innerHTML = `<div class="loading">Error: ${error.message}</div>`
+        return
+      }
+
+      currentIncentives = data || []
+      isLocked = currentIncentives.length > 0 && currentIncentives[0].locked
+
+      renderIncentives(bulan, tahun)
+    }
+
+    function renderIncentives(bulan, tahun) {
+      const container = document.getElementById('incentiveContainer')
+      const saveBtn = document.getElementById('saveBtn')
+      const lockBtn = document.getElementById('lockBtn')
+      const lockedStatus = document.getElementById('lockedStatus')
+
+      if (isLocked) {
+        lockedStatus.innerHTML = '<span class="locked-badge">🔒 TELAH DIKUNCI</span>'
+        saveBtn.style.display = 'none'
+        lockBtn.style.display = 'none'
+      } else {
+        lockedStatus.innerHTML = ''
+        saveBtn.style.display = 'inline-block'
+        lockBtn.style.display = currentIncentives.length > 0 ? 'inline-block' : 'none'
+      }
+
+      let html = '<div class="incentive-list">'
+
+      defaultIncentives.forEach(name => {
+        const existing = currentIncentives.find(i => i.nama === name)
+        const kadar = existing ? existing.kadar : 0
+        const id = existing ? existing.id : ''
+
+        html += `
+          <div class="incentive-item">
+            <span class="incentive-name">${name}</span>
+            <span class="currency">RM</span>
+            <input type="number" step="0.01" min="0"
+                   class="incentive-input"
+                   data-name="${name}"
+                   data-id="${id}"
+                   value="${kadar.toFixed(2)}"
+                   ${isLocked ? 'disabled' : ''}>
+          </div>
+        `
+      })
+
+      html += '</div>'
+
+      if (currentIncentives.length === 0) {
+        html += '<p style="color: #666; margin-top: 15px; text-align: center;">Klik "Simpan" untuk daftar insentif bulan ini.</p>'
+      }
+
+      container.innerHTML = html
+    }
+
+    window.saveIncentives = async () => {
+      const bulan = parseInt(document.getElementById('bulanSelect').value)
+      const tahun = parseInt(document.getElementById('tahunInput').value)
+
+      const inputs = document.querySelectorAll('.incentive-input')
+      const incentivesToSave = []
+
+      inputs.forEach(input => {
+        const name = input.dataset.name
+        const id = input.dataset.id
+        const kadar = parseFloat(input.value) || 0
+
+        incentivesToSave.push({
+          id: id || undefined,
+          rancangan_id: rancanganId,
+          bulan,
+          tahun,
+          nama: name,
+          kadar,
+          locked: false
+        })
+      })
+
+      const { error } = await supabase
+        .from('incentives')
+        .upsert(incentivesToSave, { onConflict: 'rancangan_id, bulan, tahun, nama' })
+
+      if (error) {
+        showMessage('Gagal simpan: ' + error.message, 'error')
+      } else {
+        showMessage('✅ Insentif berjaya disimpan!', 'success')
+        loadIncentives()
+      }
+    }
+
+    window.lockIncentives = async () => {
+      if (!confirm('Kunci insentif untuk bulan ini? Selepas dikunci, ia tidak boleh diubah.')) return
+
+      const bulan = parseInt(document.getElementById('bulanSelect').value)
+      const tahun = parseInt(document.getElementById('tahunInput').value)
+
+      const { error } = await supabase
+        .from('incentives')
+        .update({ locked: true })
+        .eq('rancangan_id', rancanganId)
+        .eq('bulan', bulan)
+        .eq('tahun', tahun)
+
+      if (error) {
+        showMessage('Gagal kunci: ' + error.message, 'error')
+      } else {
+        showMessage('🔒 Insentif telah dikunci!', 'success')
+        loadIncentives()
+      }
+    }
+
+    function showMessage(msg, type) {
+      const msgDiv = document.getElementById('statusMessage')
+      msgDiv.textContent = msg
+      msgDiv.className = `status-message status-${type}`
+      msgDiv.style.display = 'block'
+      setTimeout(() => msgDiv.style.display = 'none', 3000)
+    }
+
+    // Initialize
+    resetToCurrentMonth()
+  </script>
+</body>
+</html>
