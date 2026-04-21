@@ -469,17 +469,22 @@
         
         const { data: details } = await supabase
           .from('payroll_details')
-          .select('rate_id, rates(kod_aktiviti, perincian, harga), incentive_id, incentives(nama, kadar)')
+          .select('rate_id, rates(kod_aktiviti, perincian, harga), incentive_id, incentives(nama, kadar), manual_activity')
           .eq('batch_id', currentBatchId)
-          .or('rate_id.not.is.null,incentive_id.not.is.null')
+          .or('rate_id.not.is.null,incentive_id.not.is.null,manual_activity.not.is.null')
         
         const activityMap = new Map()
         details?.forEach(d => {
           if (d.rate_id) {
             activityMap.set(`rate_${d.rate_id}`, { type: 'rate', data: d.rates, id: d.rate_id })
-          }
-          if (d.incentive_id) {
+          } else if (d.incentive_id) {
             activityMap.set(`inc_${d.incentive_id}`, { type: 'incentive', data: d.incentives, id: d.incentive_id })
+          } else if (d.manual_activity) {
+            activityMap.set(`manual_${d.manual_activity}`, { 
+              type: 'manual', 
+              data: { name: d.manual_activity, harga: d.kadar_diguna }, 
+              id: d.manual_activity 
+            })
           }
         })
         groupActivities = Array.from(activityMap.values())
@@ -595,16 +600,18 @@
       
       groupActivities.forEach((activity, idx) => {
         const isIncentive = activity.type === 'incentive'
+        const isManual = activity.type === 'manual'
         const data = activity.data
         const id = activity.id
-        const name = isIncentive ? data.nama : `${data.kod_aktiviti} - ${data.perincian || data.jenis_kerja}`
-        const harga = isIncentive ? data.kadar : data.harga
+        const name = isIncentive ? data.nama : (isManual ? data.name : `${data.kod_aktiviti} - ${data.perincian || data.jenis_kerja}`)
+        const harga = isIncentive ? data.kadar : (isManual ? data.harga : data.harga)
         
-        const activityDetails = details.filter(d => 
-          isIncentive ? d.incentive_id === id : d.rate_id === id
-        )
+        const activityDetails = details.filter(d => {
+          if (isIncentive) return d.incentive_id === id
+          if (isManual) return d.manual_activity === id
+          return d.rate_id === id
+        })
         
-        let rowTotalKuantiti = 0
         let rowKadar = 0
         
         html += `<tr class="activity-row" data-activity-id="${id}" data-activity-type="${activity.type}">
@@ -670,10 +677,9 @@
         ${ratesList.map(r => `<option value="${r.kod_aktiviti}">${r.kod_aktiviti} - ${r.perincian || r.jenis_kerja}</option>`).join('')}
       </datalist>`
       
-      // Summary Table - Proper alignment
+      // Summary Table
       html += `<table class="slip-table" style="margin-top:10px;">`
       
-      // Gaji Kasar - align with Jumlah column
       html += `<tr>
         <td style="width:160px;"></td><td style="width:100px;"></td><td style="width:120px;"></td>`
       for (let d = 1; d <= daysInMonth; d++) html += `<td class="day-col"></td>`
@@ -687,7 +693,6 @@
         <td class="summary-value jumlah-col">${grandTotal.toFixed(2)}</td>
       </tr>`
       
-      // Potongan - in the same table, aligned with Jumlah column
       html += `<tr>
         <td colspan="${3 + daysInMonth + 2}" style="padding:0;">
           <div class="collapse-header" onclick="toggleCollapse()" style="margin:0; border-radius:0;">
@@ -699,7 +704,6 @@
       
       html += `</table>`
       
-      // Collapse content outside main table
       html += `<div class="collapse-content" id="collapseContent">
         <table class="deduction-table">
           <tr><td style="width:150px;">KWSP</td><td><input type="number" class="deduction-input" data-ded="KWSP" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
@@ -712,7 +716,6 @@
         </table>
       </div>`
       
-      // Gaji Bersih - separate table for proper alignment
       html += `<table class="slip-table" style="margin-top:5px;">
         <tr>
           <td style="width:160px;"></td><td style="width:100px;"></td><td style="width:120px;"></td>`
@@ -740,7 +743,6 @@
         }))
       }
       
-      // Update display with current values
       setTimeout(() => recalculate(), 50)
     }
     
@@ -778,16 +780,15 @@
       
       // Auto-add KLM if rate is RM 65.39 (Kong)
       if (Math.abs(rate.harga - 65.39) < 0.01) {
-        const klmExists = groupActivities.some(a => a.type === 'rate' && a.data?.perincian === 'Kerja Lebih Masa')
+        const klmExists = groupActivities.some(a => a.type === 'manual' && a.id === 'KLM')
         if (!klmExists) {
-          const klmRate = {
-            id: `klm_${Date.now()}`,
-            kod_aktiviti: 'KLM',
-            perincian: 'Kerja Lebih Masa',
-            harga: 65.39
-          }
-          groupActivities.push({ type: 'rate', data: klmRate, id: klmRate.id })
-          await saveActivityForAll(klmRate.id, 'rate', 65.39)
+          const klmId = 'KLM'
+          groupActivities.push({ 
+            type: 'manual', 
+            data: { name: 'Kerja Lebih Masa', harga: 65.39 }, 
+            id: klmId 
+          })
+          await saveManualActivityForAll(klmId, 'Kerja Lebih Masa', 65.39)
         }
       }
       
@@ -827,7 +828,8 @@
             attendance_code: 'H01',
             kuantiti: 0,
             kadar_asal: harga,
-            kadar_diguna: harga
+            kadar_diguna: harga,
+            manual_activity: null
           }
           if (type === 'rate') {
             item.rate_id = id
@@ -841,7 +843,32 @@
       }
       
       await supabase.from('payroll_details').upsert(detailsToSave, {
-        onConflict: 'batch_id, worker_id, tarikh, rate_id, incentive_id'
+        onConflict: 'batch_id, worker_id, tarikh, rate_id, incentive_id, manual_activity'
+      })
+    }
+    
+    async function saveManualActivityForAll(id, name, harga) {
+      const detailsToSave = []
+      for (const worker of workersList) {
+        for (let d = 1; d <= daysInMonth; d++) {
+          const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+          detailsToSave.push({
+            batch_id: currentBatchId,
+            worker_id: worker.id,
+            tarikh,
+            attendance_code: 'H01',
+            kuantiti: 0,
+            kadar_asal: harga,
+            kadar_diguna: harga,
+            rate_id: null,
+            incentive_id: null,
+            manual_activity: id
+          })
+        }
+      }
+      
+      await supabase.from('payroll_details').upsert(detailsToSave, {
+        onConflict: 'batch_id, worker_id, tarikh, rate_id, incentive_id, manual_activity'
       })
     }
     
@@ -855,8 +882,10 @@
       
       if (type === 'rate') {
         await deleteQuery.eq('rate_id', id)
-      } else {
+      } else if (type === 'incentive') {
         await deleteQuery.eq('incentive_id', id)
+      } else {
+        await deleteQuery.eq('manual_activity', id)
       }
       
       renderSlip()
@@ -940,7 +969,7 @@
         const kadarDiguna = parseFloat(kadarInput?.value) || 0
         
         const activity = groupActivities.find(a => a.id === activityId)
-        const kadarAsal = activityType === 'rate' ? activity?.data?.harga : activity?.data?.kadar
+        const kadarAsal = activity?.data?.harga || kadarDiguna
         
         row.querySelectorAll('.quantity-input').forEach(inp => {
           const tarikh = inp.dataset.tarikh
@@ -953,16 +982,22 @@
             tarikh,
             attendance_code: attendance,
             kuantiti,
-            kadar_asal: kadarAsal || 0,
+            kadar_asal: kadarAsal,
             kadar_diguna: kadarDiguna
           }
           
           if (activityType === 'rate') {
             saveItem.rate_id = activityId
             saveItem.incentive_id = null
-          } else {
+            saveItem.manual_activity = null
+          } else if (activityType === 'incentive') {
             saveItem.rate_id = null
             saveItem.incentive_id = activityId
+            saveItem.manual_activity = null
+          } else {
+            saveItem.rate_id = null
+            saveItem.incentive_id = null
+            saveItem.manual_activity = activityId
           }
           
           detailsToSave.push(saveItem)
@@ -970,7 +1005,7 @@
       })
       
       const { error } = await supabase.from('payroll_details').upsert(detailsToSave, {
-        onConflict: 'batch_id, worker_id, tarikh, rate_id, incentive_id'
+        onConflict: 'batch_id, worker_id, tarikh, rate_id, incentive_id, manual_activity'
       })
       
       if (error) {
