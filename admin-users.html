@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Daftar Pengguna</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
+        .navbar {
+            background: #1b5e20;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar h1 { font-size: 22px; }
+        .nav-links { display: flex; gap: 20px; }
+        .nav-links a { color: white; text-decoration: none; }
+        .btn-logout {
+            background: #c62828;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .header h2 { color: #333; }
+        table {
+            width: 100%;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th { background: #f8f9fa; font-weight: 600; color: #333; }
+        tr:hover { background: #f8f9fa; }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            background: #d4edda;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>🌴 eCheckroll Admin</h1>
+        <div class="nav-links">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="admin-users.html">Pengguna</a>
+        </div>
+        <button class="btn-logout" onclick="logout()">Log Keluar</button>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h2>📋 Senarai Pengguna</h2>
+        </div>
+
+        <table id="usersTable">
+            <thead>
+                <tr>
+                    <th>BIL</th>
+                    <th>NAMA</th>
+                    <th>NO KAKITANGAN</th>
+                    <th>JAWATAN</th>
+                    <th>WILAYAH</th>
+                    <th>RANCANGAN</th>
+                    <th>NEGERI</th>
+                    <th>PERANAN</th>
+                </tr>
+            </thead>
+            <tbody id="usersTableBody">
+                <tr><td colspan="8" style="text-align:center;">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+        const SUPABASE_URL = 'https://pkoqxybumxevmcnukiye.supabase.co'
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrb3F4eWJ1bXhldm1jbnVraXllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMzYxMDUsImV4cCI6MjA5MTgxMjEwNX0.OLcQrto5pL9o13NSaLcNFQKmJj6Z9wMsSful6NCjols'
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+        const savedUser = localStorage.getItem('echeckroll_user')
+        if (!savedUser) window.location.href = 'login.html'
+
+        const user = JSON.parse(savedUser)
+        if (user.peranan !== 'admin') window.location.href = 'dashboard.html'
+
+        async function loadUsers() {
+            const { data, error } = await supabase
+                .from('users')
+                .select(`
+                    *,
+                    wilayah (nama),
+                    rancangan (nama),
+                    negeri (nama)
+                `)
+                .order('created_at', { ascending: false })
+
+            const tbody = document.getElementById('usersTableBody')
+
+            if (error || !data) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Error loading data</td></tr>'
+                return
+            }
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Tiada pengguna</td></tr>'
+                return
+            }
+
+            tbody.innerHTML = data.map((u, i) => `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td>${u.nama_petugas || '-'}</td>
+                    <td>${u.no_kakitangan || '-'}</td>
+                    <td>${u.jawatan || '-'}</td>
+                    <td>${u.wilayah?.nama || '-'}</td>
+                    <td>${u.rancangan?.nama || '-'}</td>
+                    <td>${u.negeri?.nama || '-'}</td>
+                    <td><span class="status-badge">${u.peranan?.toUpperCase() || '-'}</span></td>
+                </tr>
+            `).join('')
+        }
+
+        window.logout = async () => {
+            await supabase.auth.signOut()
+            localStorage.removeItem('echeckroll_user')
+            window.location.href = 'login.html'
+        }
+
+        loadUsers()
+    </script>
+</body>
+</html>
