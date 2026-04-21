@@ -262,14 +262,6 @@
       text-align: center;
       background: #fafafa;
     }
-    
-    .edit-mode-indicator {
-      background: #fff3cd;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      margin-left: 10px;
-    }
   </style>
 </head>
 <body>
@@ -359,8 +351,10 @@
     let groupActivities = []
     let editMode = false
     
-    // CACHE untuk semua worker
-    const workerDataCache = new Map() // key: workerId, value: { details, lastSaved }
+    const workerDataCache = new Map()
+    
+    // Storage key untuk last batch
+    const LAST_BATCH_KEY = `echeckroll_last_batch_${rancanganId}`
     
     window.logout = async () => {
       await supabase.auth.signOut()
@@ -375,6 +369,42 @@
       
       document.getElementById('bulanSelect').value = currentMonth
       document.getElementById('tahunInput').value = currentYear
+      
+      // Auto-load last batch if exists
+      await autoLoadLastBatch()
+    }
+    
+    async function autoLoadLastBatch() {
+      const lastBatch = localStorage.getItem(LAST_BATCH_KEY)
+      if (!lastBatch) return
+      
+      try {
+        const { workGroupId, bulan, tahun } = JSON.parse(lastBatch)
+        
+        // Check if work group still exists
+        const { data } = await supabase
+          .from('work_groups')
+          .select('id')
+          .eq('id', workGroupId)
+          .maybeSingle()
+        
+        if (data) {
+          document.getElementById('workGroupSelect').value = workGroupId
+          document.getElementById('bulanSelect').value = bulan
+          document.getElementById('tahunInput').value = tahun
+          
+          // Auto-load the batch
+          await loadBatch()
+        } else {
+          localStorage.removeItem(LAST_BATCH_KEY)
+        }
+      } catch (e) {
+        localStorage.removeItem(LAST_BATCH_KEY)
+      }
+    }
+    
+    function saveLastBatch(workGroupId, bulan, tahun) {
+      localStorage.setItem(LAST_BATCH_KEY, JSON.stringify({ workGroupId, bulan, tahun }))
     }
     
     function populateMonthSelect() {
@@ -436,6 +466,9 @@
       const workGroupId = document.getElementById('workGroupSelect').value
       
       if (!workGroupId) { alert('Sila pilih Kumpulan Kerja'); return }
+      
+      // Save last batch
+      saveLastBatch(workGroupId, bulan, tahun)
       
       currentMonth = bulan
       currentYear = tahun
@@ -507,17 +540,19 @@
         showMessage('🆕 Batch baru dicipta', 'success')
       }
       
-      // Clear cache for new batch
       workerDataCache.clear()
       
       await loadWorkerData(workersList[0].id)
+      
+      // Update UI buttons
+      editMode = false
+      updateButtons()
     }
     
     async function loadWorkerData(workerId) {
       const worker = workersList.find(w => w.id === workerId)
       if (!worker) return
       
-      // Check cache first
       if (workerDataCache.has(workerId)) {
         currentWorkerData = workerDataCache.get(workerId)
       } else {
@@ -534,8 +569,6 @@
       document.getElementById('workerSelect').value = workerId
       currentWorkerIndex = workersList.findIndex(w => w.id === workerId)
       
-      editMode = false
-      updateButtons()
       renderSlip()
     }
     
@@ -694,7 +727,6 @@
         </tr>`
       })
       
-      // Add Buttons Row (only in edit mode)
       if (editMode && !isLocked) {
         html += `<tr><td colspan="${totalCols}">
           <div class="activity-add-row">
@@ -711,12 +743,10 @@
       
       html += `</table>`
       
-      // Datalist
       html += `<datalist id="rateCodes">
         ${ratesList.map(r => `<option value="${r.kod_aktiviti}">${r.kod_aktiviti} - ${r.perincian || r.jenis_kerja}</option>`).join('')}
       </datalist>`
       
-      // Summary
       html += `<table class="slip-table" style="margin-top:10px;">
         <tr>
           <td style="width:160px;"></td><td style="width:100px;"></td><td style="width:120px;"></td>`
@@ -915,7 +945,6 @@
     function saveCurrentWorkerToCache() {
       if (!currentWorkerData.worker) return
       
-      // Collect current data from DOM if in edit mode
       if (editMode) {
         collectFormData()
       }
@@ -986,27 +1015,28 @@
       
       const detailsToSave = currentWorkerData.details
       
-      // Delete existing details for this worker first
       await supabase
         .from('payroll_details')
         .delete()
         .eq('batch_id', currentBatchId)
         .eq('worker_id', currentWorkerData.worker.id)
       
-      // Insert new details
-      const { error } = await supabase
-        .from('payroll_details')
-        .insert(detailsToSave)
-      
-      if (error) {
-        showMessage('❌ Gagal simpan: ' + error.message, 'error')
-      } else {
-        workerDataCache.set(currentWorkerData.worker.id, currentWorkerData)
-        editMode = false
-        updateButtons()
-        renderSlip()
-        showMessage('✅ Data berjaya disimpan!', 'success')
+      if (detailsToSave.length > 0) {
+        const { error } = await supabase
+          .from('payroll_details')
+          .insert(detailsToSave)
+        
+        if (error) {
+          showMessage('❌ Gagal simpan: ' + error.message, 'error')
+          return
+        }
       }
+      
+      workerDataCache.set(currentWorkerData.worker.id, currentWorkerData)
+      editMode = false
+      updateButtons()
+      renderSlip()
+      showMessage('✅ Data berjaya disimpan!', 'success')
     }
     
     window.lockBatch = async () => {
