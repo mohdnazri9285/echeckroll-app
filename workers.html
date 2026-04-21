@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eCheckroll - Pekerja Ladang</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f5f5f5; }
+        .navbar {
+            background: #1b5e20;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar h1 { font-size: 22px; }
+        .nav-links { display: flex; gap: 20px; }
+        .nav-links a { color: white; text-decoration: none; }
+        .btn-logout {
+            background: #c62828;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .container { max-width: 95%; margin: 30px auto; padding: 0 20px; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .header h2 { color: #333; }
+        .controls { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .btn-primary { background: #2e7d32; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: #333; }
+        .btn-danger { background: #c62828; color: white; }
+        .filter-group { display: flex; gap: 10px; align-items: center; }
+        .filter-group select, .filter-group input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            overflow-x: auto;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1800px;
+        }
+        th, td {
+            padding: 12px 8px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+            position: sticky;
+            top: 0;
+        }
+        tr:hover { background: #f8f9fa; }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .status-aktif { background: #d4edda; color: #155724; }
+        .status-tidak { background: #f8d7da; color: #721c24; }
+        .action-btn {
+            padding: 4px 8px;
+            margin: 2px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .close-btn {
+            font-size: 24px;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .form-group { margin-bottom: 0; }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            font-size: 13px;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+        .form-actions {
+            grid-column: span 2;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .loading { text-align: center; padding: 50px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>🌴 eCheckroll - Pekerja Ladang</h1>
+        <div class="nav-links">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="workers.html">Pekerja</a>
+            <a href="#">Kadar Upah</a>
+            <a href="#">Kumpulan Kerja</a>
+        </div>
+        <button class="btn-logout" onclick="logout()">Log Keluar</button>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h2>👨‍🌾 Senarai Pekerja Ladang <span id="rancanganName"></span></h2>
+            <div class="controls">
+                <div class="filter-group">
+                    <input type="text" id="searchInput" placeholder="🔍 Cari nama / no pekerja...">
+                    <select id="statusFilter">
+                        <option value="SEMUA">Semua</option>
+                        <option value="AKTIF" selected>Aktif</option>
+                        <option value="TIDAK AKTIF">Tidak Aktif</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="loadWorkers()">🔄 Segar</button>
+                    <button class="btn btn-primary" onclick="openModal()">+ Tambah Pekerja</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="workersTable">
+                <thead>
+                    <tr>
+                        <th>BIL</th>
+                        <th>NO PEKERJA</th>
+                        <th>NAMA</th>
+                        <th>PASPORT LAMA</th>
+                        <th>PASPORT</th>
+                        <th>KATEGORI</th>
+                        <th>WARGANEGARA</th>
+                        <th>PEMBEKAL</th>
+                        <th>TARIKH LANTIKAN</th>
+                        <th>TAMAT PASPORT</th>
+                        <th>TAMAT PERMIT</th>
+                        <th>STATUS</th>
+                        <th>TINDAKAN</th>
+                    </tr>
+                </thead>
+                <tbody id="workersTableBody">
+                    <tr><td colspan="13" class="loading">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal Tambah/Edit -->
+    <div class="modal" id="workerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Tambah Pekerja</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="workerForm">
+                <input type="hidden" id="workerId">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>No Pekerja *</label>
+                        <input type="text" id="noPekerja" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nama *</label>
+                        <input type="text" id="nama" required>
+                    </div>
+                    <div class="form-group">
+                        <label>No Passport Lama</label>
+                        <input type="text" id="noPassportLama">
+                    </div>
+                    <div class="form-group">
+                        <label>No Passport / KP</label>
+                        <input type="text" id="noPassport">
+                    </div>
+                    <div class="form-group">
+                        <label>Kategori Kerja</label>
+                        <input type="text" id="kategoriKerja" value="Penuai">
+                    </div>
+                    <div class="form-group">
+                        <label>Warganegara</label>
+                        <select id="warganegara">
+                            <option>MALAYSIA</option>
+                            <option>INDONESIA</option>
+                            <option>INDIA</option>
+                            <option>NEPAL</option>
+                            <option>BANGLADESH</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Pembekal</label>
+                        <input type="text" id="pembekal">
+                    </div>
+                    <div class="form-group">
+                        <label>Tarikh Lantikan</label>
+                        <input type="date" id="tarikhLantikan">
+                    </div>
+                    <div class="form-group">
+                        <label>Tarikh Tamat Passport</label>
+                        <input type="date" id="tarikhTamatPassport">
+                    </div>
+                    <div class="form-group">
+                        <label>Tarikh Tamat Permit</label>
+                        <input type="date" id="tarikhTamatPermit">
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="status">
+                            <option value="AKTIF">AKTIF</option>
+                            <option value="TIDAK AKTIF">TIDAK AKTIF</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Batal</button>
+                        <button type="submit" class="btn btn-primary">Simpan</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+        const SUPABASE_URL = 'https://pkoqxybumxevmcnukiye.supabase.co'
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrb3F4eWJ1bXhldm1jbnVraXllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMzYxMDUsImV4cCI6MjA5MTgxMjEwNX0.OLcQrto5pL9o13NSaLcNFQKmJj6Z9wMsSful6NCjols'
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+        const savedUser = localStorage.getItem('echeckroll_user')
+        if (!savedUser) window.location.href = 'login.html'
+        const user = JSON.parse(savedUser)
+
+        let currentRancanganId = user.rancangan_id
+        let workersData = []
+
+        document.getElementById('rancanganName').textContent = `(${user.rancangan_nama || ''})`
+
+        window.logout = async () => {
+            await supabase.auth.signOut()
+            localStorage.removeItem('echeckroll_user')
+            window.location.href = 'login.html'
+        }
+
+        window.loadWorkers = async () => {
+            const tbody = document.getElementById('workersTableBody')
+            tbody.innerHTML = '<tr><td colspan="13" class="loading">Loading...</td></tr>'
+
+            const statusFilter = document.getElementById('statusFilter').value
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase()
+
+            let query = supabase
+                .from('workers')
+                .select('*')
+                .eq('rancangan_id', currentRancanganId)
+                .order('nama')
+
+            if (statusFilter !== 'SEMUA') {
+                query = query.eq('status', statusFilter)
+            }
+
+            const { data, error } = await query
+
+            if (error) {
+                tbody.innerHTML = `<tr><td colspan="13" class="loading">Error: ${error.message}</td></tr>`
+                return
+            }
+
+            workersData = data || []
+
+            let filteredData = workersData
+            if (searchTerm) {
+                filteredData = workersData.filter(w =>
+                    w.nama.toLowerCase().includes(searchTerm) ||
+                    w.no_pekerja.toLowerCase().includes(searchTerm)
+                )
+            }
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="13" class="loading">Tiada data pekerja</td></tr>'
+                return
+            }
+
+            tbody.innerHTML = filteredData.map((w, i) => `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td>${w.no_pekerja || '-'}</td>
+                    <td>${w.nama || '-'}</td>
+                    <td>${w.no_passport_lama || '-'}</td>
+                    <td>${w.no_passport || '-'}</td>
+                    <td>${w.kategori_kerja || '-'}</td>
+                    <td>${w.warganegara || '-'}</td>
+                    <td>${w.pembekal || '-'}</td>
+                    <td>${w.tarikh_lantikan || '-'}</td>
+                    <td>${w.tarikh_tamat_passport || '-'}</td>
+                    <td>${w.tarikh_tamat_permit || '-'}</td>
+                    <td><span class="status-badge ${w.status === 'AKTIF' ? 'status-aktif' : 'status-tidak'}">${w.status}</span></td>
+                    <td>
+                        <button class="action-btn btn-warning" onclick="editWorker('${w.id}')">✏️</button>
+                        <button class="action-btn ${w.status === 'AKTIF' ? 'btn-danger' : 'btn-success'}" onclick="toggleStatus('${w.id}', '${w.status}')">${w.status === 'AKTIF' ? '❌' : '✅'}</button>
+                    </td>
+                </tr>
+            `).join('')
+        }
+
+        window.openModal = (id = null) => {
+            document.getElementById('modalTitle').textContent = id ? 'Edit Pekerja' : 'Tambah Pekerja'
+            document.getElementById('workerModal').style.display = 'flex'
+
+            if (!id) {
+                document.getElementById('workerForm').reset()
+                document.getElementById('workerId').value = ''
+                document.getElementById('status').value = 'AKTIF'
+            }
+        }
+
+        window.closeModal = () => {
+            document.getElementById('workerModal').style.display = 'none'
+        }
+
+        window.editWorker = async (id) => {
+            const worker = workersData.find(w => w.id === id)
+            if (!worker) return
+
+            document.getElementById('workerId').value = worker.id
+            document.getElementById('noPekerja').value = worker.no_pekerja || ''
+            document.getElementById('nama').value = worker.nama || ''
+            document.getElementById('noPassportLama').value = worker.no_passport_lama || ''
+            document.getElementById('noPassport').value = worker.no_passport || ''
+            document.getElementById('kategoriKerja').value = worker.kategori_kerja || ''
+            document.getElementById('warganegara').value = worker.warganegara || 'INDONESIA'
+            document.getElementById('pembekal').value = worker.pembekal || ''
+            document.getElementById('tarikhLantikan').value = worker.tarikh_lantikan || ''
+            document.getElementById('tarikhTamatPassport').value = worker.tarikh_tamat_passport || ''
+            document.getElementById('tarikhTamatPermit').value = worker.tarikh_tamat_permit || ''
+            document.getElementById('status').value = worker.status || 'AKTIF'
+
+            openModal(id)
+        }
+
+        window.toggleStatus = async (id, currentStatus) => {
+            const newStatus = currentStatus === 'AKTIF' ? 'TIDAK AKTIF' : 'AKTIF'
+            const { error } = await supabase.from('workers').update({ status: newStatus }).eq('id', id)
+            if (error) alert('Gagal tukar status: ' + error.message)
+            else loadWorkers()
+        }
+
+        document.getElementById('workerForm').addEventListener('submit', async (e) => {
+            e.preventDefault()
+
+            const id = document.getElementById('workerId').value
+            const workerData = {
+                rancangan_id: currentRancanganId,
+                no_pekerja: document.getElementById('noPekerja').value,
+                nama: document.getElementById('nama').value,
+                no_passport_lama: document.getElementById('noPassportLama').value,
+                no_passport: document.getElementById('noPassport').value,
+                kategori_kerja: document.getElementById('kategoriKerja').value,
+                warganegara: document.getElementById('warganegara').value,
+                pembekal: document.getElementById('pembekal').value,
+                tarikh_lantikan: document.getElementById('tarikhLantikan').value || null,
+                tarikh_tamat_passport: document.getElementById('tarikhTamatPassport').value || null,
+                tarikh_tamat_permit: document.getElementById('tarikhTamatPermit').value || null,
+                status: document.getElementById('status').value
+            }
+
+            let error
+            if (id) {
+                ({ error } = await supabase.from('workers').update(workerData).eq('id', id))
+            } else {
+                ({ error } = await supabase.from('workers').insert(workerData))
+            }
+
+            if (error) alert('Gagal simpan: ' + error.message)
+            else {
+                closeModal()
+                loadWorkers()
+            }
+        })
+
+        document.getElementById('searchInput').addEventListener('input', loadWorkers)
+        document.getElementById('statusFilter').addEventListener('change', loadWorkers)
+
+        // Initial load
+        loadWorkers()
+    </script>
+</body>
+</html>
