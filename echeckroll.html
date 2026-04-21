@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>eCheckroll - Pengiraan Gaji</title>
+  <title>eCheckroll - Slip Gaji Individu</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; }
@@ -63,86 +63,72 @@
     .btn-secondary { background: #6c757d; color: white; }
     .btn-success { background: #28a745; color: white; }
     .btn-danger { background: #c62828; color: white; }
-    .btn-warning { background: #ffc107; color: #333; }
     
-    .excel-container {
+    .worker-nav {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-left: auto;
+    }
+    .worker-nav select { min-width: 250px; }
+    
+    .slip-container {
       background: white;
       border-radius: 8px;
+      padding: 20px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      overflow-x: auto;
       margin-bottom: 20px;
+      overflow-x: auto;
     }
     
-    table {
+    .slip-table {
+      width: 100%;
       border-collapse: collapse;
-      font-size: 11px;
-      width: max-content;
-      min-width: 100%;
+      font-size: 12px;
+      min-width: 1200px;
     }
     
-    th {
+    .slip-table th {
       background: #2e7d32;
       color: white;
-      padding: 6px 4px;
+      padding: 8px 5px;
       text-align: center;
-      font-weight: 500;
       border: 1px solid #1b5e20;
+    }
+    
+    .slip-table td {
+      padding: 6px 5px;
+      border: 1px solid #ddd;
+      text-align: center;
+    }
+    
+    .slip-table .label-cell {
+      background: #f8f9fa;
+      font-weight: 500;
+      text-align: left;
       white-space: nowrap;
     }
     
-    td {
-      padding: 2px 3px;
-      border: 1px solid #ddd;
-      vertical-align: middle;
+    .slip-table .total-cell {
+      background: #e8f5e9;
+      font-weight: bold;
     }
     
-    .fixed-col {
-      position: sticky;
-      left: 0;
-      background: white;
-      z-index: 2;
-      box-shadow: 2px 0 5px -2px rgba(0,0,0,0.1);
-    }
-    
-    .worker-cell {
-      background: #f8f9fa;
-      font-weight: 500;
-    }
-    
-    .attendance-select {
-      width: 60px;
-      padding: 2px;
-      font-size: 10px;
-      border: 1px solid #ccc;
-      border-radius: 2px;
-      background: white;
-    }
-    
-    .quantity-input {
-      width: 55px;
-      padding: 2px 3px;
-      font-size: 10px;
-      text-align: right;
-      border: 1px solid #ddd;
-      border-radius: 2px;
-    }
-    
-    .kadar-input {
-      width: 75px;
-      padding: 2px 3px;
-      font-size: 10px;
-      text-align: right;
-      border: 1px solid #ffc107;
-      border-radius: 2px;
+    .slip-table .editable {
       background: #fff8e1;
     }
     
-    .total-cell {
-      background: #e8f5e9;
-      font-weight: bold;
-      text-align: right;
-      padding-right: 6px;
+    .slip-table input, .slip-table select {
+      width: 100%;
+      padding: 4px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      font-size: 11px;
+      text-align: center;
     }
+    
+    .slip-table .quantity-input { text-align: right; }
+    .slip-table .amount-input { text-align: right; }
     
     .weekend { background-color: #fff9c4 !important; }
     .holiday { background-color: #c8e6c9 !important; }
@@ -157,67 +143,6 @@
     .status-success { background: #d4edda; color: #155724; }
     .status-error { background: #f8d7da; color: #721c24; }
     
-    .activity-select {
-      width: 150px;
-      padding: 2px;
-      font-size: 10px;
-      border: 1px solid #ddd;
-      border-radius: 2px;
-    }
-    
-    /* Preview Section */
-    .preview-section {
-      background: white;
-      border-radius: 8px;
-      padding: 15px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    
-    .preview-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 15px;
-    }
-    
-    .worker-tabs {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-      margin-bottom: 15px;
-    }
-    
-    .worker-tab {
-      padding: 8px 15px;
-      background: #e0e0e0;
-      border: none;
-      border-radius: 20px;
-      cursor: pointer;
-      font-size: 12px;
-    }
-    
-    .worker-tab.active {
-      background: #2e7d32;
-      color: white;
-    }
-    
-    .preview-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-    }
-    
-    .preview-table th {
-      background: #f5f5f5;
-      color: #333;
-      border: 1px solid #ddd;
-    }
-    
-    .preview-table td {
-      padding: 6px;
-      border: 1px solid #ddd;
-    }
-    
     .lock-badge {
       background: #f8d7da;
       color: #721c24;
@@ -226,11 +151,13 @@
       font-size: 11px;
       margin-left: 10px;
     }
+    
+    .deduction-row td { padding: 4px 5px; }
   </style>
 </head>
 <body>
   <div class="navbar">
-    <h1>🌴 eCheckroll</h1>
+    <h1>🌴 eCheckroll - Slip Gaji</h1>
     <div class="nav-links">
       <a href="dashboard.html">Dashboard</a>
       <a href="workers.html">Pekerja</a>
@@ -258,30 +185,21 @@
         </select>
       </div>
       <button class="btn btn-primary" onclick="loadBatch()">📅 Papar</button>
-      <button class="btn btn-success" onclick="saveData()">💾 Simpan</button>
+      
+      <div class="worker-nav">
+        <button class="btn btn-secondary" onclick="prevWorker()">◀ Sebelum</button>
+        <select id="workerSelect" style="min-width:250px;"></select>
+        <button class="btn btn-secondary" onclick="nextWorker()">Seterusnya ▶</button>
+      </div>
+      
+      <button class="btn btn-success" onclick="saveCurrentWorker()">💾 Simpan</button>
       <button class="btn btn-danger" onclick="lockBatch()" id="lockBtn" style="display:none;">🔒 Tutup Urusniaga</button>
-      <span style="flex:1;"></span>
-      <span id="batchInfo" style="color:#666; font-size:12px;"></span>
     </div>
     
     <div id="statusMessage" class="status-message" style="display: none;"></div>
     
-    <!-- Excel-like Grid -->
-    <div class="excel-container" id="excelContainer">
-      <table id="excelTable">
-        <thead id="tableHeader"></thead>
-        <tbody id="tableBody"></tbody>
-      </table>
-    </div>
-    
-    <!-- Preview Section -->
-    <div class="preview-section" id="previewSection" style="display:none;">
-      <div class="preview-header">
-        <h3>📋 Preview Individu</h3>
-        <button class="btn btn-secondary" onclick="refreshPreview()">🔄 Segar</button>
-      </div>
-      <div class="worker-tabs" id="workerTabs"></div>
-      <div id="previewContent"></div>
+    <div class="slip-container" id="slipContainer">
+      <!-- Slip akan render sini -->
     </div>
   </div>
 
@@ -306,8 +224,11 @@
     let daysInMonth = 30
     let currentMonth = new Date().getMonth() + 1
     let currentYear = new Date().getFullYear()
-    let tableData = []
+    let currentWorkerIndex = 0
+    let currentWorkerData = {}
     let isLocked = false
+    let currentUserRole = user.peranan
+    let currentUserName = user.nama
     
     window.logout = async () => {
       await supabase.auth.signOut()
@@ -356,6 +277,14 @@
         .select('worker_id, workers(*)')
         .eq('work_group_id', groupId)
       workersList = data?.map(d => d.workers).filter(w => w.status === 'AKTIF') || []
+      
+      const workerSelect = document.getElementById('workerSelect')
+      workerSelect.innerHTML = workersList.map(w => `<option value="${w.id}">${w.nama} (${w.no_pekerja})</option>`).join('')
+      
+      if (workersList.length > 0) {
+        currentWorkerIndex = 0
+        workerSelect.value = workersList[0].id
+      }
     }
     
     window.loadBatch = async () => {
@@ -395,9 +324,8 @@
       if (batch) {
         currentBatchId = batch.id
         isLocked = batch.locked || false
-        document.getElementById('batchInfo').innerHTML = `Batch: ${batch.id.slice(0,8)}... ${isLocked ? '<span class="lock-badge">🔒 TERKUNCI</span>' : '(Sedia Ada)'}`
         document.getElementById('lockBtn').style.display = isLocked ? 'none' : 'inline-block'
-        await loadExistingData()
+        showMessage(isLocked ? '🔒 Batch telah dikunci' : '📂 Batch sedia ada', 'info')
       } else {
         const { data: newBatch } = await supabase
           .from('payroll_batches')
@@ -407,111 +335,109 @@
         
         currentBatchId = newBatch.id
         isLocked = false
-        document.getElementById('batchInfo').textContent = `Batch: ${newBatch.id.slice(0,8)}... (Baru)`
         document.getElementById('lockBtn').style.display = 'inline-block'
-        buildEmptyTable()
+        showMessage('🆕 Batch baru dicipta', 'success')
       }
       
-      document.getElementById('previewSection').style.display = 'block'
-      refreshPreview()
+      loadWorkerData(workersList[0].id)
     }
     
-    async function loadExistingData() {
+    async function loadWorkerData(workerId) {
+      const worker = workersList.find(w => w.id === workerId)
+      if (!worker) return
+      
+      document.getElementById('workerSelect').value = workerId
+      currentWorkerIndex = workersList.findIndex(w => w.id === workerId)
+      
       const { data } = await supabase
         .from('payroll_details')
         .select('*')
         .eq('batch_id', currentBatchId)
+        .eq('worker_id', workerId)
       
-      tableData = data || []
-      renderTable()
+      currentWorkerData = { worker, details: data || [] }
+      renderSlip()
     }
     
-    function buildEmptyTable() {
-      tableData = []
-      renderTable()
-    }
-    
-    function renderTable() {
-      const thead = document.getElementById('tableHeader')
-      const tbody = document.getElementById('tableBody')
+    function renderSlip() {
+      const container = document.getElementById('slipContainer')
+      const worker = currentWorkerData.worker
+      const details = currentWorkerData.details || []
       
-      let headerHtml = `<tr>
-        <th class="fixed-col" style="width:160px; left:0;">Nama</th>
-        <th class="fixed-col" style="width:90px; left:160px;">Passport</th>
-        <th class="fixed-col" style="width:80px; left:250px;">No Pekerja</th>
-        <th style="width:140px;">Aktiviti</th>`
+      // Group by rate_id
+      const rateGroups = new Map()
+      details.forEach(d => {
+        const key = d.rate_id || 'null'
+        if (!rateGroups.has(key)) rateGroups.set(key, [])
+        rateGroups.get(key).push(d)
+      })
       
+      let rateId = null
+      let kadarAsal = 0
+      let kadarDiguna = 0
+      
+      if (rateGroups.size > 0) {
+        const firstGroup = rateGroups.values().next().value
+        rateId = firstGroup[0]?.rate_id
+        kadarAsal = firstGroup[0]?.kadar_asal || 0
+        kadarDiguna = firstGroup[0]?.kadar_diguna || kadarAsal
+      }
+      
+      // Build slip HTML
+      let html = `<table class="slip-table">`
+      
+      // Header: Nama & No Passport
+      html += `<tr>
+        <th style="width:150px;">Nama Pekerja</th>
+        <th style="width:120px;">No Passport</th>`
       for (let d = 1; d <= daysInMonth; d++) {
         const date = new Date(currentYear, currentMonth-1, d)
         const dayName = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'][date.getDay()]
         const isWeekend = dayName === currentWorkGroup.hari_minggu
-        headerHtml += `<th style="width:60px; ${isWeekend ? 'background:#b8860b;' : ''}">${d}<br><small>${dayName}</small></th>`
+        html += `<th style="width:50px; ${isWeekend ? 'background:#b8860b;' : ''}">${d}<br><small>${dayName}</small></th>`
       }
-      
-      headerHtml += `<th style="width:50px;">Hari</th>
-        <th style="width:80px;">Kadar</th>
-        <th style="width:80px;">Jumlah</th>
+      html += `<th style="width:60px;">Jml Hari</th>
+        <th style="width:80px;">Kadar (RM)</th>
+        <th style="width:80px;">Jumlah (RM)</th>
       </tr>`
       
-      thead.innerHTML = headerHtml
+      // Row 1: Nama & Passport
+      html += `<tr>
+        <td>${worker.nama}</td>
+        <td>${worker.no_passport || '-'}</td>`
+      for (let d = 1; d <= daysInMonth; d++) html += `<td></td>`
+      html += `<td></td><td></td><td></td></tr>`
       
-      let bodyHtml = ''
-      
-      workersList.forEach(worker => {
-        const workerData = tableData.filter(d => d.worker_id === worker.id)
-        
-        if (workerData.length === 0) {
-          bodyHtml += renderWorkerRow(worker, null)
-        } else {
-          const rateGroups = new Map()
-          workerData.forEach(d => {
-            const key = d.rate_id || 'null'
-            if (!rateGroups.has(key)) rateGroups.set(key, [])
-            rateGroups.get(key).push(d)
-          })
-          
-          rateGroups.forEach((rows) => {
-            bodyHtml += renderWorkerRow(worker, rows)
-          })
-        }
-      })
-      
-      tbody.innerHTML = bodyHtml
-      
-      // Disable inputs if locked
-      if (isLocked) {
-        document.querySelectorAll('input, select').forEach(el => el.disabled = true)
-      }
-    }
-    
-    function renderWorkerRow(worker, existingRows) {
-      const firstRow = existingRows ? existingRows[0] : null
-      const rateId = firstRow?.rate_id || ''
-      
-      let html = `<tr>`
-      
-      html += `<td class="fixed-col worker-cell" style="left:0;">${worker.nama}</td>`
-      html += `<td class="fixed-col" style="left:160px;">${worker.no_passport || '-'}</td>`
-      html += `<td class="fixed-col" style="left:250px;">${worker.no_pekerja}</td>`
-      
-      html += `<td>
-        <select class="activity-select" data-worker="${worker.id}">
-          <option value="">Pilih</option>
-          ${ratesList.map(r => `<option value="${r.id}" data-harga="${r.harga}" ${rateId === r.id ? 'selected' : ''}>${r.kod_aktiviti} - ${r.perincian?.substring(0,25)}</option>`).join('')}
-        </select>
-      </td>`
-      
+      // Row 2: Kehadiran
+      html += `<tr><td class="label-cell" colspan="2">Kehadiran</td>`
       let totalHari = 0
-      let totalKuantiti = 0
-      
       for (let d = 1; d <= daysInMonth; d++) {
         const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-        const dayData = existingRows?.find(r => r.tarikh === tarikh) || {}
-        
+        const dayData = details.find(dt => dt.tarikh === tarikh) || {}
         const attendance = dayData.attendance_code || 'H01'
-        const kuantiti = dayData.kuantiti || 0
-        
         if (['H01','H02','H03'].includes(attendance)) totalHari++
+        
+        const date = new Date(currentYear, currentMonth-1, d)
+        const dayName = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'][date.getDay()]
+        const isWeekend = dayName === currentWorkGroup.hari_minggu
+        const cellClass = isWeekend ? 'weekend' : ''
+        
+        html += `<td class="${cellClass}">
+          <select data-tarikh="${tarikh}" class="attendance-select" ${isLocked ? 'disabled' : ''}>
+            ${attendanceCodes.map(c => `<option value="${c.kod}" ${attendance === c.kod ? 'selected' : ''}>${c.kod}</option>`).join('')}
+          </select>
+        </td>`
+      }
+      html += `<td class="total-cell">${totalHari}</td>
+        <td></td><td></td></tr>`
+      
+      // Row 3: Kuantiti & Kadar
+      html += `<tr><td class="label-cell" colspan="2">Kuantiti / Kadar</td>`
+      let totalKuantiti = 0
+      for (let d = 1; d <= daysInMonth; d++) {
+        const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+        const dayData = details.find(dt => dt.tarikh === tarikh) || {}
+        const kuantiti = dayData.kuantiti || 0
         totalKuantiti += parseFloat(kuantiti)
         
         const date = new Date(currentYear, currentMonth-1, d)
@@ -519,164 +445,145 @@
         const isWeekend = dayName === currentWorkGroup.hari_minggu
         const cellClass = isWeekend ? 'weekend' : ''
         
-        html += `<td class="${cellClass}" style="padding:2px;">
-          <select class="attendance-select" data-worker="${worker.id}" data-tarikh="${tarikh}">
-            ${attendanceCodes.map(c => `<option value="${c.kod}" ${attendance === c.kod ? 'selected' : ''}>${c.kod}</option>`).join('')}
-          </select>
-          <input type="number" class="quantity-input" value="${kuantiti}" step="0.01" min="0" data-worker="${worker.id}" data-tarikh="${tarikh}" style="margin-top:2px;">
+        html += `<td class="${cellClass}">
+          <input type="number" class="quantity-input" data-tarikh="${tarikh}" value="${kuantiti}" step="0.01" min="0" ${isLocked ? 'disabled' : ''}>
         </td>`
       }
       
-      const kadar = firstRow?.kadar_diguna || firstRow?.kadar_asal || 0
-      const jumlah = totalKuantiti * kadar
+      const jumlah = totalKuantiti * kadarDiguna
       
-      html += `<td class="total-cell">${totalHari}</td>`
-      html += `<td><input type="number" class="kadar-input" value="${kadar.toFixed(2)}" step="0.01" min="0" data-worker="${worker.id}"></td>`
-      html += `<td class="total-cell">${jumlah.toFixed(2)}</td>`
+      html += `<td class="total-cell">${totalKuantiti.toFixed(2)}</td>
+        <td><input type="number" class="kadar-input" id="kadarInput" value="${kadarDiguna.toFixed(2)}" step="0.01" min="0" ${isLocked ? 'disabled' : ''}></td>
+        <td class="total-cell" id="jumlahCell">${jumlah.toFixed(2)}</td>
+      </tr>`
       
-      html += `</tr>`
-      return html
-    }
-    
-    window.refreshPreview = async () => {
-      const { data } = await supabase
-        .from('payroll_details')
-        .select('*, workers(*)')
-        .eq('batch_id', currentBatchId)
+      // Activity selector
+      html += `<tr><td class="label-cell" colspan="2">Aktiviti</td>
+        <td colspan="${daysInMonth + 2}">
+          <select id="activitySelect" style="width:300px;" ${isLocked ? 'disabled' : ''}>
+            <option value="">Pilih Aktiviti</option>
+            ${ratesList.map(r => `<option value="${r.id}" data-harga="${r.harga}" ${rateId === r.id ? 'selected' : ''}>${r.kod_aktiviti} - ${r.perincian}</option>`).join('')}
+          </select>
+        </td>
+        <td></td>
+      </tr>`
       
-      const previewData = data || []
+      // Gaji Kasar
+      html += `<tr><td class="label-cell" colspan="${daysInMonth + 2}">Gaji Kasar</td>
+        <td></td><td class="total-cell" id="gajiKasarCell">${jumlah.toFixed(2)}</td></tr>`
       
-      // Group by worker
-      const workerMap = new Map()
-      previewData.forEach(d => {
-        const w = d.workers
-        if (!workerMap.has(w.id)) {
-          workerMap.set(w.id, { worker: w, details: [] })
-        }
-        workerMap.get(w.id).details.push(d)
-      })
+      // Potongan
+      const deductions = [
+        'KWSP', 'SOCSO', 'EIS', 'Perubatan', 'Elektrik', 'Air', 'Pendahuluan Gaji'
+      ]
       
-      const tabsDiv = document.getElementById('workerTabs')
-      const contentDiv = document.getElementById('previewContent')
-      
-      if (workerMap.size === 0) {
-        tabsDiv.innerHTML = '<p style="color:#666;">Tiada data</p>'
-        contentDiv.innerHTML = ''
-        return
-      }
-      
-      let tabsHtml = ''
-      workerMap.forEach((data, workerId) => {
-        tabsHtml += `<button class="worker-tab" onclick="showWorkerPreview('${workerId}')">${data.worker.nama}</button>`
-      })
-      tabsDiv.innerHTML = tabsHtml
-      
-      // Show first worker
-      const firstWorker = workerMap.values().next().value
-      if (firstWorker) {
-        showWorkerPreviewContent(firstWorker.worker, firstWorker.details)
-      }
-    }
-    
-    window.showWorkerPreview = (workerId) => {
-      // Find worker data
-      const worker = workersList.find(w => w.id === workerId)
-      if (!worker) return
-      
-      supabase
-        .from('payroll_details')
-        .select('*')
-        .eq('batch_id', currentBatchId)
-        .eq('worker_id', workerId)
-        .then(({ data }) => {
-          showWorkerPreviewContent(worker, data || [])
-        })
-    }
-    
-    function showWorkerPreviewContent(worker, details) {
-      const contentDiv = document.getElementById('previewContent')
-      
-      let totalHari = 0
-      let totalKuantiti = 0
-      let totalJumlah = 0
-      
-      details.forEach(d => {
-        if (['H01','H02','H03'].includes(d.attendance_code)) totalHari++
-        totalKuantiti += parseFloat(d.kuantiti) || 0
-        totalJumlah += parseFloat(d.jumlah) || 0
-      })
-      
-      let html = `
-        <h4>${worker.nama} (${worker.no_pekerja})</h4>
-        <table class="preview-table">
-          <thead>
-            <tr><th>Tarikh</th><th>Kod</th><th>Kuantiti</th><th>Kadar</th><th>Jumlah</th></tr>
-          </thead>
-          <tbody>
-      `
-      
-      details.sort((a,b) => new Date(a.tarikh) - new Date(b.tarikh)).forEach(d => {
-        html += `<tr>
-          <td>${d.tarikh}</td>
-          <td>${d.attendance_code}</td>
-          <td>${d.kuantiti}</td>
-          <td>${d.kadar_diguna || d.kadar_asal}</td>
-          <td>${d.jumlah}</td>
+      deductions.forEach(ded => {
+        html += `<tr class="deduction-row">
+          <td class="label-cell" colspan="${daysInMonth + 2}">Potongan ${ded}</td>
+          <td></td>
+          <td><input type="number" class="deduction-input" data-ded="${ded}" value="0.00" step="0.01" min="0" style="width:80px;" ${isLocked ? 'disabled' : ''}></td>
         </tr>`
       })
       
-      html += `<tr style="font-weight:bold; background:#f0f0f0;">
-        <td colspan="2">JUMLAH</td>
-        <td>${totalKuantiti.toFixed(2)}</td>
-        <td></td>
-        <td>${totalJumlah.toFixed(2)}</td>
+      // Gaji Bersih
+      html += `<tr><td class="label-cell" colspan="${daysInMonth + 2}">Gaji Bersih</td>
+        <td></td><td class="total-cell" id="gajiBersihCell">${jumlah.toFixed(2)}</td></tr>`
+      
+      // Tandatangan
+      html += `<tr><td class="label-cell" colspan="${daysInMonth + 3}"></td></tr>`
+      html += `<tr>
+        <td class="label-cell">Disediakan:</td><td>${currentUserRole === 'fs' ? currentUserName : '-'}</td>
+        <td class="label-cell">Disemak:</td><td>${currentUserRole === 'afc' ? currentUserName : '-'}</td>
+        <td class="label-cell">Disahkan:</td><td>${currentUserRole === 'fc' ? currentUserName : '-'}</td>
       </tr>`
       
-      html += `</tbody></table>`
+      html += `</table>`
       
-      contentDiv.innerHTML = html
+      container.innerHTML = html
+      
+      // Event listeners untuk auto-kira
+      if (!isLocked) {
+        document.querySelectorAll('.quantity-input').forEach(inp => inp.addEventListener('input', recalculate))
+        document.getElementById('kadarInput')?.addEventListener('input', recalculate)
+        document.getElementById('activitySelect')?.addEventListener('change', function() {
+          const harga = this.options[this.selectedIndex]?.dataset.harga
+          if (harga) document.getElementById('kadarInput').value = parseFloat(harga).toFixed(2)
+          recalculate()
+        })
+      }
     }
     
-    window.saveData = async () => {
+    function recalculate() {
+      let totalKuantiti = 0
+      document.querySelectorAll('.quantity-input').forEach(inp => {
+        totalKuantiti += parseFloat(inp.value) || 0
+      })
+      
+      const kadar = parseFloat(document.getElementById('kadarInput')?.value) || 0
+      const jumlah = totalKuantiti * kadar
+      
+      document.getElementById('jumlahCell').textContent = jumlah.toFixed(2)
+      document.getElementById('gajiKasarCell').textContent = jumlah.toFixed(2)
+      
+      let totalDeductions = 0
+      document.querySelectorAll('.deduction-input').forEach(inp => {
+        totalDeductions += parseFloat(inp.value) || 0
+      })
+      
+      const gajiBersih = jumlah - totalDeductions
+      document.getElementById('gajiBersihCell').textContent = gajiBersih.toFixed(2)
+    }
+    
+    window.prevWorker = () => {
+      if (currentWorkerIndex > 0) {
+        currentWorkerIndex--
+        loadWorkerData(workersList[currentWorkerIndex].id)
+      }
+    }
+    
+    window.nextWorker = () => {
+      if (currentWorkerIndex < workersList.length - 1) {
+        currentWorkerIndex++
+        loadWorkerData(workersList[currentWorkerIndex].id)
+      }
+    }
+    
+    document.getElementById('workerSelect').addEventListener('change', (e) => {
+      loadWorkerData(e.target.value)
+    })
+    
+    window.saveCurrentWorker = async () => {
       if (isLocked) {
         alert('Batch telah dikunci. Tidak boleh disimpan.')
         return
       }
       
-      showMessage('⏳ Menyimpan data...', 'info')
+      const worker = currentWorkerData.worker
+      const rateId = document.getElementById('activitySelect')?.value || null
+      const kadarDiguna = parseFloat(document.getElementById('kadarInput')?.value) || 0
+      
+      let kadarAsal = 0
+      if (rateId) {
+        const select = document.getElementById('activitySelect')
+        kadarAsal = parseFloat(select.options[select.selectedIndex]?.dataset.harga) || 0
+      }
       
       const detailsToSave = []
       
-      document.querySelectorAll('tbody tr').forEach(row => {
-        const workerId = row.querySelector('[data-worker]')?.dataset.worker
-        const activitySelect = row.querySelector('.activity-select')
-        const rateId = activitySelect?.value || null
-        const kadarInput = row.querySelector('.kadar-input')
-        const kadarDiguna = parseFloat(kadarInput?.value) || 0
+      document.querySelectorAll('.attendance-select').forEach((select, idx) => {
+        const tarikh = select.dataset.tarikh
+        const quantityInput = document.querySelectorAll('.quantity-input')[idx]
+        const kuantiti = parseFloat(quantityInput?.value) || 0
         
-        let kadarAsal = 0
-        if (rateId) {
-          const selectedOption = activitySelect?.options[activitySelect.selectedIndex]
-          kadarAsal = parseFloat(selectedOption?.dataset.harga) || 0
-        }
-        
-        row.querySelectorAll('.attendance-select').forEach((select, idx) => {
-          const tarikh = select.dataset.tarikh
-          const quantityInput = row.querySelectorAll('.quantity-input')[idx]
-          const kuantiti = parseFloat(quantityInput?.value) || 0
-          
-          detailsToSave.push({
-            batch_id: currentBatchId,
-            worker_id: workerId,
-            tarikh,
-            attendance_code: select.value,
-            rate_id: rateId,
-            kuantiti,
-            kadar_asal: kadarAsal,
-            kadar_diguna: kadarDiguna,
-            status_afc: false,
-            status_fc: false
-          })
+        detailsToSave.push({
+          batch_id: currentBatchId,
+          worker_id: worker.id,
+          tarikh,
+          attendance_code: select.value,
+          rate_id: rateId,
+          kuantiti,
+          kadar_asal: kadarAsal,
+          kadar_diguna: kadarDiguna
         })
       })
       
@@ -688,7 +595,7 @@
         showMessage('❌ Gagal simpan: ' + error.message, 'error')
       } else {
         showMessage('✅ Data berjaya disimpan!', 'success')
-        refreshPreview()
+        loadWorkerData(worker.id)
       }
     }
     
@@ -706,7 +613,7 @@
         showMessage('🔒 Batch telah dikunci!', 'success')
         isLocked = true
         document.getElementById('lockBtn').style.display = 'none'
-        document.querySelectorAll('input, select').forEach(el => el.disabled = true)
+        renderSlip()
       }
     }
     
