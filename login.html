@@ -122,87 +122,115 @@
         </div>
     </div>
 
-    <script type="module">
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-
-        const SUPABASE_URL = 'https://pkoqxybumxevmcnukiye.supabase.co'
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrb3F4eWJ1bXhldm1jbnVraXllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMzYxMDUsImV4cCI6MjA5MTgxMjEwNX0.OLcQrto5pL9o13NSaLcNFQKmJj6Z9wMsSful6NCjols'
-
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-
-        const form = document.getElementById('loginForm')
-        const errorDiv = document.getElementById('errorMessage')
-        const btnText = document.getElementById('btnText')
-        const btnLoading = document.getElementById('btnLoading')
-        const loginBtn = document.getElementById('loginBtn')
-
-        // Check if already logged in
-        const savedUser = localStorage.getItem('echeckroll_user')
-        if (savedUser) {
-            const user = JSON.parse(savedUser)
-            if (user.peranan === 'admin') {
-                window.location.href = 'admin-users.html'
-            } else {
-                window.location.href = 'dashboard.html'
-            }
-        }
-
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault()
-
-            const noKakitangan = document.getElementById('noKakitangan').value.trim()
-            const password = document.getElementById('password').value
-
-            btnText.style.display = 'none'
-            btnLoading.style.display = 'inline'
-            loginBtn.disabled = true
-            errorDiv.style.display = 'none'
-
-            try {
-                const email = `${noKakitangan}@echeckroll.local`
-
-                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                })
-
-                if (authError) throw new Error('No Kakitangan atau Password salah')
-
-                const { data: userData, error: userError } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('auth_id', authData.user.id)
-                    .single()
-
-                if (userError || !userData) {
-                    await supabase.auth.signOut()
-                    throw new Error('Akaun tidak dijumpai')
-                }
-
-                localStorage.setItem('echeckroll_user', JSON.stringify({
-                    id: userData.id,
-                    nama: userData.nama_petugas,
-                    no_kakitangan: userData.no_kakitangan,
-                    peranan: userData.peranan,
-                    wilayah_id: userData.wilayah_id,
-                    rancangan_id: userData.rancangan_id,
-                    negeri_id: userData.negeri_id
-                }))
-
-                if (userData.peranan === 'admin') {
-                    window.location.href = 'admin-users.html'
-                } else {
-                    window.location.href = 'dashboard.html'
-                }
-
-            } catch (error) {
-                errorDiv.textContent = error.message
-                errorDiv.style.display = 'block'
-                btnText.style.display = 'inline'
-                btnLoading.style.display = 'none'
-                loginBtn.disabled = false
-            }
-        })
-    </script>
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+  
+  const SUPABASE_URL = 'https://pkoqxybumxevmcnukiye.supabase.co'
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrb3F4eWJ1bXhldm1jbnVraXllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMzYxMDUsImV4cCI6MjA5MTgxMjEwNX0.OLcQrto5pL9o13NSaLcNFQKmJj6Z9wMsSful6NCjols'
+  
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  
+  const form = document.getElementById('loginForm')
+  const errorDiv = document.getElementById('errorMessage')
+  const btnText = document.getElementById('btnText')
+  const btnLoading = document.getElementById('btnLoading')
+  const loginBtn = document.getElementById('loginBtn')
+  
+  // Check if already logged in
+  const savedUser = localStorage.getItem('echeckroll_user')
+  if (savedUser) {
+    const user = JSON.parse(savedUser)
+    if (user.peranan === 'admin') {
+      window.location.href = 'admin-users.html'
+    } else {
+      window.location.href = 'dashboard.html'
+    }
+  }
+  
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    
+    const noKakitangan = document.getElementById('noKakitangan').value.trim()
+    const password = document.getElementById('password').value
+    
+    btnText.style.display = 'none'
+    btnLoading.style.display = 'inline'
+    loginBtn.disabled = true
+    errorDiv.style.display = 'none'
+    
+    try {
+      const email = `${noKakitangan}@echeckroll.local`
+      
+      console.log('Attempting login:', email)
+      
+      // 1. Login guna Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
+      })
+      
+      if (authError) {
+        console.error('Auth error:', authError)
+        throw new Error('No Kakitangan atau Password salah')
+      }
+      
+      console.log('Auth success:', authData.user.id)
+      
+      // 2. Dapatkan maklumat user dari table users
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*, wilayah(nama), rancangan(nama), negeri(nama)')
+        .eq('auth_id', authData.user.id)
+        .single()
+      
+      console.log('User data query result:', { userData, userError })
+      
+      if (userError) {
+        console.error('User fetch error:', userError)
+        await supabase.auth.signOut()
+        throw new Error('Akaun tidak dijumpai dalam table users. Sila hubungi admin.')
+      }
+      
+      if (!userData) {
+        await supabase.auth.signOut()
+        throw new Error('Data pengguna tidak lengkap')
+      }
+      
+      console.log('User found:', userData.nama_petugas, userData.peranan)
+      
+      // 3. Simpan user data
+      const sessionData = {
+        id: userData.id,
+        nama: userData.nama_petugas,
+        no_kakitangan: userData.no_kakitangan,
+        peranan: userData.peranan,
+        wilayah_id: userData.wilayah_id,
+        rancangan_id: userData.rancangan_id,
+        negeri_id: userData.negeri_id,
+        wilayah_nama: userData.wilayah?.nama,
+        rancangan_nama: userData.rancangan?.nama,
+        negeri_nama: userData.negeri?.nama
+      }
+      
+      localStorage.setItem('echeckroll_user', JSON.stringify(sessionData))
+      console.log('Session saved, redirecting...')
+      
+      // 4. Redirect
+      if (userData.peranan === 'admin') {
+        window.location.href = 'admin-users.html'
+      } else {
+        window.location.href = 'dashboard.html'
+      }
+      
+    } catch (error) {
+      console.error('Login error:', error)
+      errorDiv.textContent = error.message
+      errorDiv.style.display = 'block'
+      btnText.style.display = 'inline'
+      btnLoading.style.display = 'none'
+      loginBtn.disabled = false
+    }
+  })
+</script>
 </body>
 </html>
