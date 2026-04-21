@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>eCheckroll - Slip Gaji Individu</title>
+  <title>eCheckroll - Slip Gaji</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; }
@@ -84,22 +84,25 @@
     .slip-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 12px;
-      min-width: 1200px;
+      font-size: 11px;
+      min-width: 1400px;
+      table-layout: auto;
     }
     
     .slip-table th {
       background: #2e7d32;
       color: white;
-      padding: 8px 5px;
+      padding: 6px 3px;
       text-align: center;
       border: 1px solid #1b5e20;
+      white-space: nowrap;
     }
     
     .slip-table td {
-      padding: 6px 5px;
+      padding: 4px 3px;
       border: 1px solid #ddd;
       text-align: center;
+      vertical-align: middle;
     }
     
     .slip-table .label-cell {
@@ -112,18 +115,16 @@
     .slip-table .total-cell {
       background: #e8f5e9;
       font-weight: bold;
-    }
-    
-    .slip-table .editable {
-      background: #fff8e1;
+      text-align: right;
+      padding-right: 8px;
     }
     
     .slip-table input, .slip-table select {
       width: 100%;
-      padding: 4px;
+      padding: 3px;
       border: 1px solid #ccc;
       border-radius: 3px;
-      font-size: 11px;
+      font-size: 10px;
       text-align: center;
     }
     
@@ -143,16 +144,69 @@
     .status-success { background: #d4edda; color: #155724; }
     .status-error { background: #f8d7da; color: #721c24; }
     
-    .lock-badge {
-      background: #f8d7da;
-      color: #721c24;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 11px;
-      margin-left: 10px;
+    .collapse-header {
+      background: #e8f5e9;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-weight: bold;
+      border-radius: 4px;
+      margin-top: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     
-    .deduction-row td { padding: 4px 5px; }
+    .collapse-content {
+      display: none;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-top: 5px;
+    }
+    
+    .collapse-content.show { display: block; }
+    
+    .deduction-row {
+      display: grid;
+      grid-template-columns: 150px 120px;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    
+    .signature-box {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-top: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+    
+    .signature-item {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    
+    .signature-label {
+      width: 100px;
+      font-weight: 500;
+    }
+    
+    .checkbox-group {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+    
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+    }
   </style>
 </head>
 <body>
@@ -187,9 +241,9 @@
       <button class="btn btn-primary" onclick="loadBatch()">📅 Papar</button>
       
       <div class="worker-nav">
-        <button class="btn btn-secondary" onclick="prevWorker()">◀ Sebelum</button>
+        <button class="btn btn-secondary" onclick="prevWorker()">◀</button>
         <select id="workerSelect" style="min-width:250px;"></select>
-        <button class="btn btn-secondary" onclick="nextWorker()">Seterusnya ▶</button>
+        <button class="btn btn-secondary" onclick="nextWorker()">▶</button>
       </div>
       
       <button class="btn btn-success" onclick="saveCurrentWorker()">💾 Simpan</button>
@@ -198,9 +252,7 @@
     
     <div id="statusMessage" class="status-message" style="display: none;"></div>
     
-    <div class="slip-container" id="slipContainer">
-      <!-- Slip akan render sini -->
-    </div>
+    <div class="slip-container" id="slipContainer"></div>
   </div>
 
   <script type="module">
@@ -255,6 +307,7 @@
     async function loadAttendanceCodes() {
       const { data } = await supabase.from('attendance_codes').select('*').order('kod')
       attendanceCodes = data || []
+      console.log('Attendance codes loaded:', attendanceCodes.length)
     }
     
     async function loadRates() {
@@ -364,52 +417,61 @@
       const worker = currentWorkerData.worker
       const details = currentWorkerData.details || []
       
-      // Group by rate_id
-      const rateGroups = new Map()
-      details.forEach(d => {
-        const key = d.rate_id || 'null'
-        if (!rateGroups.has(key)) rateGroups.set(key, [])
-        rateGroups.get(key).push(d)
-      })
+      const rateId = details[0]?.rate_id || ''
+      const rate = ratesList.find(r => r.id === rateId)
+      const kadarDiguna = details[0]?.kadar_diguna || rate?.harga || 0
       
-      let rateId = null
-      let kadarAsal = 0
-      let kadarDiguna = 0
-      
-      if (rateGroups.size > 0) {
-        const firstGroup = rateGroups.values().next().value
-        rateId = firstGroup[0]?.rate_id
-        kadarAsal = firstGroup[0]?.kadar_asal || 0
-        kadarDiguna = firstGroup[0]?.kadar_diguna || kadarAsal
-      }
-      
-      // Build slip HTML
       let html = `<table class="slip-table">`
       
-      // Header: Nama & No Passport
+      // Header Row 1
       html += `<tr>
-        <th style="width:150px;">Nama Pekerja</th>
-        <th style="width:120px;">No Passport</th>`
+        <th>Nama Pekerja</th>
+        <th>No Pekerja</th>
+        <th>No Passport</th>
+        <th>Kod Aktiviti</th>
+        <th>Peringkat</th>
+        <th>Blok</th>`
+      
       for (let d = 1; d <= daysInMonth; d++) {
         const date = new Date(currentYear, currentMonth-1, d)
         const dayName = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'][date.getDay()]
         const isWeekend = dayName === currentWorkGroup.hari_minggu
-        html += `<th style="width:50px; ${isWeekend ? 'background:#b8860b;' : ''}">${d}<br><small>${dayName}</small></th>`
+        html += `<th style="${isWeekend ? 'background:#b8860b;' : ''}">${d}<br><small>${dayName}</small></th>`
       }
-      html += `<th style="width:60px;">Jml Hari</th>
-        <th style="width:80px;">Kadar (RM)</th>
-        <th style="width:80px;">Jumlah (RM)</th>
+      
+      html += `<th>Jml Hari</th>
+        <th>Kadar (RM)</th>
+        <th>Jumlah (RM)</th>
       </tr>`
       
-      // Row 1: Nama & Passport
+      // Data Row 1: Worker Info
       html += `<tr>
         <td>${worker.nama}</td>
-        <td>${worker.no_passport || '-'}</td>`
+        <td>${worker.no_pekerja}</td>
+        <td>${worker.no_passport || '-'}</td>
+        <td><input type="text" id="kodAktiviti" value="${rate?.kod_aktiviti || ''}" placeholder="Kod" style="width:70px;" list="rateCodes" ${isLocked ? 'disabled' : ''}></td>
+        <td><input type="text" id="peringkat" value="1" style="width:50px;" ${isLocked ? 'disabled' : ''}></td>
+        <td><input type="text" id="blok" value="16" style="width:50px;" ${isLocked ? 'disabled' : ''}></td>`
+      
       for (let d = 1; d <= daysInMonth; d++) html += `<td></td>`
       html += `<td></td><td></td><td></td></tr>`
       
-      // Row 2: Kehadiran
-      html += `<tr><td class="label-cell" colspan="2">Kehadiran</td>`
+      // Data Row 2: Nama Kerja (Lookup)
+      html += `<tr>
+        <td colspan="6" class="label-cell">Nama Kerja: <span id="namaKerja">${rate?.perincian || rate?.jenis_kerja || '-'}</span></td>`
+      
+      for (let d = 1; d <= daysInMonth; d++) {
+        const date = new Date(currentYear, currentMonth-1, d)
+        const dayName = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'][date.getDay()]
+        const isWeekend = dayName === currentWorkGroup.hari_minggu
+        html += `<td class="${isWeekend ? 'weekend' : ''}"></td>`
+      }
+      html += `<td></td><td></td><td></td></tr>`
+      
+      // Data Row 3: Kehadiran (Dropdown)
+      html += `<tr>
+        <td colspan="6" class="label-cell">Kehadiran</td>`
+      
       let totalHari = 0
       for (let d = 1; d <= daysInMonth; d++) {
         const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
@@ -420,19 +482,19 @@
         const date = new Date(currentYear, currentMonth-1, d)
         const dayName = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'][date.getDay()]
         const isWeekend = dayName === currentWorkGroup.hari_minggu
-        const cellClass = isWeekend ? 'weekend' : ''
         
-        html += `<td class="${cellClass}">
+        html += `<td class="${isWeekend ? 'weekend' : ''}">
           <select data-tarikh="${tarikh}" class="attendance-select" ${isLocked ? 'disabled' : ''}>
             ${attendanceCodes.map(c => `<option value="${c.kod}" ${attendance === c.kod ? 'selected' : ''}>${c.kod}</option>`).join('')}
           </select>
         </td>`
       }
-      html += `<td class="total-cell">${totalHari}</td>
-        <td></td><td></td></tr>`
+      html += `<td class="total-cell">${totalHari}</td><td></td><td></td></tr>`
       
-      // Row 3: Kuantiti & Kadar
-      html += `<tr><td class="label-cell" colspan="2">Kuantiti / Kadar</td>`
+      // Data Row 4: Produktiviti (Kuantiti)
+      html += `<tr>
+        <td colspan="6" class="label-cell">Produktiviti (Kuantiti)</td>`
+      
       let totalKuantiti = 0
       for (let d = 1; d <= daysInMonth; d++) {
         const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
@@ -443,9 +505,8 @@
         const date = new Date(currentYear, currentMonth-1, d)
         const dayName = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'][date.getDay()]
         const isWeekend = dayName === currentWorkGroup.hari_minggu
-        const cellClass = isWeekend ? 'weekend' : ''
         
-        html += `<td class="${cellClass}">
+        html += `<td class="${isWeekend ? 'weekend' : ''}">
           <input type="number" class="quantity-input" data-tarikh="${tarikh}" value="${kuantiti}" step="0.01" min="0" ${isLocked ? 'disabled' : ''}>
         </td>`
       }
@@ -453,63 +514,103 @@
       const jumlah = totalKuantiti * kadarDiguna
       
       html += `<td class="total-cell">${totalKuantiti.toFixed(2)}</td>
-        <td><input type="number" class="kadar-input" id="kadarInput" value="${kadarDiguna.toFixed(2)}" step="0.01" min="0" ${isLocked ? 'disabled' : ''}></td>
+        <td><input type="number" id="kadarInput" value="${kadarDiguna.toFixed(2)}" step="0.01" min="0" ${isLocked ? 'disabled' : ''}></td>
         <td class="total-cell" id="jumlahCell">${jumlah.toFixed(2)}</td>
       </tr>`
       
-      // Activity selector
-      html += `<tr><td class="label-cell" colspan="2">Aktiviti</td>
-        <td colspan="${daysInMonth + 2}">
-          <select id="activitySelect" style="width:300px;" ${isLocked ? 'disabled' : ''}>
-            <option value="">Pilih Aktiviti</option>
-            ${ratesList.map(r => `<option value="${r.id}" data-harga="${r.harga}" ${rateId === r.id ? 'selected' : ''}>${r.kod_aktiviti} - ${r.perincian}</option>`).join('')}
-          </select>
-        </td>
-        <td></td>
-      </tr>`
-      
       // Gaji Kasar
-      html += `<tr><td class="label-cell" colspan="${daysInMonth + 2}">Gaji Kasar</td>
-        <td></td><td class="total-cell" id="gajiKasarCell">${jumlah.toFixed(2)}</td></tr>`
-      
-      // Potongan
-      const deductions = [
-        'KWSP', 'SOCSO', 'EIS', 'Perubatan', 'Elektrik', 'Air', 'Pendahuluan Gaji'
-      ]
-      
-      deductions.forEach(ded => {
-        html += `<tr class="deduction-row">
-          <td class="label-cell" colspan="${daysInMonth + 2}">Potongan ${ded}</td>
-          <td></td>
-          <td><input type="number" class="deduction-input" data-ded="${ded}" value="0.00" step="0.01" min="0" style="width:80px;" ${isLocked ? 'disabled' : ''}></td>
-        </tr>`
-      })
-      
-      // Gaji Bersih
-      html += `<tr><td class="label-cell" colspan="${daysInMonth + 2}">Gaji Bersih</td>
-        <td></td><td class="total-cell" id="gajiBersihCell">${jumlah.toFixed(2)}</td></tr>`
-      
-      // Tandatangan
-      html += `<tr><td class="label-cell" colspan="${daysInMonth + 3}"></td></tr>`
       html += `<tr>
-        <td class="label-cell">Disediakan:</td><td>${currentUserRole === 'fs' ? currentUserName : '-'}</td>
-        <td class="label-cell">Disemak:</td><td>${currentUserRole === 'afc' ? currentUserName : '-'}</td>
-        <td class="label-cell">Disahkan:</td><td>${currentUserRole === 'fc' ? currentUserName : '-'}</td>
+        <td colspan="${6 + daysInMonth}" class="label-cell" style="text-align:right;">Gaji Kasar</td>
+        <td></td>
+        <td class="total-cell" id="gajiKasarCell">${jumlah.toFixed(2)}</td>
       </tr>`
       
       html += `</table>`
       
+      // Datalist for rate lookup
+      html += `<datalist id="rateCodes">
+        ${ratesList.map(r => `<option value="${r.kod_aktiviti}">${r.perincian || r.jenis_kerja}</option>`).join('')}
+      </datalist>`
+      
+      // Potongan Collapse
+      html += `<div class="collapse-header" onclick="toggleCollapse()">
+        <span>▼</span> Potongan Gaji
+      </div>
+      <div class="collapse-content" id="collapseContent">
+        <div class="deduction-row"><span>KWSP</span> <input type="number" class="deduction-input" data-ded="KWSP" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></div>
+        <div class="deduction-row"><span>SOCSO</span> <input type="number" class="deduction-input" data-ded="SOCSO" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></div>
+        <div class="deduction-row"><span>EIS</span> <input type="number" class="deduction-input" data-ded="EIS" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></div>
+        <div class="deduction-row"><span>Perubatan</span> <input type="number" class="deduction-input" data-ded="Perubatan" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></div>
+        <div class="deduction-row"><span>Elektrik</span> <input type="number" class="deduction-input" data-ded="Elektrik" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></div>
+        <div class="deduction-row"><span>Air</span> <input type="number" class="deduction-input" data-ded="Air" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></div>
+        <div class="deduction-row"><span>Pendahuluan Gaji</span> <input type="number" class="deduction-input" data-ded="Pendahuluan" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></div>
+      </div>`
+      
+      // Gaji Bersih
+      html += `<table class="slip-table" style="margin-top:10px;">
+        <tr>
+          <td colspan="${6 + daysInMonth}" class="label-cell" style="text-align:right;">Gaji Bersih</td>
+          <td></td>
+          <td class="total-cell" id="gajiBersihCell">${jumlah.toFixed(2)}</td>
+        </tr>
+      </table>`
+      
+      // Tandatangan & Checkbox
+      html += `<div class="signature-box">
+        <div class="signature-item">
+          <span class="signature-label">Disediakan (FS):</span>
+          <span>${currentUserRole === 'fs' ? currentUserName : '-'}</span>
+          <div class="checkbox-group" id="fsCheckboxes"></div>
+        </div>
+        <div class="signature-item">
+          <span class="signature-label">Disemak (AFC):</span>
+          <span>${currentUserRole === 'afc' ? currentUserName : '-'}</span>
+          <div class="checkbox-group" id="afcCheckboxes"></div>
+        </div>
+        <div class="signature-item">
+          <span class="signature-label">Disahkan (FC):</span>
+          <span>${currentUserRole === 'fc' ? currentUserName : '-'}</span>
+          <div class="checkbox-group" id="fcCheckboxes"></div>
+        </div>
+      </div>`
+      
       container.innerHTML = html
       
-      // Event listeners untuk auto-kira
+      // Render checkboxes
+      renderCheckboxes('fs')
+      renderCheckboxes('afc')
+      renderCheckboxes('fc')
+      
+      // Event listeners
       if (!isLocked) {
+        document.getElementById('kodAktiviti')?.addEventListener('input', lookupRate)
         document.querySelectorAll('.quantity-input').forEach(inp => inp.addEventListener('input', recalculate))
         document.getElementById('kadarInput')?.addEventListener('input', recalculate)
-        document.getElementById('activitySelect')?.addEventListener('change', function() {
-          const harga = this.options[this.selectedIndex]?.dataset.harga
-          if (harga) document.getElementById('kadarInput').value = parseFloat(harga).toFixed(2)
-          recalculate()
-        })
+        document.querySelectorAll('.deduction-input').forEach(inp => inp.addEventListener('input', recalculate))
+      }
+    }
+    
+    function renderCheckboxes(role) {
+      const container = document.getElementById(`${role}Checkboxes`)
+      if (!container) return
+      
+      let html = ''
+      for (let d = 1; d <= daysInMonth; d++) {
+        html += `<div class="checkbox-item">
+          <input type="checkbox" id="${role}_day_${d}" ${isLocked ? 'disabled' : ''}>
+          <label>${d}</label>
+        </div>`
+      }
+      container.innerHTML = html
+    }
+    
+    function lookupRate() {
+      const kod = document.getElementById('kodAktiviti')?.value
+      const rate = ratesList.find(r => r.kod_aktiviti === kod)
+      if (rate) {
+        document.getElementById('namaKerja').textContent = rate.perincian || rate.jenis_kerja
+        document.getElementById('kadarInput').value = rate.harga.toFixed(2)
+        recalculate()
       }
     }
     
@@ -532,6 +633,10 @@
       
       const gajiBersih = jumlah - totalDeductions
       document.getElementById('gajiBersihCell').textContent = gajiBersih.toFixed(2)
+    }
+    
+    window.toggleCollapse = () => {
+      document.getElementById('collapseContent').classList.toggle('show')
     }
     
     window.prevWorker = () => {
@@ -559,14 +664,11 @@
       }
       
       const worker = currentWorkerData.worker
-      const rateId = document.getElementById('activitySelect')?.value || null
+      const kodAktiviti = document.getElementById('kodAktiviti')?.value
+      const rate = ratesList.find(r => r.kod_aktiviti === kodAktiviti)
+      const rateId = rate?.id || null
+      const kadarAsal = rate?.harga || 0
       const kadarDiguna = parseFloat(document.getElementById('kadarInput')?.value) || 0
-      
-      let kadarAsal = 0
-      if (rateId) {
-        const select = document.getElementById('activitySelect')
-        kadarAsal = parseFloat(select.options[select.selectedIndex]?.dataset.harga) || 0
-      }
       
       const detailsToSave = []
       
