@@ -288,13 +288,13 @@
         const kadar = parseFloat(input.value) || 0
 
         incentivesToSave.push({
-          id: id || undefined,
-          rancangan_id: rancanganId,
-          bulan,
-          tahun,
-          nama: name,
-          kadar,
-          locked: false
+        // JANGAN hantar id
+        rancangan_id: rancanganId,
+        bulan,
+        tahun,
+        nama: name,
+        kadar,
+        locked: false
         })
       })
 
