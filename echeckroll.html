@@ -617,11 +617,6 @@
           const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
           const dayData = activityDetails.find(dt => dt.tarikh === tarikh) || {}
           const kuantiti = dayData.kuantiti || ''
-          const attendanceCode = details.find(dt => dt.tarikh === tarikh)?.attendance_code || 'H01'
-          const multiplier = attendanceMap[attendanceCode]?.multiplier || 1
-          
-          const effectiveKuantiti = parseFloat(kuantiti) || 0
-          rowTotalKuantiti += effectiveKuantiti
           rowKadar = dayData.kadar_diguna || harga || 0
           
           const date = new Date(currentYear, currentMonth-1, d)
@@ -633,10 +628,21 @@
           </td>`
         }
         
-        const rowJumlah = rowTotalKuantiti * rowKadar
+        // Calculate row total with multiplier
+        let rowTotalWithMultiplier = 0
+        for (let d = 1; d <= daysInMonth; d++) {
+          const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+          const qtyInput = document.querySelector(`.quantity-input[data-tarikh="${tarikh}"][data-activity-id="${id}"]`)
+          const kuantiti = parseFloat(qtyInput?.value) || 0
+          const attendanceSelect = document.querySelector(`.attendance-select[data-tarikh="${tarikh}"]`)
+          const multiplier = attendanceMap[attendanceSelect?.value]?.multiplier || 1
+          rowTotalWithMultiplier += kuantiti * multiplier
+        }
+        
+        const rowJumlah = rowTotalWithMultiplier * rowKadar
         grandTotal += rowJumlah
         
-        html += `<td class="total-cell hari-col">${rowTotalKuantiti.toFixed(2)}</td>
+        html += `<td class="total-cell hari-col">${rowTotalWithMultiplier.toFixed(2)}</td>
           <td class="kadar-col"><input type="number" class="kadar-input" data-activity-id="${id}" value="${rowKadar.toFixed(2)}" step="0.01" ${isLocked ? 'disabled' : ''}></td>
           <td class="total-cell jumlah-col">${rowJumlah.toFixed(2)}</td>
         </tr>`
@@ -659,15 +665,15 @@
       
       html += `</table>`
       
-      // Datalist (cached for speed)
+      // Datalist
       html += `<datalist id="rateCodes">
         ${ratesList.map(r => `<option value="${r.kod_aktiviti}">${r.kod_aktiviti} - ${r.perincian || r.jenis_kerja}</option>`).join('')}
       </datalist>`
       
-      // Summary Table
+      // Summary Table - Proper alignment
       html += `<table class="slip-table" style="margin-top:10px;">`
       
-      // Gaji Kasar
+      // Gaji Kasar - align with Jumlah column
       html += `<tr>
         <td style="width:160px;"></td><td style="width:100px;"></td><td style="width:120px;"></td>`
       for (let d = 1; d <= daysInMonth; d++) html += `<td class="day-col"></td>`
@@ -681,35 +687,45 @@
         <td class="summary-value jumlah-col">${grandTotal.toFixed(2)}</td>
       </tr>`
       
-      // Potongan - Aligned with Jumlah column
+      // Potongan - in the same table, aligned with Jumlah column
       html += `<tr>
-        <td colspan="${3 + daysInMonth + 2}">
-          <div class="collapse-header" onclick="toggleCollapse()">
+        <td colspan="${3 + daysInMonth + 2}" style="padding:0;">
+          <div class="collapse-header" onclick="toggleCollapse()" style="margin:0; border-radius:0;">
             <span>▼</span> Potongan Gaji
           </div>
-          <div class="collapse-content" id="collapseContent">
-            <table class="deduction-table">
-              <tr><td style="width:150px;">KWSP</td><td><input type="number" class="deduction-input" data-ded="KWSP" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-              <tr><td>SOCSO</td><td><input type="number" class="deduction-input" data-ded="SOCSO" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-              <tr><td>EIS</td><td><input type="number" class="deduction-input" data-ded="EIS" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-              <tr><td>Perubatan</td><td><input type="number" class="deduction-input" data-ded="Perubatan" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-              <tr><td>Elektrik</td><td><input type="number" class="deduction-input" data-ded="Elektrik" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-              <tr><td>Air</td><td><input type="number" class="deduction-input" data-ded="Air" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-              <tr><td>Pendahuluan Gaji</td><td><input type="number" class="deduction-input" data-ded="Pendahuluan" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-            </table>
-          </div>
         </td>
-        <td class="jumlah-col"></td>
-      </tr>`
-      
-      // Gaji Bersih
-      html += `<tr>
-        <td colspan="${3 + daysInMonth}" class="summary-label">Gaji Bersih</td>
-        <td class="hari-col"></td><td class="kadar-col"></td>
-        <td class="summary-value jumlah-col" id="gajiBersihCell">${grandTotal.toFixed(2)}</td>
+        <td class="jumlah-col" style="background:#e8f5e9;"></td>
       </tr>`
       
       html += `</table>`
+      
+      // Collapse content outside main table
+      html += `<div class="collapse-content" id="collapseContent">
+        <table class="deduction-table">
+          <tr><td style="width:150px;">KWSP</td><td><input type="number" class="deduction-input" data-ded="KWSP" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+          <tr><td>SOCSO</td><td><input type="number" class="deduction-input" data-ded="SOCSO" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+          <tr><td>EIS</td><td><input type="number" class="deduction-input" data-ded="EIS" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+          <tr><td>Perubatan</td><td><input type="number" class="deduction-input" data-ded="Perubatan" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+          <tr><td>Elektrik</td><td><input type="number" class="deduction-input" data-ded="Elektrik" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+          <tr><td>Air</td><td><input type="number" class="deduction-input" data-ded="Air" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+          <tr><td>Pendahuluan Gaji</td><td><input type="number" class="deduction-input" data-ded="Pendahuluan" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+        </table>
+      </div>`
+      
+      // Gaji Bersih - separate table for proper alignment
+      html += `<table class="slip-table" style="margin-top:5px;">
+        <tr>
+          <td style="width:160px;"></td><td style="width:100px;"></td><td style="width:120px;"></td>`
+      for (let d = 1; d <= daysInMonth; d++) html += `<td class="day-col"></td>`
+      html += `<td class="hari-col"></td><td class="kadar-col"></td>
+        <td class="summary-value jumlah-col" id="gajiBersihCell">${grandTotal.toFixed(2)}</td>
+      </tr>
+      <tr>
+        <td colspan="${3 + daysInMonth}" class="summary-label">Gaji Bersih</td>
+        <td class="hari-col"></td><td class="kadar-col"></td>
+        <td class="summary-value jumlah-col" id="gajiBersihCell2">${grandTotal.toFixed(2)}</td>
+      </tr>
+      </table>`
       
       container.innerHTML = html
       
@@ -723,6 +739,9 @@
           recalculate()
         }))
       }
+      
+      // Update display with current values
+      setTimeout(() => recalculate(), 50)
     }
     
     window.updateHintCell = (select) => {
@@ -757,16 +776,18 @@
       
       groupActivities.push({ type: 'rate', data: rate, id: rate.id })
       
-      // Auto-add "Kerja Lebih Masa" if Kong
-      if (rate.jenis_kerja === 'Kong' || rate.perincian?.toLowerCase().includes('kong')) {
-        const otRate = {
-          id: `ot_${Date.now()}`,
-          kod_aktiviti: 'OT',
-          perincian: 'Kerja Lebih Masa',
-          harga: 0
-        }
-        if (!groupActivities.some(a => a.type === 'rate' && a.id === otRate.id)) {
-          groupActivities.push({ type: 'rate', data: otRate, id: otRate.id })
+      // Auto-add KLM if rate is RM 65.39 (Kong)
+      if (Math.abs(rate.harga - 65.39) < 0.01) {
+        const klmExists = groupActivities.some(a => a.type === 'rate' && a.data?.perincian === 'Kerja Lebih Masa')
+        if (!klmExists) {
+          const klmRate = {
+            id: `klm_${Date.now()}`,
+            kod_aktiviti: 'KLM',
+            perincian: 'Kerja Lebih Masa',
+            harga: 65.39
+          }
+          groupActivities.push({ type: 'rate', data: klmRate, id: klmRate.id })
+          await saveActivityForAll(klmRate.id, 'rate', 65.39)
         }
       }
       
@@ -868,15 +889,15 @@
         grandTotal += jumlah
       })
       
-      const gajiKasarCells = document.querySelectorAll('#gajiKasarCell')
-      gajiKasarCells.forEach(cell => cell.textContent = grandTotal.toFixed(2))
+      document.querySelectorAll('#gajiKasarCell').forEach(cell => cell.textContent = grandTotal.toFixed(2))
       
       let totalDeductions = 0
       document.querySelectorAll('.deduction-input').forEach(inp => {
         totalDeductions += parseFloat(inp.value) || 0
       })
       
-      document.getElementById('gajiBersihCell').textContent = (grandTotal - totalDeductions).toFixed(2)
+      const gajiBersih = grandTotal - totalDeductions
+      document.querySelectorAll('#gajiBersihCell, #gajiBersihCell2').forEach(cell => cell.textContent = gajiBersih.toFixed(2))
     }
     
     window.toggleCollapse = () => {
@@ -907,7 +928,6 @@
       const worker = currentWorkerData.worker
       const detailsToSave = []
       
-      // Get current attendance values
       const attendanceMap2 = {}
       document.querySelectorAll('.attendance-select').forEach(sel => {
         attendanceMap2[sel.dataset.tarikh] = sel.value
@@ -956,9 +976,8 @@
       if (error) {
         showMessage('❌ Gagal simpan: ' + error.message, 'error')
       } else {
-        showMessage('✅ Data berjaya disimpan!', 'success')
-        // Jangan reload, just update local data
         currentWorkerData.details = detailsToSave
+        showMessage('✅ Data berjaya disimpan!', 'success')
       }
     }
     
