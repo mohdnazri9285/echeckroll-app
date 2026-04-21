@@ -124,6 +124,7 @@
         }
         document.getElementById('userRole').textContent = roleLabels[user.peranan] || user.peranan
 
+        // Semua menu aktif untuk semua peranan
         const menus = {
             admin: [
                 { icon: '👥', title: 'Daftar Pengguna', desc: 'Tambah & urus pengguna', url: 'admin-users.html', active: true },
@@ -131,34 +132,40 @@
                 { icon: '👥', title: 'Kumpulan Kerja', desc: 'Urus kumpulan kerja', url: 'work-groups.html', active: true },
                 { icon: '💰', title: 'Insentif Bulanan', desc: 'Tetapan kadar insentif', url: 'incentives.html', active: true },
                 { icon: '📋', title: 'Kadar Upah', desc: 'Upload jadual kadar upah', url: 'upload-rates.html', active: true },
+                { icon: '🧮', title: 'eCheckroll', desc: 'Pengiraan gaji bulanan', url: 'echeckroll.html', active: true },
                 { icon: '📊', title: 'Jana Laporan', desc: 'Laporan gaji & tenaga kerja', url: '#', active: false }
             ],
             fs: [
-                { icon: '🧮', title: 'eCheckroll', desc: 'Isi data gaji bulanan', url: '#', active: false },
+                { icon: '🧮', title: 'eCheckroll', desc: 'Isi data gaji bulanan', url: 'echeckroll.html', active: true },
                 { icon: '👨‍🌾', title: 'Pekerja Saya', desc: 'Lihat senarai pekerja', url: 'workers.html', active: true },
                 { icon: '👥', title: 'Kumpulan Kerja', desc: 'Urus kumpulan kerja', url: 'work-groups.html', active: true },
                 { icon: '💰', title: 'Insentif Bulanan', desc: 'Tetapan kadar insentif', url: 'incentives.html', active: true },
+                { icon: '📋', title: 'Kadar Upah', desc: 'Upload jadual kadar upah', url: 'upload-rates.html', active: true },
+                { icon: '✅', title: 'Semak eCheckroll', desc: 'Semak data gaji (AFC)', url: 'echeckroll.html', active: true },
+                { icon: '✔️', title: 'Sahkan eCheckroll', desc: 'Approve data gaji (FC)', url: 'echeckroll.html', active: true },
                 { icon: '📊', title: 'Laporan', desc: 'Lihat laporan', url: '#', active: false }
             ],
             afc: [
-                { icon: '✅', title: 'Semak eCheckroll', desc: 'Semak data gaji', url: '#', active: false },
+                { icon: '✅', title: 'Semak eCheckroll', desc: 'Semak data gaji', url: 'echeckroll.html', active: true },
                 { icon: '👨‍🌾', title: 'Pekerja Ladang', desc: 'Lihat senarai pekerja', url: 'workers.html', active: true },
                 { icon: '👥', title: 'Kumpulan Kerja', desc: 'Lihat kumpulan kerja', url: 'work-groups.html', active: true },
                 { icon: '💰', title: 'Insentif Bulanan', desc: 'Tetapan kadar insentif', url: 'incentives.html', active: true },
                 { icon: '📋', title: 'Kadar Upah', desc: 'Upload jadual kadar upah', url: 'upload-rates.html', active: true },
+                { icon: '🧮', title: 'eCheckroll', desc: 'Lihat data gaji', url: 'echeckroll.html', active: true },
                 { icon: '📊', title: 'Laporan', desc: 'Lihat laporan', url: '#', active: false }
             ],
             fc: [
-                { icon: '✔️', title: 'Sahkan eCheckroll', desc: 'Approve data gaji', url: '#', active: false },
+                { icon: '✔️', title: 'Sahkan eCheckroll', desc: 'Approve data gaji', url: 'echeckroll.html', active: true },
                 { icon: '👨‍🌾', title: 'Pekerja Ladang', desc: 'Lihat senarai pekerja', url: 'workers.html', active: true },
                 { icon: '👥', title: 'Kumpulan Kerja', desc: 'Lihat kumpulan kerja', url: 'work-groups.html', active: true },
                 { icon: '💰', title: 'Insentif Bulanan', desc: 'Tetapan kadar insentif', url: 'incentives.html', active: true },
                 { icon: '📋', title: 'Kadar Upah', desc: 'Upload jadual kadar upah', url: 'upload-rates.html', active: true },
+                { icon: '🧮', title: 'eCheckroll', desc: 'Lihat data gaji', url: 'echeckroll.html', active: true },
                 { icon: '📊', title: 'Laporan', desc: 'Lihat laporan', url: '#', active: false }
             ]
         }
 
-        const userMenus = menus[user.peranan] || []
+        const userMenus = menus[user.peranan] || menus.fs
         const menuGrid = document.getElementById('menuGrid')
 
         userMenus.forEach(menu => {
