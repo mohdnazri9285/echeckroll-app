@@ -167,11 +167,6 @@
       margin: 0;
     }
     
-    .slip-table input.blank-input::placeholder {
-      color: #ccc;
-      font-size: 9px;
-    }
-    
     .weekend { background-color: #fff9c4 !important; }
     
     .status-message {
@@ -216,8 +211,6 @@
       border-radius: 6px;
       flex-wrap: wrap;
     }
-    
-    .activity-add-row input { width: 80px; }
     
     .delete-btn {
       background: #c62828;
@@ -324,34 +317,35 @@
     const rancanganId = user.rancangan_id
     
     const attendanceCodes = [
-      { kod: 'H01', keterangan: 'Hadir Biasa' },
-      { kod: 'H02', keterangan: 'Hadir Minggu' },
-      { kod: 'H03', keterangan: 'Hadir Cuti Umum' },
-      { kod: 'C02', keterangan: 'Cuti Tahunan' },
-      { kod: 'C03', keterangan: 'Cuti Sakit' },
-      { kod: 'C04', keterangan: 'Cuti Bersalin' },
-      { kod: 'C05', keterangan: 'Cuti Tanpa Gaji' },
-      { kod: 'C06', keterangan: 'Cuti Haji' },
-      { kod: 'C07', keterangan: 'Cuti Mingguan' },
-      { kod: 'C09', keterangan: 'OFF' },
-      { kod: 'C10', keterangan: 'Sakit Wad' },
-      { kod: 'C11', keterangan: 'Cuti Bencana' },
-      { kod: 'C12', keterangan: 'Paterniti' },
-      { kod: 'C13', keterangan: 'Cuti Ehsan' },
-      { kod: 'C14', keterangan: 'Kuarantin' },
-      { kod: 'L01', keterangan: 'Rukun Tetangga' },
-      { kod: 'L02', keterangan: 'Rela' },
-      { kod: 'L03', keterangan: 'Kesatuan' },
-      { kod: 'L04', keterangan: 'Cacat' },
-      { kod: 'L05', keterangan: 'Gantung' },
-      { kod: 'P01', keterangan: 'Ponteng' }
+      { kod: 'H01', keterangan: 'Hadir Biasa', multiplier: 1 },
+      { kod: 'H02', keterangan: 'Hadir Minggu', multiplier: 2 },
+      { kod: 'H03', keterangan: 'Hadir Cuti Umum', multiplier: 3 },
+      { kod: 'C02', keterangan: 'Cuti Tahunan', multiplier: 0 },
+      { kod: 'C03', keterangan: 'Cuti Sakit', multiplier: 0 },
+      { kod: 'C04', keterangan: 'Cuti Bersalin', multiplier: 0 },
+      { kod: 'C05', keterangan: 'Cuti Tanpa Gaji', multiplier: 0 },
+      { kod: 'C06', keterangan: 'Cuti Haji', multiplier: 0 },
+      { kod: 'C07', keterangan: 'Cuti Mingguan', multiplier: 0 },
+      { kod: 'C09', keterangan: 'OFF', multiplier: 0 },
+      { kod: 'C10', keterangan: 'Sakit Wad', multiplier: 0 },
+      { kod: 'C11', keterangan: 'Cuti Bencana', multiplier: 0 },
+      { kod: 'C12', keterangan: 'Paterniti', multiplier: 0 },
+      { kod: 'C13', keterangan: 'Cuti Ehsan', multiplier: 0 },
+      { kod: 'C14', keterangan: 'Kuarantin', multiplier: 0 },
+      { kod: 'L01', keterangan: 'Rukun Tetangga', multiplier: 0 },
+      { kod: 'L02', keterangan: 'Rela', multiplier: 0 },
+      { kod: 'L03', keterangan: 'Kesatuan', multiplier: 0 },
+      { kod: 'L04', keterangan: 'Cacat', multiplier: 0 },
+      { kod: 'L05', keterangan: 'Gantung', multiplier: 0 },
+      { kod: 'P01', keterangan: 'Ponteng', multiplier: 0 }
     ]
     
-    const attendanceMap = Object.fromEntries(attendanceCodes.map(c => [c.kod, c.keterangan]))
+    const attendanceMap = Object.fromEntries(attendanceCodes.map(c => [c.kod, c]))
     
     let currentBatchId = null
     let currentWorkGroup = null
     let ratesList = []
+    let ratesCache = {}
     let workersList = []
     let incentivesList = []
     let daysInMonth = 30
@@ -387,6 +381,8 @@
     async function loadRates() {
       const { data } = await supabase.from('rates').select('*').eq('rancangan_id', rancanganId)
       ratesList = data || []
+      ratesCache = {}
+      ratesList.forEach(r => { ratesCache[r.kod_aktiviti] = r })
     }
     
     async function loadIncentives() {
@@ -402,7 +398,6 @@
         .eq('locked', false)
       
       incentivesList = data || []
-      console.log('Incentives loaded:', incentivesList.length, 'for', bulan, tahun)
     }
     
     async function loadWorkGroups() {
@@ -557,7 +552,7 @@
       for (let d = 1; d <= daysInMonth; d++) html += `<td class="day-col"></td>`
       html += `<td class="hari-col"></td><td class="kadar-col"></td><td class="jumlah-col"></td></tr>`
       
-      // Row: Kehadiran Hint (sebaris dengan nama)
+      // Row: Kehadiran Hint
       html += `<tr class="attendance-hint-row">
         <td colspan="3" style="text-align:right; padding-right:10px;">Kod Kehadiran:</td>`
       
@@ -565,8 +560,9 @@
         const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
         const dayData = details.find(dt => dt.tarikh === tarikh) || {}
         const attendance = dayData.attendance_code || 'H01'
+        const hint = attendanceMap[attendance]?.keterangan || ''
         
-        html += `<td class="day-col attendance-hint-cell" data-tarikh="${tarikh}">${attendanceMap[attendance] || ''}</td>`
+        html += `<td class="day-col attendance-hint-cell" data-tarikh="${tarikh}">${hint}</td>`
       }
       html += `<td class="hari-col"></td><td class="kadar-col"></td><td class="jumlah-col"></td></tr>`
       
@@ -621,7 +617,11 @@
           const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
           const dayData = activityDetails.find(dt => dt.tarikh === tarikh) || {}
           const kuantiti = dayData.kuantiti || ''
-          rowTotalKuantiti += parseFloat(kuantiti) || 0
+          const attendanceCode = details.find(dt => dt.tarikh === tarikh)?.attendance_code || 'H01'
+          const multiplier = attendanceMap[attendanceCode]?.multiplier || 1
+          
+          const effectiveKuantiti = parseFloat(kuantiti) || 0
+          rowTotalKuantiti += effectiveKuantiti
           rowKadar = dayData.kadar_diguna || harga || 0
           
           const date = new Date(currentYear, currentMonth-1, d)
@@ -646,7 +646,7 @@
       if (!isLocked) {
         html += `<tr><td colspan="${totalCols}">
           <div class="activity-add-row">
-            <input type="text" id="newKodAktiviti" placeholder="Kod Aktiviti" list="rateCodes" style="width:100px;">
+            <input type="text" id="newKodAktiviti" placeholder="Kod Aktiviti" list="rateCodes" style="width:100px;" autocomplete="off">
             <button class="btn btn-primary" onclick="addActivity()">➕ Tambah Kerja</button>
             <select id="newIncentive" style="width:220px;">
               <option value="">Pilih Insentif</option>
@@ -659,7 +659,7 @@
       
       html += `</table>`
       
-      // Datalist
+      // Datalist (cached for speed)
       html += `<datalist id="rateCodes">
         ${ratesList.map(r => `<option value="${r.kod_aktiviti}">${r.kod_aktiviti} - ${r.perincian || r.jenis_kerja}</option>`).join('')}
       </datalist>`
@@ -681,15 +681,15 @@
         <td class="summary-value jumlah-col">${grandTotal.toFixed(2)}</td>
       </tr>`
       
-      // Potongan
+      // Potongan - Aligned with Jumlah column
       html += `<tr>
-        <td colspan="${totalCols}">
+        <td colspan="${3 + daysInMonth + 2}">
           <div class="collapse-header" onclick="toggleCollapse()">
             <span>▼</span> Potongan Gaji
           </div>
           <div class="collapse-content" id="collapseContent">
             <table class="deduction-table">
-              <tr><td>KWSP</td><td><input type="number" class="deduction-input" data-ded="KWSP" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+              <tr><td style="width:150px;">KWSP</td><td><input type="number" class="deduction-input" data-ded="KWSP" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
               <tr><td>SOCSO</td><td><input type="number" class="deduction-input" data-ded="SOCSO" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
               <tr><td>EIS</td><td><input type="number" class="deduction-input" data-ded="EIS" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
               <tr><td>Perubatan</td><td><input type="number" class="deduction-input" data-ded="Perubatan" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
@@ -699,6 +699,7 @@
             </table>
           </div>
         </td>
+        <td class="jumlah-col"></td>
       </tr>`
       
       // Gaji Bersih
@@ -719,6 +720,7 @@
         document.querySelectorAll('.attendance-select').forEach(sel => sel.addEventListener('change', () => {
           updateHintCell(sel)
           updateTotalHari()
+          recalculate()
         }))
       }
     }
@@ -728,7 +730,7 @@
       const tarikh = select.dataset.tarikh
       const hintCell = document.querySelector(`.attendance-hint-cell[data-tarikh="${tarikh}"]`)
       if (hintCell) {
-        hintCell.textContent = attendanceMap[select.value] || ''
+        hintCell.textContent = attendanceMap[select.value]?.keterangan || ''
       }
     }
     
@@ -745,7 +747,7 @@
       const kod = document.getElementById('newKodAktiviti')?.value?.trim()
       if (!kod) { alert('Masukkan Kod Aktiviti'); return }
       
-      const rate = ratesList.find(r => r.kod_aktiviti === kod)
+      const rate = ratesCache[kod] || ratesList.find(r => r.kod_aktiviti === kod)
       if (!rate) { alert('Kod Aktiviti tidak dijumpai'); return }
       
       if (groupActivities.some(a => a.type === 'rate' && a.id === rate.id)) {
@@ -755,30 +757,22 @@
       
       groupActivities.push({ type: 'rate', data: rate, id: rate.id })
       
-      const detailsToSave = []
-      for (const worker of workersList) {
-        for (let d = 1; d <= daysInMonth; d++) {
-          const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-          detailsToSave.push({
-            batch_id: currentBatchId,
-            worker_id: worker.id,
-            tarikh,
-            attendance_code: 'H01',
-            rate_id: rate.id,
-            incentive_id: null,
-            kuantiti: 0,
-            kadar_asal: rate.harga,
-            kadar_diguna: rate.harga
-          })
+      // Auto-add "Kerja Lebih Masa" if Kong
+      if (rate.jenis_kerja === 'Kong' || rate.perincian?.toLowerCase().includes('kong')) {
+        const otRate = {
+          id: `ot_${Date.now()}`,
+          kod_aktiviti: 'OT',
+          perincian: 'Kerja Lebih Masa',
+          harga: 0
+        }
+        if (!groupActivities.some(a => a.type === 'rate' && a.id === otRate.id)) {
+          groupActivities.push({ type: 'rate', data: otRate, id: otRate.id })
         }
       }
       
-      await supabase.from('payroll_details').upsert(detailsToSave, {
-        onConflict: 'batch_id, worker_id, tarikh, rate_id, incentive_id'
-      })
-      
+      await saveActivityForAll(rate.id, 'rate', rate.harga)
       renderSlip()
-      showMessage('✅ Aktiviti ditambah untuk semua pekerja', 'success')
+      showMessage('✅ Aktiviti ditambah', 'success')
     }
     
     window.addIncentive = async () => {
@@ -795,30 +789,39 @@
       
       groupActivities.push({ type: 'incentive', data: incentive, id: incentive.id })
       
+      await saveActivityForAll(incentive.id, 'incentive', incentive.kadar)
+      renderSlip()
+      showMessage('✅ Insentif ditambah', 'success')
+    }
+    
+    async function saveActivityForAll(id, type, harga) {
       const detailsToSave = []
       for (const worker of workersList) {
         for (let d = 1; d <= daysInMonth; d++) {
           const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-          detailsToSave.push({
+          const item = {
             batch_id: currentBatchId,
             worker_id: worker.id,
             tarikh,
             attendance_code: 'H01',
-            rate_id: null,
-            incentive_id: incentive.id,
             kuantiti: 0,
-            kadar_asal: incentive.kadar,
-            kadar_diguna: incentive.kadar
-          })
+            kadar_asal: harga,
+            kadar_diguna: harga
+          }
+          if (type === 'rate') {
+            item.rate_id = id
+            item.incentive_id = null
+          } else {
+            item.rate_id = null
+            item.incentive_id = id
+          }
+          detailsToSave.push(item)
         }
       }
       
       await supabase.from('payroll_details').upsert(detailsToSave, {
         onConflict: 'batch_id, worker_id, tarikh, rate_id, incentive_id'
       })
-      
-      renderSlip()
-      showMessage('✅ Insentif ditambah untuk semua pekerja', 'success')
     }
     
     window.removeActivity = async (id, type) => {
@@ -850,7 +853,10 @@
         
         row.querySelectorAll('.quantity-input').forEach(inp => {
           if (inp.dataset.activityId === activityId && inp.dataset.activityType === activityType) {
-            rowTotal += parseFloat(inp.value) || 0
+            const tarikh = inp.dataset.tarikh
+            const attendanceSelect = document.querySelector(`.attendance-select[data-tarikh="${tarikh}"]`)
+            const multiplier = attendanceMap[attendanceSelect?.value]?.multiplier || 1
+            rowTotal += (parseFloat(inp.value) || 0) * multiplier
           }
         })
         
@@ -901,20 +907,25 @@
       const worker = currentWorkerData.worker
       const detailsToSave = []
       
+      // Get current attendance values
+      const attendanceMap2 = {}
       document.querySelectorAll('.attendance-select').forEach(sel => {
-        const tarikh = sel.dataset.tarikh
-        const attendance = sel.value
+        attendanceMap2[sel.dataset.tarikh] = sel.value
+      })
+      
+      document.querySelectorAll('.activity-row').forEach(row => {
+        const activityId = row.dataset.activityId
+        const activityType = row.dataset.activityType
+        const kadarInput = row.querySelector('.kadar-input')
+        const kadarDiguna = parseFloat(kadarInput?.value) || 0
         
-        document.querySelectorAll('.activity-row').forEach(row => {
-          const activityId = row.dataset.activityId
-          const activityType = row.dataset.activityType
-          const qtyInput = row.querySelector(`.quantity-input[data-tarikh="${tarikh}"][data-activity-id="${activityId}"]`)
-          const kadarInput = row.querySelector('.kadar-input')
-          const kuantiti = parseFloat(qtyInput?.value) || 0
-          const kadarDiguna = parseFloat(kadarInput?.value) || 0
-          
-          const activity = groupActivities.find(a => a.id === activityId)
-          const kadarAsal = activityType === 'rate' ? activity?.data?.harga : activity?.data?.kadar
+        const activity = groupActivities.find(a => a.id === activityId)
+        const kadarAsal = activityType === 'rate' ? activity?.data?.harga : activity?.data?.kadar
+        
+        row.querySelectorAll('.quantity-input').forEach(inp => {
+          const tarikh = inp.dataset.tarikh
+          const kuantiti = parseFloat(inp.value) || 0
+          const attendance = attendanceMap2[tarikh] || 'H01'
           
           const saveItem = {
             batch_id: currentBatchId,
@@ -946,7 +957,8 @@
         showMessage('❌ Gagal simpan: ' + error.message, 'error')
       } else {
         showMessage('✅ Data berjaya disimpan!', 'success')
-        loadWorkerData(worker.id)
+        // Jangan reload, just update local data
+        currentWorkerData.details = detailsToSave
       }
     }
     
