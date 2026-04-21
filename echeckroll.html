@@ -64,6 +64,7 @@
     .btn-success { background: #28a745; color: white; }
     .btn-danger { background: #c62828; color: white; }
     .btn-info { background: #17a2b8; color: white; }
+    .btn-warning { background: #ffc107; color: #333; }
     
     .worker-nav {
       display: flex;
@@ -167,6 +168,12 @@
       margin: 0;
     }
     
+    .slip-table input:disabled, .slip-table select:disabled {
+      background: #f5f5f5;
+      color: #333;
+      border-color: #ddd;
+    }
+    
     .weekend { background-color: #fff9c4 !important; }
     
     .status-message {
@@ -255,6 +262,14 @@
       text-align: center;
       background: #fafafa;
     }
+    
+    .edit-mode-indicator {
+      background: #fff3cd;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      margin-left: 10px;
+    }
   </style>
 </head>
 <body>
@@ -294,7 +309,8 @@
         <button class="btn btn-secondary" onclick="nextWorker()">▶</button>
       </div>
       
-      <button class="btn btn-success" onclick="saveCurrentWorker()">💾 Simpan</button>
+      <button class="btn btn-warning" id="editBtn" onclick="enableEdit()" style="display:none;">✏️ Edit</button>
+      <button class="btn btn-success" id="saveBtn" onclick="saveCurrentWorker()" style="display:none;">💾 Simpan</button>
       <button class="btn btn-danger" onclick="lockBatch()" id="lockBtn" style="display:none;">🔒 Tutup Urusniaga</button>
     </div>
     
@@ -341,14 +357,10 @@
     let currentWorkerData = { worker: null, details: [] }
     let isLocked = false
     let groupActivities = []
+    let editMode = false
     
-    // JANGAN REFRESH PAGE
-    window.addEventListener('beforeunload', (e) => {
-      if (!isLocked && currentWorkerData.details?.length > 0) {
-        e.preventDefault()
-        e.returnValue = 'Anda mempunyai data yang belum disimpan. Pastikan untuk simpan sebelum keluar.'
-      }
-    })
+    // CACHE untuk semua worker
+    const workerDataCache = new Map() // key: workerId, value: { details, lastSaved }
     
     window.logout = async () => {
       await supabase.auth.signOut()
@@ -495,6 +507,9 @@
         showMessage('🆕 Batch baru dicipta', 'success')
       }
       
+      // Clear cache for new batch
+      workerDataCache.clear()
+      
       await loadWorkerData(workersList[0].id)
     }
     
@@ -502,16 +517,47 @@
       const worker = workersList.find(w => w.id === workerId)
       if (!worker) return
       
+      // Check cache first
+      if (workerDataCache.has(workerId)) {
+        currentWorkerData = workerDataCache.get(workerId)
+      } else {
+        const { data } = await supabase
+          .from('payroll_details')
+          .select('*')
+          .eq('batch_id', currentBatchId)
+          .eq('worker_id', workerId)
+        
+        currentWorkerData = { worker, details: data || [] }
+        workerDataCache.set(workerId, currentWorkerData)
+      }
+      
       document.getElementById('workerSelect').value = workerId
       currentWorkerIndex = workersList.findIndex(w => w.id === workerId)
       
-      const { data } = await supabase
-        .from('payroll_details')
-        .select('*')
-        .eq('batch_id', currentBatchId)
-        .eq('worker_id', workerId)
+      editMode = false
+      updateButtons()
+      renderSlip()
+    }
+    
+    function updateButtons() {
+      if (isLocked) {
+        document.getElementById('editBtn').style.display = 'none'
+        document.getElementById('saveBtn').style.display = 'none'
+        return
+      }
       
-      currentWorkerData = { worker, details: data || [] }
+      if (editMode) {
+        document.getElementById('editBtn').style.display = 'none'
+        document.getElementById('saveBtn').style.display = 'inline-block'
+      } else {
+        document.getElementById('editBtn').style.display = 'inline-block'
+        document.getElementById('saveBtn').style.display = 'none'
+      }
+    }
+    
+    window.enableEdit = () => {
+      editMode = true
+      updateButtons()
       renderSlip()
     }
     
@@ -522,6 +568,7 @@
       
       const details = currentWorkerData.details || []
       const totalCols = 3 + daysInMonth + 3
+      const disabled = !editMode || isLocked
       
       let html = `<table class="slip-table" id="mainSlipTable">`
       
@@ -581,7 +628,7 @@
         const isWeekend = dayName === currentWorkGroup.hari_minggu
         
         html += `<td class="day-col ${isWeekend ? 'weekend' : ''}">
-          <select data-tarikh="${tarikh}" class="attendance-select" onchange="updateHintCell(this)" ${isLocked ? 'disabled' : ''}>
+          <select data-tarikh="${tarikh}" class="attendance-select" onchange="updateHintCell(this)" ${disabled ? 'disabled' : ''}>
             ${attendanceCodes.map(c => `<option value="${c.kod}" ${attendance === c.kod ? 'selected' : ''}>${c.kod}</option>`).join('')}
           </select>
         </td>`
@@ -611,7 +658,7 @@
         html += `<tr class="activity-row" data-activity-id="${id}" data-activity-type="${activity.type}">
           <td colspan="3" class="activity-text">
             ${name}
-            ${!isLocked ? `<button class="delete-btn" onclick="removeActivity('${id}', '${activity.type}')">✕</button>` : ''}
+            ${editMode && !isLocked ? `<button class="delete-btn" onclick="removeActivity('${id}', '${activity.type}')">✕</button>` : ''}
           </td>`
         
         for (let d = 1; d <= daysInMonth; d++) {
@@ -624,11 +671,10 @@
           const isWeekend = dayName === currentWorkGroup.hari_minggu
           
           html += `<td class="day-col ${isWeekend ? 'weekend' : ''}">
-            <input type="number" class="quantity-input blank-input" data-tarikh="${tarikh}" data-activity-id="${id}" data-activity-type="${activity.type}" value="${kuantiti}" step="0.01" min="0" placeholder="0" ${isLocked ? 'disabled' : ''}>
+            <input type="number" class="quantity-input blank-input" data-tarikh="${tarikh}" data-activity-id="${id}" data-activity-type="${activity.type}" value="${kuantiti}" step="0.01" min="0" placeholder="0" ${disabled ? 'disabled' : ''}>
           </td>`
         }
         
-        // Calculate from current DOM values
         let rowTotal = 0
         for (let d = 1; d <= daysInMonth; d++) {
           const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
@@ -643,13 +689,13 @@
         grandTotal += rowJumlah
         
         html += `<td class="total-cell hari-col">${rowTotal.toFixed(2)}</td>
-          <td class="kadar-col"><input type="number" class="kadar-input" data-activity-id="${id}" value="${rowKadar.toFixed(2)}" step="0.01" ${isLocked ? 'disabled' : ''}></td>
+          <td class="kadar-col"><input type="number" class="kadar-input" data-activity-id="${id}" value="${rowKadar.toFixed(2)}" step="0.01" ${disabled ? 'disabled' : ''}></td>
           <td class="total-cell jumlah-col">${rowJumlah.toFixed(2)}</td>
         </tr>`
       })
       
-      // Add Buttons Row
-      if (!isLocked) {
+      // Add Buttons Row (only in edit mode)
+      if (editMode && !isLocked) {
         html += `<tr><td colspan="${totalCols}">
           <div class="activity-add-row">
             <input type="text" id="newKodAktiviti" placeholder="Kod Aktiviti" list="rateCodes" style="width:100px;" autocomplete="off">
@@ -695,13 +741,13 @@
       
       <div class="collapse-content" id="collapseContent">
         <table class="deduction-table">
-          <tr><td style="width:150px;">KWSP</td><td><input type="number" class="deduction-input" data-ded="KWSP" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-          <tr><td>SOCSO</td><td><input type="number" class="deduction-input" data-ded="SOCSO" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-          <tr><td>EIS</td><td><input type="number" class="deduction-input" data-ded="EIS" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-          <tr><td>Perubatan</td><td><input type="number" class="deduction-input" data-ded="Perubatan" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-          <tr><td>Elektrik</td><td><input type="number" class="deduction-input" data-ded="Elektrik" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-          <tr><td>Air</td><td><input type="number" class="deduction-input" data-ded="Air" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-          <tr><td>Pendahuluan Gaji</td><td><input type="number" class="deduction-input" data-ded="Pendahuluan" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+          <tr><td style="width:150px;">KWSP</td><td><input type="number" class="deduction-input" data-ded="KWSP" value="" placeholder="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
+          <tr><td>SOCSO</td><td><input type="number" class="deduction-input" data-ded="SOCSO" value="" placeholder="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
+          <tr><td>EIS</td><td><input type="number" class="deduction-input" data-ded="EIS" value="" placeholder="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
+          <tr><td>Perubatan</td><td><input type="number" class="deduction-input" data-ded="Perubatan" value="" placeholder="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
+          <tr><td>Elektrik</td><td><input type="number" class="deduction-input" data-ded="Elektrik" value="" placeholder="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
+          <tr><td>Air</td><td><input type="number" class="deduction-input" data-ded="Air" value="" placeholder="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
+          <tr><td>Pendahuluan Gaji</td><td><input type="number" class="deduction-input" data-ded="Pendahuluan" value="" placeholder="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
         </table>
       </div>
       
@@ -721,7 +767,7 @@
       
       container.innerHTML = html
       
-      if (!isLocked) {
+      if (editMode && !isLocked) {
         document.querySelectorAll('.quantity-input').forEach(inp => inp.addEventListener('input', () => recalculate()))
         document.querySelectorAll('.kadar-input').forEach(inp => inp.addEventListener('input', () => recalculate()))
         document.querySelectorAll('.deduction-input').forEach(inp => inp.addEventListener('input', () => recalculate()))
@@ -750,7 +796,9 @@
       if (cell) cell.textContent = totalHari
     }
     
-    window.addActivity = async () => {
+    window.addActivity = () => {
+      if (!editMode) return
+      
       const kod = document.getElementById('newKodAktiviti')?.value?.trim()
       if (!kod) { alert('Masukkan Kod Aktiviti'); return }
       
@@ -764,24 +812,23 @@
       
       groupActivities.push({ type: 'rate', data: rate, id: rate.id })
       
-      // Auto-add KLM if rate is RM 65.39
       if (Math.abs(rate.harga - 65.39) < 0.01) {
         const klmExists = groupActivities.some(a => a.type === 'manual' && a.id === 'KLM')
         if (!klmExists) {
-          const klmId = 'KLM'
           groupActivities.push({ 
             type: 'manual', 
             data: { name: 'Kerja Lebih Masa', harga: 65.39 }, 
-            id: klmId 
+            id: 'KLM' 
           })
         }
       }
       
       renderSlip()
-      showMessage('✅ Aktiviti ditambah. Jangan lupa SIMPAN.', 'success')
     }
     
-    window.addIncentive = async () => {
+    window.addIncentive = () => {
+      if (!editMode) return
+      
       const incentiveId = document.getElementById('newIncentive')?.value
       if (!incentiveId) { alert('Pilih Insentif'); return }
       
@@ -794,15 +841,13 @@
       }
       
       groupActivities.push({ type: 'incentive', data: incentive, id: incentive.id })
-      
       renderSlip()
-      showMessage('✅ Insentif ditambah. Jangan lupa SIMPAN.', 'success')
     }
     
     window.removeActivity = (id, type) => {
+      if (!editMode) return
       groupActivities = groupActivities.filter(a => !(a.id === id && a.type === type))
       renderSlip()
-      showMessage('✅ Aktiviti dibuang. Jangan lupa SIMPAN untuk kekal.', 'info')
     }
     
     function recalculate() {
@@ -848,6 +893,7 @@
     
     window.prevWorker = () => {
       if (currentWorkerIndex > 0) {
+        saveCurrentWorkerToCache()
         currentWorkerIndex--
         loadWorkerData(workersList[currentWorkerIndex].id)
       }
@@ -855,22 +901,33 @@
     
     window.nextWorker = () => {
       if (currentWorkerIndex < workersList.length - 1) {
+        saveCurrentWorkerToCache()
         currentWorkerIndex++
         loadWorkerData(workersList[currentWorkerIndex].id)
       }
     }
     
     document.getElementById('workerSelect').addEventListener('change', (e) => {
+      saveCurrentWorkerToCache()
       loadWorkerData(e.target.value)
     })
     
-    window.saveCurrentWorker = async () => {
-      if (isLocked) { alert('Batch dikunci'); return }
-      if (!currentWorkerData.worker) { alert('Tiada pekerja dipilih'); return }
+    function saveCurrentWorkerToCache() {
+      if (!currentWorkerData.worker) return
       
+      // Collect current data from DOM if in edit mode
+      if (editMode) {
+        collectFormData()
+      }
+      
+      workerDataCache.set(currentWorkerData.worker.id, currentWorkerData)
+    }
+    
+    function collectFormData() {
       const worker = currentWorkerData.worker
-      const detailsToSave = []
+      if (!worker) return
       
+      const details = []
       const attendanceMap2 = {}
       document.querySelectorAll('.attendance-select').forEach(sel => {
         attendanceMap2[sel.dataset.tarikh] = sel.value
@@ -890,7 +947,7 @@
           const kuantiti = parseFloat(inp.value) || 0
           const attendance = attendanceMap2[tarikh] || 'H01'
           
-          const saveItem = {
+          const item = {
             batch_id: currentBatchId,
             worker_id: worker.id,
             tarikh,
@@ -901,34 +958,53 @@
           }
           
           if (activityType === 'rate') {
-            saveItem.rate_id = activityId
-            saveItem.incentive_id = null
-            saveItem.manual_activity = null
+            item.rate_id = activityId
+            item.incentive_id = null
+            item.manual_activity = null
           } else if (activityType === 'incentive') {
-            saveItem.rate_id = null
-            saveItem.incentive_id = activityId
-            saveItem.manual_activity = null
+            item.rate_id = null
+            item.incentive_id = activityId
+            item.manual_activity = null
           } else {
-            saveItem.rate_id = null
-            saveItem.incentive_id = null
-            saveItem.manual_activity = activityId
+            item.rate_id = null
+            item.incentive_id = null
+            item.manual_activity = activityId
           }
           
-          detailsToSave.push(saveItem)
+          details.push(item)
         })
       })
       
-      // Also save empty activities that were removed? No - handled by delete.
+      currentWorkerData.details = details
+    }
+    
+    window.saveCurrentWorker = async () => {
+      if (isLocked) { alert('Batch dikunci'); return }
+      if (!currentWorkerData.worker) { alert('Tiada pekerja dipilih'); return }
       
-      const { error } = await supabase.from('payroll_details').upsert(detailsToSave, {
-        onConflict: 'batch_id, worker_id, tarikh, rate_id, incentive_id, manual_activity'
-      })
+      collectFormData()
+      
+      const detailsToSave = currentWorkerData.details
+      
+      // Delete existing details for this worker first
+      await supabase
+        .from('payroll_details')
+        .delete()
+        .eq('batch_id', currentBatchId)
+        .eq('worker_id', currentWorkerData.worker.id)
+      
+      // Insert new details
+      const { error } = await supabase
+        .from('payroll_details')
+        .insert(detailsToSave)
       
       if (error) {
         showMessage('❌ Gagal simpan: ' + error.message, 'error')
       } else {
-        // Update local cache
-        currentWorkerData.details = detailsToSave
+        workerDataCache.set(currentWorkerData.worker.id, currentWorkerData)
+        editMode = false
+        updateButtons()
+        renderSlip()
         showMessage('✅ Data berjaya disimpan!', 'success')
       }
     }
@@ -938,6 +1014,8 @@
       
       await supabase.from('payroll_batches').update({ locked: true }).eq('id', currentBatchId)
       isLocked = true
+      editMode = false
+      updateButtons()
       document.getElementById('lockBtn').style.display = 'none'
       showMessage('🔒 Batch telah dikunci!', 'success')
       renderSlip()
