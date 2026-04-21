@@ -56,13 +56,14 @@
       border: none;
       border-radius: 4px;
       cursor: pointer;
-      font-weight:500;
+      font-weight: 500;
       font-size: 13px;
     }
     .btn-primary { background: #2e7d32; color: white; }
     .btn-secondary { background: #6c757d; color: white; }
     .btn-success { background: #28a745; color: white; }
     .btn-danger { background: #c62828; color: white; }
+    .btn-info { background: #17a2b8; color: white; }
     
     .worker-nav {
       display: flex;
@@ -86,7 +87,7 @@
       border-collapse: collapse;
       font-size: 11px;
       min-width: 1400px;
-      table-layout: auto;
+      table-layout: fixed;
     }
     
     .slip-table th {
@@ -105,18 +106,23 @@
       white-space: nowrap;
     }
     
-    /* Fixed width for info columns - 2x ganda */
+    /* Fixed width for all columns */
     .slip-table th:first-child,
-    .slip-table td:first-child { min-width: 160px; max-width: 200px; }
+    .slip-table td:first-child { width: 160px; max-width: 160px; }
     
     .slip-table th:nth-child(2),
-    .slip-table td:nth-child(2) { min-width: 100px; max-width: 120px; }
+    .slip-table td:nth-child(2) { width: 100px; max-width: 100px; }
     
     .slip-table th:nth-child(3),
-    .slip-table td:nth-child(3) { min-width: 120px; max-width: 140px; }
+    .slip-table td:nth-child(3) { width: 120px; max-width: 120px; }
     
-    /* Day columns - auto expand */
-    .slip-table .day-col { min-width: 55px; }
+    /* Day columns - all same width */
+    .slip-table .day-col { width: 60px; min-width: 60px; max-width: 60px; }
+    
+    /* Result columns */
+    .slip-table .hari-col { width: 60px; }
+    .slip-table .kadar-col { width: 80px; }
+    .slip-table .jumlah-col { width: 90px; }
     
     .slip-table .label-cell {
       background: #f8f9fa;
@@ -206,6 +212,7 @@
       padding: 10px;
       background: #f0f8ff;
       border-radius: 6px;
+      flex-wrap: wrap;
     }
     
     .activity-add-row input { width: 80px; }
@@ -245,6 +252,19 @@
       border: 1px solid #ccc;
       border-radius: 4px;
       text-align: right;
+    }
+    
+    .attendance-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+    
+    .attendance-wrapper select { width: 55px; }
+    .attendance-hint {
+      font-size: 8px;
+      color: #666;
+      white-space: nowrap;
     }
   </style>
 </head>
@@ -307,7 +327,7 @@
     const user = JSON.parse(savedUser)
     const rancanganId = user.rancangan_id
     
-    // Manual attendance codes
+    // Manual attendance codes with lookup
     const attendanceCodes = [
       { kod: 'H01', keterangan: 'Hadir Hari Biasa' },
       { kod: 'H02', keterangan: 'Hadir Hari Minggu' },
@@ -332,10 +352,14 @@
       { kod: 'P01', keterangan: 'Ponteng' }
     ]
     
+    // Build lookup map
+    const attendanceMap = Object.fromEntries(attendanceCodes.map(c => [c.kod, c.keterangan]))
+    
     let currentBatchId = null
     let currentWorkGroup = null
     let ratesList = []
     let workersList = []
+    let incentivesList = []
     let daysInMonth = 30
     let currentMonth = new Date().getMonth() + 1
     let currentYear = new Date().getFullYear()
@@ -352,6 +376,7 @@
     
     async function init() {
       await loadRates()
+      await loadIncentives()
       await loadWorkGroups()
       populateMonthSelect()
       
@@ -368,6 +393,15 @@
     async function loadRates() {
       const { data } = await supabase.from('rates').select('*').eq('rancangan_id', rancanganId)
       ratesList = data || []
+    }
+    
+    async function loadIncentives() {
+      const { data } = await supabase
+        .from('incentives')
+        .select('*')
+        .eq('rancangan_id', rancanganId)
+        .eq('status', 'AKTIF')
+      incentivesList = data || []
     }
     
     async function loadWorkGroups() {
@@ -437,14 +471,17 @@
         
         const { data: details } = await supabase
           .from('payroll_details')
-          .select('rate_id, rates(kod_aktiviti, perincian, harga)')
+          .select('rate_id, rates(kod_aktiviti, perincian, harga), incentive_id, incentives(nama, kadar)')
           .eq('batch_id', currentBatchId)
-          .not('rate_id', 'is', null)
+          .or('rate_id.not.is.null,incentive_id.not.is.null')
         
         const activityMap = new Map()
         details?.forEach(d => {
-          if (d.rate_id && !activityMap.has(d.rate_id)) {
-            activityMap.set(d.rate_id, d.rates)
+          if (d.rate_id) {
+            activityMap.set(`rate_${d.rate_id}`, { type: 'rate', data: d.rates, id: d.rate_id })
+          }
+          if (d.incentive_id) {
+            activityMap.set(`inc_${d.incentive_id}`, { type: 'incentive', data: d.incentives, id: d.incentive_id })
           }
         })
         groupActivities = Array.from(activityMap.values())
@@ -504,9 +541,9 @@
         html += `<th class="day-col" style="${isWeekend ? 'background:#b8860b;' : ''}">${d}<br><small>${dayName}</small></th>`
       }
       
-      html += `<th>Jml Hari</th>
-        <th>Kadar (RM)</th>
-        <th>Jumlah (RM)</th>
+      html += `<th class="hari-col">Jml Hari</th>
+        <th class="kadar-col">Kadar (RM)</th>
+        <th class="jumlah-col">Jumlah (RM)</th>
       </tr>`
       
       // Row: Nama & Passport
@@ -515,9 +552,9 @@
         <td>${worker.no_pekerja}</td>
         <td>${worker.no_passport || '-'}</td>`
       for (let d = 1; d <= daysInMonth; d++) html += `<td class="day-col"></td>`
-      html += `<td></td><td></td><td></td></tr>`
+      html += `<td class="hari-col"></td><td class="kadar-col"></td><td class="jumlah-col"></td></tr>`
       
-      // Row: Kehadiran (Manual Dropdown)
+      // Row: Kehadiran
       html += `<tr>
         <td colspan="3" class="label-cell">Kehadiran</td>`
       
@@ -533,28 +570,38 @@
         const isWeekend = dayName === currentWorkGroup.hari_minggu
         
         html += `<td class="day-col ${isWeekend ? 'weekend' : ''}">
-          <select data-tarikh="${tarikh}" class="attendance-select" ${isLocked ? 'disabled' : ''}>
-            ${attendanceCodes.map(c => `<option value="${c.kod}" ${attendance === c.kod ? 'selected' : ''}>${c.kod}</option>`).join('')}
-          </select>
+          <div class="attendance-wrapper">
+            <select data-tarikh="${tarikh}" class="attendance-select" onchange="updateAttendanceHint(this)" ${isLocked ? 'disabled' : ''}>
+              ${attendanceCodes.map(c => `<option value="${c.kod}" ${attendance === c.kod ? 'selected' : ''}>${c.kod}</option>`).join('')}
+            </select>
+            <span class="attendance-hint">${attendanceMap[attendance]?.substring(0,6) || ''}</span>
+          </div>
         </td>`
       }
-      html += `<td class="total-cell" id="totalHariCell">${totalHari}</td>
-        <td></td><td></td></tr>`
+      html += `<td class="total-cell hari-col" id="totalHariCell">${totalHari}</td>
+        <td class="kadar-col"></td><td class="jumlah-col"></td></tr>`
       
       // Activity Rows
       let grandTotal = 0
       
       groupActivities.forEach((activity, idx) => {
-        const rate = ratesList.find(r => r.id === activity.id) || activity
-        const activityDetails = details.filter(d => d.rate_id === rate.id)
+        const isIncentive = activity.type === 'incentive'
+        const data = activity.data
+        const id = activity.id
+        const name = isIncentive ? data.nama : `${data.kod_aktiviti} - ${data.perincian || data.jenis_kerja}`
+        const harga = isIncentive ? data.kadar : data.harga
+        
+        const activityDetails = details.filter(d => 
+          isIncentive ? d.incentive_id === id : d.rate_id === id
+        )
         
         let rowTotalKuantiti = 0
         let rowKadar = 0
         
-        html += `<tr class="activity-row" data-rate-id="${rate.id}">
+        html += `<tr class="activity-row" data-activity-id="${id}" data-activity-type="${activity.type}">
           <td colspan="3" class="activity-text">
-            ${rate.kod_aktiviti} - ${rate.perincian || rate.jenis_kerja}
-            ${!isLocked ? `<button class="delete-btn" onclick="removeActivity(${idx})">✕</button>` : ''}
+            ${name}
+            ${!isLocked ? `<button class="delete-btn" onclick="removeActivity('${id}', '${activity.type}')">✕</button>` : ''}
           </td>`
         
         for (let d = 1; d <= daysInMonth; d++) {
@@ -562,34 +609,37 @@
           const dayData = activityDetails.find(dt => dt.tarikh === tarikh) || {}
           const kuantiti = dayData.kuantiti || 0
           rowTotalKuantiti += parseFloat(kuantiti)
-          rowKadar = dayData.kadar_diguna || rate.harga || 0
+          rowKadar = dayData.kadar_diguna || harga || 0
           
           const date = new Date(currentYear, currentMonth-1, d)
           const dayName = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'][date.getDay()]
           const isWeekend = dayName === currentWorkGroup.hari_minggu
           
           html += `<td class="day-col ${isWeekend ? 'weekend' : ''}">
-            <input type="number" class="quantity-input" data-tarikh="${tarikh}" data-rate-id="${rate.id}" value="${kuantiti}" step="0.01" min="0" ${isLocked ? 'disabled' : ''}>
+            <input type="number" class="quantity-input" data-tarikh="${tarikh}" data-activity-id="${id}" data-activity-type="${activity.type}" value="${kuantiti}" step="0.01" min="0" ${isLocked ? 'disabled' : ''}>
           </td>`
         }
         
         const rowJumlah = rowTotalKuantiti * rowKadar
         grandTotal += rowJumlah
         
-        html += `<td class="total-cell">${rowTotalKuantiti.toFixed(2)}</td>
-          <td><input type="number" class="kadar-input" data-rate-id="${rate.id}" value="${rowKadar.toFixed(2)}" step="0.01" ${isLocked ? 'disabled' : ''}></td>
-          <td class="total-cell">${rowJumlah.toFixed(2)}</td>
+        html += `<td class="total-cell hari-col">${rowTotalKuantiti.toFixed(2)}</td>
+          <td class="kadar-col"><input type="number" class="kadar-input" data-activity-id="${id}" value="${rowKadar.toFixed(2)}" step="0.01" ${isLocked ? 'disabled' : ''}></td>
+          <td class="total-cell jumlah-col">${rowJumlah.toFixed(2)}</td>
         </tr>`
       })
       
-      // Add Activity Button
+      // Add Buttons Row
       if (!isLocked) {
         html += `<tr><td colspan="${totalCols}">
           <div class="activity-add-row">
-            <input type="text" id="newKodAktiviti" placeholder="Kod Aktiviti" list="rateCodes">
-            <input type="text" id="newPeringkat" placeholder="Peringkat" value="1" style="width:70px;">
-            <input type="text" id="newBlok" placeholder="Blok" value="16" style="width:70px;">
-            <button class="btn btn-primary" onclick="addActivity()">➕ Tambah Aktiviti</button>
+            <input type="text" id="newKodAktiviti" placeholder="Kod Aktiviti" list="rateCodes" style="width:100px;">
+            <button class="btn btn-primary" onclick="addActivity()">➕ Tambah Kerja</button>
+            <select id="newIncentive" style="width:200px;">
+              <option value="">Pilih Insentif</option>
+              ${incentivesList.map(i => `<option value="${i.id}">${i.nama} (RM ${i.kadar})</option>`).join('')}
+            </select>
+            <button class="btn btn-info" onclick="addIncentive()">🎁 Tambah Insentif</button>
           </div>
         </td></tr>`
       }
@@ -606,10 +656,17 @@
       
       // Gaji Kasar
       html += `<tr>
+        <td style="width:160px;"></td><td style="width:100px;"></td><td style="width:120px;"></td>`
+      for (let d = 1; d <= daysInMonth; d++) html += `<td class="day-col"></td>`
+      html += `<td class="hari-col"></td><td class="kadar-col"></td>
+        <td class="summary-value jumlah-col" id="gajiKasarCell">${grandTotal.toFixed(2)}</td>
+      </tr>`
+      
+      // Gaji Kasar Label
+      html += `<tr>
         <td colspan="${3 + daysInMonth}" class="summary-label">Gaji Kasar</td>
-        <td style="width:60px;"></td>
-        <td style="width:80px;"></td>
-        <td class="summary-value" id="gajiKasarCell">${grandTotal.toFixed(2)}</td>
+        <td class="hari-col"></td><td class="kadar-col"></td>
+        <td class="summary-value jumlah-col">${grandTotal.toFixed(2)}</td>
       </tr>`
       
       // Potongan Collapse
@@ -635,9 +692,8 @@
       // Gaji Bersih
       html += `<tr>
         <td colspan="${3 + daysInMonth}" class="summary-label">Gaji Bersih</td>
-        <td></td>
-        <td></td>
-        <td class="summary-value" id="gajiBersihCell">${grandTotal.toFixed(2)}</td>
+        <td class="hari-col"></td><td class="kadar-col"></td>
+        <td class="summary-value jumlah-col" id="gajiBersihCell">${grandTotal.toFixed(2)}</td>
       </tr>`
       
       html += `</table>`
@@ -648,8 +704,18 @@
         document.querySelectorAll('.quantity-input').forEach(inp => inp.addEventListener('input', () => recalculate()))
         document.querySelectorAll('.kadar-input').forEach(inp => inp.addEventListener('input', () => recalculate()))
         document.querySelectorAll('.deduction-input').forEach(inp => inp.addEventListener('input', () => recalculate()))
-        document.querySelectorAll('.attendance-select').forEach(sel => sel.addEventListener('change', updateTotalHari))
+        document.querySelectorAll('.attendance-select').forEach(sel => sel.addEventListener('change', () => {
+          updateAttendanceHint(sel)
+          updateTotalHari()
+        }))
       }
+    }
+    
+    window.updateAttendanceHint = (select) => {
+      const wrapper = select.closest('.attendance-wrapper')
+      const hint = wrapper.querySelector('.attendance-hint')
+      const kod = select.value
+      hint.textContent = attendanceMap[kod]?.substring(0,8) || ''
     }
     
     function updateTotalHari() {
@@ -668,12 +734,12 @@
       const rate = ratesList.find(r => r.kod_aktiviti === kod)
       if (!rate) { alert('Kod Aktiviti tidak dijumpai'); return }
       
-      if (groupActivities.some(a => a.id === rate.id)) {
+      if (groupActivities.some(a => a.type === 'rate' && a.id === rate.id)) {
         alert('Aktiviti ini sudah ada')
         return
       }
       
-      groupActivities.push(rate)
+      groupActivities.push({ type: 'rate', data: rate, id: rate.id })
       
       const detailsToSave = []
       for (const worker of workersList) {
@@ -685,6 +751,7 @@
             tarikh,
             attendance_code: 'H01',
             rate_id: rate.id,
+            incentive_id: null,
             kuantiti: 0,
             kadar_asal: rate.harga,
             kadar_diguna: rate.harga
@@ -693,24 +760,69 @@
       }
       
       await supabase.from('payroll_details').upsert(detailsToSave, {
-        onConflict: 'batch_id, worker_id, tarikh, rate_id'
+        onConflict: 'batch_id, worker_id, tarikh, rate_id, incentive_id'
       })
       
       renderSlip()
       showMessage('✅ Aktiviti ditambah untuk semua pekerja', 'success')
     }
     
-    window.removeActivity = async (idx) => {
-      const activity = groupActivities[idx]
+    window.addIncentive = async () => {
+      const incentiveId = document.getElementById('newIncentive')?.value
+      if (!incentiveId) { alert('Pilih Insentif'); return }
+      
+      const incentive = incentivesList.find(i => i.id === incentiveId)
+      if (!incentive) { alert('Insentif tidak dijumpai'); return }
+      
+      if (groupActivities.some(a => a.type === 'incentive' && a.id === incentive.id)) {
+        alert('Insentif ini sudah ada')
+        return
+      }
+      
+      groupActivities.push({ type: 'incentive', data: incentive, id: incentive.id })
+      
+      const detailsToSave = []
+      for (const worker of workersList) {
+        for (let d = 1; d <= daysInMonth; d++) {
+          const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+          detailsToSave.push({
+            batch_id: currentBatchId,
+            worker_id: worker.id,
+            tarikh,
+            attendance_code: 'H01',
+            rate_id: null,
+            incentive_id: incentive.id,
+            kuantiti: 0,
+            kadar_asal: incentive.kadar,
+            kadar_diguna: incentive.kadar
+          })
+        }
+      }
+      
+      await supabase.from('payroll_details').upsert(detailsToSave, {
+        onConflict: 'batch_id, worker_id, tarikh, rate_id, incentive_id'
+      })
+      
+      renderSlip()
+      showMessage('✅ Insentif ditambah untuk semua pekerja', 'success')
+    }
+    
+    window.removeActivity = async (id, type) => {
+      const activity = groupActivities.find(a => a.id === id && a.type === type)
       if (!activity) return
       
-      groupActivities.splice(idx, 1)
+      groupActivities = groupActivities.filter(a => !(a.id === id && a.type === type))
       
-      await supabase
+      const deleteQuery = supabase
         .from('payroll_details')
         .delete()
         .eq('batch_id', currentBatchId)
-        .eq('rate_id', activity.id)
+      
+      if (type === 'rate') {
+        await deleteQuery.eq('rate_id', id)
+      } else {
+        await deleteQuery.eq('incentive_id', id)
+      }
       
       renderSlip()
       showMessage('✅ Aktiviti dibuang', 'info')
@@ -720,12 +832,13 @@
       let grandTotal = 0
       
       document.querySelectorAll('.activity-row').forEach(row => {
-        const rateId = row.dataset.rateId
+        const activityId = row.dataset.activityId
+        const activityType = row.dataset.activityType
         let rowTotal = 0
         let kadar = parseFloat(row.querySelector('.kadar-input')?.value) || 0
         
         row.querySelectorAll('.quantity-input').forEach(inp => {
-          if (inp.dataset.rateId === rateId) {
+          if (inp.dataset.activityId === activityId && inp.dataset.activityType === activityType) {
             rowTotal += parseFloat(inp.value) || 0
           }
         })
@@ -738,7 +851,8 @@
         grandTotal += jumlah
       })
       
-      document.getElementById('gajiKasarCell').textContent = grandTotal.toFixed(2)
+      const gajiKasarCells = document.querySelectorAll('#gajiKasarCell')
+      gajiKasarCells.forEach(cell => cell.textContent = grandTotal.toFixed(2))
       
       let totalDeductions = 0
       document.querySelectorAll('.deduction-input').forEach(inp => {
@@ -781,29 +895,40 @@
         const attendance = sel.value
         
         document.querySelectorAll('.activity-row').forEach(row => {
-          const rateId = row.dataset.rateId
-          const qtyInput = row.querySelector(`.quantity-input[data-tarikh="${tarikh}"]`)
+          const activityId = row.dataset.activityId
+          const activityType = row.dataset.activityType
+          const qtyInput = row.querySelector(`.quantity-input[data-tarikh="${tarikh}"][data-activity-id="${activityId}"]`)
           const kadarInput = row.querySelector('.kadar-input')
           const kuantiti = parseFloat(qtyInput?.value) || 0
           const kadarDiguna = parseFloat(kadarInput?.value) || 0
           
-          const rate = ratesList.find(r => r.id === rateId)
+          const activity = groupActivities.find(a => a.id === activityId)
+          const kadarAsal = activityType === 'rate' ? activity?.data?.harga : activity?.data?.kadar
           
-          detailsToSave.push({
+          const saveItem = {
             batch_id: currentBatchId,
             worker_id: worker.id,
             tarikh,
             attendance_code: attendance,
-            rate_id: rateId,
             kuantiti,
-            kadar_asal: rate?.harga || 0,
+            kadar_asal: kadarAsal || 0,
             kadar_diguna: kadarDiguna
-          })
+          }
+          
+          if (activityType === 'rate') {
+            saveItem.rate_id = activityId
+            saveItem.incentive_id = null
+          } else {
+            saveItem.rate_id = null
+            saveItem.incentive_id = activityId
+          }
+          
+          detailsToSave.push(saveItem)
         })
       })
       
       const { error } = await supabase.from('payroll_details').upsert(detailsToSave, {
-        onConflict: 'batch_id, worker_id, tarikh, rate_id'
+        onConflict: 'batch_id, worker_id, tarikh, rate_id, incentive_id'
       })
       
       if (error) {
