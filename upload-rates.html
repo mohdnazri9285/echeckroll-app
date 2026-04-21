@@ -1,408 +1,411 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>eCheckroll - Upload Kadar Upah</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f5f5f5; }
-        .navbar {
-            background: #1b5e20;
-            color: white;
-            padding: 15px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .navbar h1 { font-size: 22px; }
-        .nav-links { display: flex; gap: 20px; }
-        .nav-links a { color: white; text-decoration: none; }
-        .btn-logout {
-            background: #c62828;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        .container { max-width: 1400px; margin: 30px auto; padding: 0 20px; }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        .header h2 { color: #333; }
-        .controls { display: flex; gap: 10px; flex-wrap: wrap; }
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-        }
-        .btn-primary { background: #2e7d32; color: white; }
-        .btn-secondary { background: #6c757d; color: white; }
-        .btn-success { background: #28a745; color: white; }
-        .btn-warning { background: #ffc107; color: #333; }
-        .upload-area {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            border: 2px dashed #2e7d32;
-            text-align: center;
-        }
-        .upload-area input { margin: 15px 0; }
-        .filter-group {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        .filter-group select, .filter-group input {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-        }
-        .table-container {
-            background: white;
-            border-radius: 12px;
-            overflow-x: auto;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            max-height: 500px;
-            overflow-y: auto;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 1000px;
-        }
-        th, td {
-            padding: 10px 12px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-            font-size: 13px;
-        }
-        th {
-            background: #f8f9fa;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-        }
-        tr:hover { background: #f8f9fa; }
-        .editable {
-            background: #fff3cd;
-            cursor: pointer;
-        }
-        .editable:hover { background: #ffe8a1; }
-        .status-message {
-            padding: 10px;
-            border-radius: 8px;
-            margin: 15px 0;
-        }
-        .status-info { background: #d1ecf1; color: #0c5460; }
-        .status-success { background: #d4edda; color: #155724; }
-        .status-error { background: #f8d7da; color: #721c24; }
-        .loading { text-align: center; padding: 50px; color: #666; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>eCheckroll - Upload Kadar Upah</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f5f5f5; }
+    .navbar {
+      background: #1b5e20;
+      color: white;
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .navbar h1 { font-size: 22px; }
+    .nav-links { display: flex; gap: 20px; }
+    .nav-links a { color: white; text-decoration: none; }
+    .btn-logout {
+      background: #c62828;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .container { max-width: 1400px; margin: 30px auto; padding: 0 20px; }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    .header h2 { color: #333; }
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .btn-primary { background: #2e7d32; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .btn-success { background: #28a745; color: white; }
+    .upload-area {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      border: 2px dashed #2e7d32;
+      text-align: center;
+    }
+    .upload-area input { margin: 15px 0; }
+    .filter-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .filter-group select, .filter-group input {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    .table-container {
+      background: white;
+      border-radius: 12px;
+      overflow-x: auto;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1000px;
+    }
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+      font-size: 13px;
+    }
+    th {
+      background: #f8f9fa;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+    }
+    tr:hover { background: #f8f9fa; }
+    .editable {
+      background: #fff3cd;
+      cursor: pointer;
+    }
+    .editable:hover { background: #ffe8a1; }
+    .status-message {
+      padding: 10px;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+    .status-info { background: #d1ecf1; color: #0c5460; }
+    .status-success { background: #d4edda; color: #155724; }
+    .status-error { background: #f8d7da; color: #721c24; }
+    .loading { text-align: center; padding: 50px; color: #666; }
+  </style>
 </head>
 <body>
-    <div class="navbar">
-        <h1>🌴 eCheckroll - Kadar Upah</h1>
-        <div class="nav-links">
-            <a href="dashboard.html">Dashboard</a>
-            <a href="workers.html">Pekerja</a>
-            <a href="work-groups.html">Kumpulan</a>
-            <a href="incentives.html">Insentif</a>
-            <a href="upload-rates.html">Kadar Upah</a>
-        </div>
-        <button class="btn-logout" onclick="logout()">Log Keluar</button>
+  <div class="navbar">
+    <h1>🌴 eCheckroll - Kadar Upah</h1>
+    <div class="nav-links">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="workers.html">Pekerja</a>
+      <a href="work-groups.html">Kumpulan</a>
+      <a href="incentives.html">Insentif</a>
+      <a href="upload-rates.html">Kadar Upah</a>
     </div>
-
-    <div class="container">
-        <div class="header">
-            <h2>📋 Jadual Kadar Upah <span id="rancanganName"></span></h2>
-            <div class="controls">
-                <div class="filter-group">
-                    <select id="jenisKerjaFilter">
-                        <option value="">Semua Jenis Kerja</option>
-                    </select>
-                    <input type="text" id="searchInput" placeholder="🔍 Cari kod / perincian...">
-                    <button class="btn btn-secondary" onclick="loadRates()">🔄 Segar</button>
-                </div>
-            </div>
+    <button class="btn-logout" onclick="logout()">Log Keluar</button>
+  </div>
+  
+  <div class="container">
+    <div class="header">
+      <h2>📋 Jadual Kadar Upah <span id="rancanganName"></span></h2>
+      <div class="controls">
+        <div class="filter-group">
+          <select id="jenisKerjaFilter">
+            <option value="">Semua Jenis Kerja</option>
+          </select>
+          <input type="text" id="searchInput" placeholder="🔍 Cari kod / perincian...">
+          <button class="btn btn-secondary" onclick="loadRates()">🔄 Segar</button>
         </div>
-
-        <div class="upload-area">
-            <h3>📤 Upload Fail Excel/CSV Kadar Upah</h3>
-            <p style="color: #666; margin: 10px 0;">Format: Kod Aktiviti, Jenis Kerja, Perincian, Unit, Harga, Produktiviti</p>
-            <input type="file" id="csvFile" accept=".csv, .xls, .xlsx, text/csv, application/vnd.ms-excel">
-            <br>
-            <button class="btn btn-primary" id="uploadBtn">📤 Preview & Simpan</button>
-            <button class="btn btn-success" id="saveBtn" style="display: none;">💾 Simpan ke Database</button>
-        </div>
-
-        <div id="statusMessage" class="status-message" style="display: none;"></div>
-
-        <div class="table-container">
-            <table id="ratesTable">
-                <thead>
-                    <tr>
-                        <th>KOD</th>
-                        <th>JENIS KERJA</th>
-                        <th>PERINCIAN</th>
-                        <th>UNIT</th>
-                        <th>HARGA (RM)</th>
-                        <th>PRODUKTIVITI</th>
-                        <th>TINDAKAN</th>
-                    </tr>
-                </thead>
-                <tbody id="ratesTableBody">
-                    <tr><td colspan="7" class="loading">Loading...</td></tr>
-                </tbody>
-            </table>
-        </div>
+      </div>
     </div>
+    
+    <div class="upload-area">
+      <h3>📤 Upload Fail Excel/CSV Kadar Upah</h3>
+      <p style="color: #666; margin: 10px 0;">Format: Kod Aktiviti, Jenis Kerja, Perincian, Unit, Harga, Produktiviti</p>
+      <input type="file" id="csvFile" accept=".csv, .xls, .xlsx, text/csv, application/vnd.ms-excel">
+      <br>
+      <button class="btn btn-primary" id="uploadBtn">📤 Preview & Simpan</button>
+      <button class="btn btn-success" id="saveBtn" style="display: none;">💾 Simpan ke Database</button>
+    </div>
+    
+    <div id="statusMessage" class="status-message" style="display: none;"></div>
+    
+    <div class="table-container">
+      <table id="ratesTable">
+        <thead>
+          <tr>
+            <th>KOD</th>
+            <th>JENIS KERJA</th>
+            <th>PERINCIAN</th>
+            <th>UNIT</th>
+            <th>HARGA (RM)</th>
+            <th>PRODUKTIVITI</th>
+            <th>TINDAKAN</th>
+          </tr>
+        </thead>
+        <tbody id="ratesTableBody">
+          <tr><td colspan="7" class="loading">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-    <script type="module">
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-
-        const SUPABASE_URL = 'https://pkoqxybumxevmcnukiye.supabase.co'
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrb3F4eWJ1bXhldm1jbnVraXllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMzYxMDUsImV4cCI6MjA5MTgxMjEwNX0.OLcQrto5pL9o13NSaLcNFQKmJj6Z9wMsSful6NCjols'
-
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-
-        const savedUser = localStorage.getItem('echeckroll_user')
-        if (!savedUser) window.location.href = 'login.html'
-        const user = JSON.parse(savedUser)
-        const rancanganId = user.rancangan_id
-
-        let allRates = []
-        let previewData = []
-
-        document.getElementById('rancanganName').textContent = `(${user.rancangan_nama || ''})`
-
-        window.logout = async () => {
-            await supabase.auth.signOut()
-            localStorage.removeItem('echeckroll_user')
-            window.location.href = 'login.html'
-        }
-
-        async function loadRates() {
-            const tbody = document.getElementById('ratesTableBody')
-            tbody.innerHTML = '<tr><td colspan="7" class="loading">Loading...</td></tr>'
-
-            const jenisFilter = document.getElementById('jenisKerjaFilter').value
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase()
-
-            let query = supabase
-                .from('rates')
-                .select('*')
-                .eq('rancangan_id', rancanganId)
-                .order('jenis_kerja')
-                .order('kod_aktiviti')
-
-            if (jenisFilter) {
-                query = query.eq('jenis_kerja', jenisFilter)
-            }
-
-            const { data, error } = await query
-
-            if (error) {
-                tbody.innerHTML = `<tr><td colspan="7" class="loading">Error: ${error.message}</td></tr>`
-                return
-            }
-
-            allRates = data || []
-
-            // Update filter dropdown
-            const jenisSet = new Set(allRates.map(r => r.jenis_kerja).filter(Boolean))
-            const jenisSelect = document.getElementById('jenisKerjaFilter')
-            jenisSelect.innerHTML = '<option value="">Semua Jenis Kerja</option>'
-            Array.from(jenisSet).sort().forEach(j => {
-                jenisSelect.innerHTML += `<option value="${j}">${j}</option>`
-            })
-            jenisSelect.value = jenisFilter
-
-            let filteredData = allRates
-            if (searchTerm) {
-                filteredData = allRates.filter(r =>
-                    (r.kod_aktiviti || '').toLowerCase().includes(searchTerm) ||
-                    (r.perincian || '').toLowerCase().includes(searchTerm)
-                )
-            }
-
-            renderTable(filteredData)
-        }
-
-        function renderTable(data) {
-            const tbody = document.getElementById('ratesTableBody')
-
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px;">Tiada data kadar upah. Upload fail CSV/Excel.</td></tr>'
-                return
-            }
-
-            tbody.innerHTML = data.map(r => `
-                <tr>
-                    <td>${r.kod_aktiviti || '-'}</td>
-                    <td>${r.jenis_kerja || '-'}</td>
-                    <td>${r.perincian || '-'}</td>
-                    <td>${r.unit || '-'}</td>
-                    <td class="editable" onclick="editHarga('${r.id}', ${r.harga || 0})">${parseFloat(r.harga || 0).toFixed(4)}</td>
-                    <td>${parseFloat(r.produktiviti || 0).toFixed(3)}</td>
-                    <td>
-                        <button class="btn" style="padding:4px 8px; font-size:11px;" onclick="deleteRate('${r.id}')">🗑️</button>
-                    </td>
-                </tr>
-            `).join('')
-        }
-
-        window.editHarga = async (id, currentHarga) => {
-            const newHarga = prompt('Masukkan harga baru (RM):', currentHarga)
-            if (newHarga === null) return
-
-            const harga = parseFloat(newHarga)
-            if (isNaN(harga) || harga < 0) {
-                alert('Harga tidak sah')
-                return
-            }
-
-            const { error } = await supabase
-                .from('rates')
-                .update({ harga: harga })
-                .eq('id', id)
-
-            if (error) {
-                alert('Gagal kemaskini: ' + error.message)
-            } else {
-                loadRates()
-            }
-        }
-
-        window.deleteRate = async (id) => {
-            if (!confirm('Padam kadar ini?')) return
-
-            const { error } = await supabase.from('rates').delete().eq('id', id)
-            if (error) alert('Gagal padam: ' + error.message)
-            else loadRates()
-        }
-
-        function parseCSV(text) {
-            const lines = text.split('\n').filter(line => line.trim() !== '')
-            const data = []
-
-            for (let line of lines) {
-                // Skip header lines
-                if (line.includes('Lembaga Kemajuan') || line.includes('Kod Aktiviti') || line.includes('No Syarikat')) continue
-
-                const parts = line.split('\t').length > 1 ? line.split('\t') : line.split(',')
-                if (parts.length >= 6) {
-                    const kod = parts[0]?.trim()
-                    const jenis = parts[1]?.trim()
-                    const perincian = parts[2]?.trim()
-                    const unit = parts[3]?.trim()
-                    const harga = parseFloat(parts[4]?.trim())
-                    const produktiviti = parseFloat(parts[5]?.trim())
-
-                    if (kod && !isNaN(harga) && !isNaN(produktiviti)) {
-                        data.push({
-                            rancangan_id: rancanganId,
-                            kod_aktiviti: kod,
-                            jenis_kerja: jenis,
-                            perincian: perincian,
-                            unit: unit,
-                            harga: harga,
-                            produktiviti: produktiviti
-                        })
-                    }
-                }
-            }
-            return data
-        }
-
-        document.getElementById('uploadBtn').addEventListener('click', async () => {
-            const file = document.getElementById('csvFile').files[0]
-            if (!file) {
-                alert('Sila pilih fail dahulu')
-                return
-            }
-
-            const reader = new FileReader()
-            reader.onload = async (e) => {
-                const text = e.target.result
-                previewData = parseCSV(text)
-
-                if (previewData.length === 0) {
-                    showMessage('❌ Tiada data sah dalam fail', 'error')
-                    return
-                }
-
-                showMessage(`📊 ${previewData.length} rekod dijumpai. Klik "Simpan ke Database" untuk menyimpan.`, 'info')
-                document.getElementById('saveBtn').style.display = 'inline-block'
-
-                // Preview in table
-                const previewHtml = previewData.map(r => `
-                    <tr style="background:#fff3cd;">
-                        <td>${r.kod_aktiviti}</td>
-                        <td>${r.jenis_kerja}</td>
-                        <td>${r.perincian}</td>
-                        <td>${r.unit}</td>
-                        <td>${r.harga.toFixed(4)}</td>
-                        <td>${r.produktiviti.toFixed(3)}</td>
-                        <td>🆕 Baru</td>
-                    </tr>
-                `).join('')
-
-                const tbody = document.getElementById('ratesTableBody')
-                tbody.innerHTML = previewHtml + tbody.innerHTML
-            }
-            reader.readAsText(file)
-        })
-
-        document.getElementById('saveBtn').addEventListener('click', async () => {
-            if (previewData.length === 0) {
-                alert('Tiada data untuk disimpan')
-                return
-            }
-
-            showMessage('⏳ Menyimpan data...', 'info')
-
-            // Delete old rates for this rancangan? Optional - comment out if want to keep
-            // await supabase.from('rates').delete().eq('rancangan_id', rancanganId)
-
-            const { error } = await supabase.from('rates').upsert(previewData, {
-                onConflict: 'rancangan_id, kod_aktiviti, perincian'
-            })
-
-            if (error) {
-                showMessage('❌ Gagal simpan: ' + error.message, 'error')
-            } else {
-                showMessage(`✅ ${previewData.length} rekod berjaya disimpan!`, 'success')
-                document.getElementById('saveBtn').style.display = 'none'
-                previewData = []
-                document.getElementById('csvFile').value = ''
-                loadRates()
-            }
-        })
-
-        function showMessage(msg, type) {
-            const msgDiv = document.getElementById('statusMessage')
-            msgDiv.textContent = msg
-            msgDiv.className = `status-message status-${type}`
-            msgDiv.style.display = 'block'
-            setTimeout(() => msgDiv.style.display = 'none', 5000)
-        }
-
-        document.getElementById('searchInput').addEventListener('input', loadRates)
-        document.getElementById('jenisKerjaFilter').addEventListener('change', loadRates)
-
-        // Initialize
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+    
+    const SUPABASE_URL = 'https://pkoqxybumxevmcnukiye.supabase.co'
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrb3F4eWJ1bXhldm1jbnVraXllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMzYxMDUsImV4cCI6MjA5MTgxMjEwNX0.OLcQrto5pL9o13NSaLcNFQKmJj6Z9wMsSful6NCjols'
+    
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    
+    const savedUser = localStorage.getItem('echeckroll_user')
+    if (!savedUser) window.location.href = 'login.html'
+    const user = JSON.parse(savedUser)
+    const rancanganId = user.rancangan_id
+    
+    let allRates = []
+    let previewData = []
+    
+    document.getElementById('rancanganName').textContent = `(${user.rancangan_nama || ''})`
+    
+    window.logout = async () => {
+      await supabase.auth.signOut()
+      localStorage.removeItem('echeckroll_user')
+      window.location.href = 'login.html'
+    }
+    
+    async function loadRates() {
+      const tbody = document.getElementById('ratesTableBody')
+      tbody.innerHTML = '<tr><td colspan="7" class="loading">Loading...</td></tr>'
+      
+      const jenisFilter = document.getElementById('jenisKerjaFilter').value
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase()
+      
+      let query = supabase
+        .from('rates')
+        .select('*')
+        .eq('rancangan_id', rancanganId)
+        .order('jenis_kerja')
+        .order('kod_aktiviti')
+      
+      if (jenisFilter) {
+        query = query.eq('jenis_kerja', jenisFilter)
+      }
+      
+      const { data, error } = await query
+      
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="7" class="loading">Error: ${error.message}</td></tr>`
+        return
+      }
+      
+      allRates = data || []
+      
+      const jenisSet = new Set(allRates.map(r => r.jenis_kerja).filter(Boolean))
+      const jenisSelect = document.getElementById('jenisKerjaFilter')
+      jenisSelect.innerHTML = '<option value="">Semua Jenis Kerja</option>'
+      Array.from(jenisSet).sort().forEach(j => {
+        jenisSelect.innerHTML += `<option value="${j}">${j}</option>`
+      })
+      jenisSelect.value = jenisFilter
+      
+      let filteredData = allRates
+      if (searchTerm) {
+        filteredData = allRates.filter(r => 
+          (r.kod_aktiviti || '').toLowerCase().includes(searchTerm) ||
+          (r.perincian || '').toLowerCase().includes(searchTerm)
+        )
+      }
+      
+      renderTable(filteredData)
+    }
+    
+    function renderTable(data) {
+      const tbody = document.getElementById('ratesTableBody')
+      
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px;">Tiada data kadar upah. Upload fail CSV/Excel.</td></tr>'
+        return
+      }
+      
+      tbody.innerHTML = data.map(r => `
+        <tr>
+          <td>${r.kod_aktiviti || '-'}</td>
+          <td>${r.jenis_kerja || '-'}</td>
+          <td>${r.perincian || '-'}</td>
+          <td>${r.unit || '-'}</td>
+          <td class="editable" onclick="editHarga('${r.id}', ${r.harga || 0})">${parseFloat(r.harga || 0).toFixed(4)}</td>
+          <td>${parseFloat(r.produktiviti || 0).toFixed(3)}</td>
+          <td>
+            <button class="btn" style="padding:4px 8px; font-size:11px;" onclick="deleteRate('${r.id}')">🗑️</button>
+          </td>
+        </tr>
+      `).join('')
+    }
+    
+    window.editHarga = async (id, currentHarga) => {
+      const newHarga = prompt('Masukkan harga baru (RM):', currentHarga)
+      if (newHarga === null) return
+      
+      const harga = parseFloat(newHarga)
+      if (isNaN(harga) || harga < 0) {
+        alert('Harga tidak sah')
+        return
+      }
+      
+      const { error } = await supabase
+        .from('rates')
+        .update({ harga: harga })
+        .eq('id', id)
+      
+      if (error) {
+        alert('Gagal kemaskini: ' + error.message)
+      } else {
         loadRates()
-    </script>
+      }
+    }
+    
+    window.deleteRate = async (id) => {
+      if (!confirm('Padam kadar ini?')) return
+      
+      const { error } = await supabase.from('rates').delete().eq('id', id)
+      if (error) alert('Gagal padam: ' + error.message)
+      else loadRates()
+    }
+    
+    function parseCSV(text) {
+      const lines = text.split('\n').filter(line => line.trim() !== '')
+      const data = []
+      
+      const firstLine = lines[0] || ''
+      const delimiter = firstLine.includes('\t') ? '\t' : ','
+      
+      for (let line of lines) {
+        if (
+          line.includes('Lembaga Kemajuan') || 
+          line.includes('Kod Aktiviti') || 
+          line.includes('No Syarikat') ||
+          line.includes('Jadual Kadar Upah') ||
+          line.trim() === ''
+        ) continue
+        
+        const parts = line.split(delimiter).map(p => p.trim())
+        
+        if (parts.length >= 6) {
+          const kod = parts[0]
+          const jenis = parts[1]
+          const perincian = parts[2]
+          const unit = parts[3]
+          const harga = parseFloat(parts[4])
+          const produktiviti = parseFloat(parts[5])
+          
+          if (kod && kod.length > 0 && !isNaN(harga) && !isNaN(produktiviti) && harga > 0) {
+            data.push({
+              rancangan_id: rancanganId,
+              kod_aktiviti: kod,
+              jenis_kerja: jenis,
+              perincian: perincian,
+              unit: unit,
+              harga: harga,
+              produktiviti: produktiviti
+            })
+          }
+        }
+      }
+      
+      return data
+    }
+    
+    document.getElementById('uploadBtn').addEventListener('click', async () => {
+      const file = document.getElementById('csvFile').files[0]
+      if (!file) {
+        alert('Sila pilih fail dahulu')
+        return
+      }
+      
+      const reader = new FileReader()
+      reader.onload = async (e) => {
+        const text = e.target.result
+        previewData = parseCSV(text)
+        
+        if (previewData.length === 0) {
+          showMessage('❌ Tiada data sah dalam fail. Sila pastikan format betul.', 'error')
+          return
+        }
+        
+        showMessage(`📊 ${previewData.length} rekod dijumpai. Klik "Simpan ke Database" untuk menyimpan.`, 'info')
+        document.getElementById('saveBtn').style.display = 'inline-block'
+        
+        const previewHtml = previewData.slice(0, 10).map(r => `
+          <tr style="background:#fff3cd;">
+            <td>${r.kod_aktiviti}</td>
+            <td>${r.jenis_kerja}</td>
+            <td>${r.perincian}</td>
+            <td>${r.unit}</td>
+            <td>${r.harga.toFixed(4)}</td>
+            <td>${r.produktiviti.toFixed(3)}</td>
+            <td>🆕 Baru</td>
+          </tr>
+        `).join('')
+        
+        const tbody = document.getElementById('ratesTableBody')
+        tbody.innerHTML = previewHtml + `<tr><td colspan="7" style="text-align:center; color:#666;">... dan ${previewData.length - 10} lagi rekod</td></tr>` + tbody.innerHTML
+      }
+      reader.readAsText(file)
+    })
+    
+    document.getElementById('saveBtn').addEventListener('click', async () => {
+      if (previewData.length === 0) {
+        alert('Tiada data untuk disimpan')
+        return
+      }
+      
+      showMessage('⏳ Menyimpan data...', 'info')
+      
+      const { error } = await supabase.from('rates').upsert(previewData, { 
+        onConflict: 'rancangan_id, kod_aktiviti, perincian' 
+      })
+      
+      if (error) {
+        showMessage('❌ Gagal simpan: ' + error.message, 'error')
+      } else {
+        showMessage(`✅ ${previewData.length} rekod berjaya disimpan!`, 'success')
+        document.getElementById('saveBtn').style.display = 'none'
+        previewData = []
+        document.getElementById('csvFile').value = ''
+        loadRates()
+      }
+    })
+    
+    function showMessage(msg, type) {
+      const msgDiv = document.getElementById('statusMessage')
+      msgDiv.textContent = msg
+      msgDiv.className = `status-message status-${type}`
+      msgDiv.style.display = 'block'
+      setTimeout(() => msgDiv.style.display = 'none', 5000)
+    }
+    
+    document.getElementById('searchInput').addEventListener('input', loadRates)
+    document.getElementById('jenisKerjaFilter').addEventListener('change', loadRates)
+    
+    loadRates()
+  </script>
 </body>
 </html>
