@@ -127,7 +127,17 @@
       font-size: 10px;
     }
     
-    .slip-table .quantity-input { text-align: right; }
+    /* Remove spinner from number inputs */
+    .slip-table input[type="number"] {
+      -moz-appearance: textfield;
+      appearance: textfield;
+      text-align: right;
+    }
+    .slip-table input[type="number"]::-webkit-outer-spin-button,
+    .slip-table input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
     
     .weekend { background-color: #fff9c4 !important; }
     
@@ -163,60 +173,17 @@
     
     .collapse-content.show { display: block; }
     
-    .deduction-row {
-      display: grid;
-      grid-template-columns: 150px 120px;
-      gap: 10px;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-    
-    .signature-box {
-      margin-top: 20px;
-      padding: 15px;
-      background: #f8f9fa;
-      border-radius: 8px;
-    }
-    
-    .signature-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-    
-    .signature-label {
-      width: 130px;
-      font-weight: 500;
-    }
-    
-    .checkbox-group {
-      display: flex;
-      gap: 3px;
-      flex-wrap: wrap;
-      flex: 1;
-    }
-    
-    .checkbox-item {
-      display: flex;
-      align-items: center;
-      gap: 2px;
-      font-size: 9px;
-      min-width: 35px;
-    }
-    
     .activity-add-row {
       display: flex;
       gap: 5px;
       align-items: center;
-      margin-bottom: 10px;
+      margin: 10px 0;
       padding: 10px;
       background: #f0f8ff;
       border-radius: 6px;
     }
     
     .activity-add-row input { width: 80px; }
-    .activity-add-row button { padding: 4px 12px; }
     
     .delete-btn {
       background: #c62828;
@@ -226,6 +193,30 @@
       border-radius: 3px;
       cursor: pointer;
       font-size: 10px;
+      margin-left: 10px;
+    }
+    
+    .activity-text {
+      font-weight: 500;
+      color: #333;
+    }
+    
+    .deduction-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .deduction-table td {
+      padding: 4px 8px;
+      border: none;
+    }
+    
+    .deduction-table input {
+      width: 100px;
+      padding: 4px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      text-align: right;
     }
   </style>
 </head>
@@ -301,7 +292,7 @@
     let isLocked = false
     let currentUserRole = user.peranan
     let currentUserName = user.nama
-    let groupActivities = [] // Store activities for the whole group
+    let groupActivities = []
     
     window.logout = async () => {
       await supabase.auth.signOut()
@@ -328,7 +319,6 @@
     async function loadAttendanceCodes() {
       const { data } = await supabase.from('attendance_codes').select('*').order('kod')
       attendanceCodes = data || []
-      console.log('Attendance loaded:', attendanceCodes.length)
     }
     
     async function loadRates() {
@@ -386,7 +376,6 @@
         return
       }
       
-      // Load group activities from batch
       const { data: batch } = await supabase
         .from('payroll_batches')
         .select('*')
@@ -402,15 +391,12 @@
         document.getElementById('lockBtn').style.display = isLocked ? 'none' : 'inline-block'
         showMessage(isLocked ? '🔒 Batch telah dikunci' : '📂 Batch sedia ada', 'info')
         
-        // Load activities from any worker in this batch
         const { data: details } = await supabase
           .from('payroll_details')
           .select('rate_id, rates(kod_aktiviti, perincian, harga)')
           .eq('batch_id', currentBatchId)
           .not('rate_id', 'is', null)
-          .limit(1)
         
-        // Extract unique activities
         const activityMap = new Map()
         details?.forEach(d => {
           if (d.rate_id && !activityMap.has(d.rate_id)) {
@@ -457,9 +443,12 @@
       const worker = currentWorkerData.worker
       const details = currentWorkerData.details || []
       
+      // Hitung jumlah kolom
+      const totalCols = 3 + daysInMonth + 3 // 3 info + days + 3 (Hari, Kadar, Jumlah)
+      
       let html = `<table class="slip-table" id="mainSlipTable">`
       
-      // Header Row 1: Tarikh
+      // Header
       html += `<tr>
         <th>Nama Pekerja</th>
         <th>No Pekerja</th>
@@ -477,7 +466,7 @@
         <th>Jumlah (RM)</th>
       </tr>`
       
-      // Data Row: Nama & Passport
+      // Row: Nama & Passport
       html += `<tr>
         <td>${worker.nama}</td>
         <td>${worker.no_pekerja}</td>
@@ -485,7 +474,7 @@
       for (let d = 1; d <= daysInMonth; d++) html += `<td></td>`
       html += `<td></td><td></td><td></td></tr>`
       
-      // Kehadiran Row (Dropdown)
+      // Row: Kehadiran
       html += `<tr>
         <td colspan="3" class="label-cell">Kehadiran</td>`
       
@@ -509,22 +498,20 @@
       html += `<td class="total-cell" id="totalHariCell">${totalHari}</td>
         <td></td><td></td></tr>`
       
-      // Activity Rows (dynamic)
+      // Activity Rows
       let grandTotal = 0
       
       groupActivities.forEach((activity, idx) => {
-        const rateId = activity.id || activity.rate_id
-        const rate = ratesList.find(r => r.id === rateId) || activity
-        const activityDetails = details.filter(d => d.rate_id === rateId)
+        const rate = ratesList.find(r => r.id === activity.id) || activity
+        const activityDetails = details.filter(d => d.rate_id === rate.id)
         
         let rowTotalKuantiti = 0
         let rowKadar = 0
         
-        html += `<tr class="activity-row" data-rate-id="${rateId}">
-          <td colspan="3">
-            <input type="text" value="${rate.kod_aktiviti || ''}" placeholder="Kod" style="width:60px;" list="rateCodes" onchange="updateActivity(this, ${idx})" ${isLocked ? 'disabled' : ''}>
-            <span style="margin-left:5px; font-size:10px;">${rate.perincian || rate.jenis_kerja || ''}</span>
-            ${!isLocked ? `<button class="delete-btn" onclick="removeActivity(${idx})">X</button>` : ''}
+        html += `<tr class="activity-row" data-rate-id="${rate.id}">
+          <td colspan="3" class="activity-text">
+            ${rate.kod_aktiviti} - ${rate.perincian || rate.jenis_kerja}
+            ${!isLocked ? `<button class="delete-btn" onclick="removeActivity(${idx})">✕</button>` : ''}
           </td>`
         
         for (let d = 1; d <= daysInMonth; d++) {
@@ -539,7 +526,7 @@
           const isWeekend = dayName === currentWorkGroup.hari_minggu
           
           html += `<td class="${isWeekend ? 'weekend' : ''}">
-            <input type="number" class="quantity-input" data-tarikh="${tarikh}" data-rate-id="${rateId}" value="${kuantiti}" step="0.01" min="0" ${isLocked ? 'disabled' : ''}>
+            <input type="number" class="quantity-input" data-tarikh="${tarikh}" data-rate-id="${rate.id}" value="${kuantiti}" step="0.01" min="0" ${isLocked ? 'disabled' : ''}>
           </td>`
         }
         
@@ -547,16 +534,16 @@
         grandTotal += rowJumlah
         
         html += `<td class="total-cell">${rowTotalKuantiti.toFixed(2)}</td>
-          <td><input type="number" class="kadar-input" data-rate-id="${rateId}" value="${rowKadar.toFixed(2)}" step="0.01" ${isLocked ? 'disabled' : ''}></td>
+          <td><input type="number" class="kadar-input" data-rate-id="${rate.id}" value="${rowKadar.toFixed(2)}" step="0.01" ${isLocked ? 'disabled' : ''}></td>
           <td class="total-cell">${rowJumlah.toFixed(2)}</td>
         </tr>`
       })
       
       // Add Activity Button
       if (!isLocked) {
-        html += `<tr><td colspan="${6 + daysInMonth}">
+        html += `<tr><td colspan="${totalCols}">
           <div class="activity-add-row">
-            <input type="text" id="newKodAktiviti" placeholder="Kod" list="rateCodes" style="width:80px;">
+            <input type="text" id="newKodAktiviti" placeholder="Kod Aktiviti" list="rateCodes">
             <input type="text" id="newPeringkat" placeholder="Peringkat" value="1" style="width:70px;">
             <input type="text" id="newBlok" placeholder="Blok" value="16" style="width:70px;">
             <button class="btn btn-primary" onclick="addActivity()">➕ Tambah Aktiviti</button>
@@ -564,92 +551,65 @@
         </td></tr>`
       }
       
-      // Gaji Kasar
-      html += `<tr>
-        <td colspan="${3 + daysInMonth}" class="label-cell" style="text-align:right;">Gaji Kasar</td>
-        <td></td>
-        <td class="total-cell" id="gajiKasarCell">${grandTotal.toFixed(2)}</td>
-      </tr>`
-      
       html += `</table>`
       
       // Datalist
       html += `<datalist id="rateCodes">
-        ${ratesList.map(r => `<option value="${r.kod_aktiviti}">${r.perincian || r.jenis_kerja}</option>`).join('')}
+        ${ratesList.map(r => `<option value="${r.kod_aktiviti}">${r.kod_aktiviti} - ${r.perincian || r.jenis_kerja}</option>`).join('')}
       </datalist>`
       
+      // Summary Table (align dengan table atas)
+      html += `<table class="slip-table" style="margin-top:10px;">`
+      
+      // Gaji Kasar
+      html += `<tr>
+        <td colspan="${3 + daysInMonth}" class="label-cell" style="text-align:right;">Gaji Kasar</td>
+        <td style="width:60px;"></td>
+        <td style="width:80px;"></td>
+        <td class="total-cell" id="gajiKasarCell">${grandTotal.toFixed(2)}</td>
+      </tr>`
+      
       // Potongan Collapse
-      html += `<div class="collapse-header" onclick="toggleCollapse()">
-        <span>▼</span> Potongan Gaji
-      </div>
-      <div class="collapse-content" id="collapseContent">
-        <table class="slip-table">
-          <tr><td style="width:200px;">KWSP</td><td><input type="number" class="deduction-input" data-ded="KWSP" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-          <tr><td>SOCSO</td><td><input type="number" class="deduction-input" data-ded="SOCSO" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-          <tr><td>EIS</td><td><input type="number" class="deduction-input" data-ded="EIS" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-          <tr><td>Perubatan</td><td><input type="number" class="deduction-input" data-ded="Perubatan" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-          <tr><td>Elektrik</td><td><input type="number" class="deduction-input" data-ded="Elektrik" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-          <tr><td>Air</td><td><input type="number" class="deduction-input" data-ded="Air" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-          <tr><td>Pendahuluan</td><td><input type="number" class="deduction-input" data-ded="Pendahuluan" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-        </table>
-      </div>`
+      html += `<tr>
+        <td colspan="${totalCols}">
+          <div class="collapse-header" onclick="toggleCollapse()">
+            <span>▼</span> Potongan Gaji
+          </div>
+          <div class="collapse-content" id="collapseContent">
+            <table class="deduction-table">
+              <tr><td>KWSP</td><td><input type="number" class="deduction-input" data-ded="KWSP" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+              <tr><td>SOCSO</td><td><input type="number" class="deduction-input" data-ded="SOCSO" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+              <tr><td>EIS</td><td><input type="number" class="deduction-input" data-ded="EIS" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+              <tr><td>Perubatan</td><td><input type="number" class="deduction-input" data-ded="Perubatan" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+              <tr><td>Elektrik</td><td><input type="number" class="deduction-input" data-ded="Elektrik" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+              <tr><td>Air</td><td><input type="number" class="deduction-input" data-ded="Air" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+              <tr><td>Pendahuluan Gaji</td><td><input type="number" class="deduction-input" data-ded="Pendahuluan" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+            </table>
+          </div>
+        </td>
+      </tr>`
       
       // Gaji Bersih
-      html += `<table class="slip-table" style="margin-top:10px;">
-        <tr>
-          <td colspan="${3 + daysInMonth}" class="label-cell" style="text-align:right;">Gaji Bersih</td>
-          <td></td>
-          <td class="total-cell" id="gajiBersihCell">${grandTotal.toFixed(2)}</td>
-        </tr>
-      </table>`
+      html += `<tr>
+        <td colspan="${3 + daysInMonth}" class="label-cell" style="text-align:right;">Gaji Bersih</td>
+        <td></td>
+        <td></td>
+        <td class="total-cell" id="gajiBersihCell">${grandTotal.toFixed(2)}</td>
+      </tr>`
       
-      // Tandatangan
-      html += `<div class="signature-box">
-        <div class="signature-item">
-          <span class="signature-label">Disediakan (FS):</span>
-          <span style="min-width:150px;">${currentUserRole === 'fs' ? currentUserName : '-'}</span>
-          <div class="checkbox-group" id="fsCheckboxes"></div>
-        </div>
-        <div class="signature-item">
-          <span class="signature-label">Disemak (AFC):</span>
-          <span style="min-width:150px;">${currentUserRole === 'afc' ? currentUserName : '-'}</span>
-          <div class="checkbox-group" id="afcCheckboxes"></div>
-        </div>
-        <div class="signature-item">
-          <span class="signature-label">Disahkan (FC):</span>
-          <span style="min-width:150px;">${currentUserRole === 'fc' ? currentUserName : '-'}</span>
-          <div class="checkbox-group" id="fcCheckboxes"></div>
-        </div>
-      </div>`
+      html += `</table>`
       
       container.innerHTML = html
       
-      renderCheckboxes()
-      
       if (!isLocked) {
-        document.querySelectorAll('.quantity-input').forEach(inp => inp.addEventListener('input', () => recalculate(worker)))
-        document.querySelectorAll('.kadar-input').forEach(inp => inp.addEventListener('input', () => recalculate(worker)))
-        document.querySelectorAll('.deduction-input').forEach(inp => inp.addEventListener('input', () => recalculate(worker)))
-        document.querySelectorAll('.attendance-select').forEach(sel => sel.addEventListener('change', () => updateTotalHari(worker)))
+        document.querySelectorAll('.quantity-input').forEach(inp => inp.addEventListener('input', () => recalculate()))
+        document.querySelectorAll('.kadar-input').forEach(inp => inp.addEventListener('input', () => recalculate()))
+        document.querySelectorAll('.deduction-input').forEach(inp => inp.addEventListener('input', () => recalculate()))
+        document.querySelectorAll('.attendance-select').forEach(sel => sel.addEventListener('change', updateTotalHari))
       }
     }
     
-    function renderCheckboxes() {
-      ['fs', 'afc', 'fc'].forEach(role => {
-        const container = document.getElementById(`${role}Checkboxes`)
-        if (!container) return
-        let html = ''
-        for (let d = 1; d <= daysInMonth; d++) {
-          html += `<div class="checkbox-item">
-            <input type="checkbox" id="${role}_day_${d}" ${isLocked ? 'disabled' : ''}>
-            <label>${d}</label>
-          </div>`
-        }
-        container.innerHTML = html
-      })
-    }
-    
-    function updateTotalHari(worker) {
+    function updateTotalHari() {
       let totalHari = 0
       document.querySelectorAll('.attendance-select').forEach(sel => {
         if (['H01','H02','H03'].includes(sel.value)) totalHari++
@@ -657,14 +617,13 @@
       document.getElementById('totalHariCell').textContent = totalHari
     }
     
-    window.addActivity = () => {
-      const kod = document.getElementById('newKodAktiviti')?.value
+    window.addActivity = async () => {
+      const kod = document.getElementById('newKodAktiviti')?.value?.trim()
       if (!kod) { alert('Masukkan Kod Aktiviti'); return }
       
       const rate = ratesList.find(r => r.kod_aktiviti === kod)
       if (!rate) { alert('Kod Aktiviti tidak dijumpai'); return }
       
-      // Check if already exists
       if (groupActivities.some(a => a.id === rate.id)) {
         alert('Aktiviti ini sudah ada')
         return
@@ -672,15 +631,8 @@
       
       groupActivities.push(rate)
       
-      // Apply to all workers (save empty details)
-      saveActivityForAllWorkers(rate)
-      
-      renderSlip()
-    }
-    
-    async function saveActivityForAllWorkers(rate) {
+      // Save empty details for all workers
       const detailsToSave = []
-      
       for (const worker of workersList) {
         for (let d = 1; d <= daysInMonth; d++) {
           const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
@@ -700,6 +652,9 @@
       await supabase.from('payroll_details').upsert(detailsToSave, {
         onConflict: 'batch_id, worker_id, tarikh, rate_id'
       })
+      
+      renderSlip()
+      showMessage('✅ Aktiviti ditambah untuk semua pekerja', 'success')
     }
     
     window.removeActivity = async (idx) => {
@@ -708,7 +663,6 @@
       
       groupActivities.splice(idx, 1)
       
-      // Delete from all workers
       await supabase
         .from('payroll_details')
         .delete()
@@ -716,18 +670,10 @@
         .eq('rate_id', activity.id)
       
       renderSlip()
+      showMessage('✅ Aktiviti dibuang', 'info')
     }
     
-    window.updateActivity = (input, idx) => {
-      const newKod = input.value
-      const rate = ratesList.find(r => r.kod_aktiviti === newKod)
-      if (rate) {
-        groupActivities[idx] = rate
-        renderSlip()
-      }
-    }
-    
-    function recalculate(worker) {
+    function recalculate() {
       let grandTotal = 0
       
       document.querySelectorAll('.activity-row').forEach(row => {
@@ -742,8 +688,9 @@
         })
         
         const jumlah = rowTotal * kadar
-        row.querySelector('td:last-child').textContent = jumlah.toFixed(2)
-        row.querySelector('td:nth-last-child(3)').textContent = rowTotal.toFixed(2)
+        const cells = row.querySelectorAll('td')
+        cells[cells.length - 3].textContent = rowTotal.toFixed(2)
+        cells[cells.length - 1].textContent = jumlah.toFixed(2)
         
         grandTotal += jumlah
       })
@@ -825,12 +772,12 @@
     }
     
     window.lockBatch = async () => {
-      if (!confirm('Tutup urusniaga?')) return
+      if (!confirm('Tutup urusniaga? Selepas ini data tidak boleh diubah.')) return
       
       await supabase.from('payroll_batches').update({ locked: true }).eq('id', currentBatchId)
       isLocked = true
       document.getElementById('lockBtn').style.display = 'none'
-      showMessage('🔒 Batch dikunci!', 'success')
+      showMessage('🔒 Batch telah dikunci!', 'success')
       renderSlip()
     }
     
