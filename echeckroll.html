@@ -56,7 +56,7 @@
       border: none;
       border-radius: 4px;
       cursor: pointer;
-      font-weight: 500;
+      font-weight:500;
       font-size: 13px;
     }
     .btn-primary { background: #2e7d32; color: white; }
@@ -101,18 +101,44 @@
     .slip-table td {
       padding: 4px 3px;
       border: 1px solid #ddd;
-      text-align: center;
       vertical-align: middle;
+      white-space: nowrap;
     }
+    
+    /* Fixed width for info columns - 2x ganda */
+    .slip-table th:first-child,
+    .slip-table td:first-child { min-width: 160px; max-width: 200px; }
+    
+    .slip-table th:nth-child(2),
+    .slip-table td:nth-child(2) { min-width: 100px; max-width: 120px; }
+    
+    .slip-table th:nth-child(3),
+    .slip-table td:nth-child(3) { min-width: 120px; max-width: 140px; }
+    
+    /* Day columns - auto expand */
+    .slip-table .day-col { min-width: 55px; }
     
     .slip-table .label-cell {
       background: #f8f9fa;
       font-weight: 500;
       text-align: left;
-      white-space: nowrap;
     }
     
     .slip-table .total-cell {
+      background: #e8f5e9;
+      font-weight: bold;
+      text-align: right;
+      padding-right: 8px;
+    }
+    
+    .slip-table .summary-label {
+      background: #e8f5e9;
+      font-weight: bold;
+      text-align: right;
+      padding-right: 10px;
+    }
+    
+    .slip-table .summary-value {
       background: #e8f5e9;
       font-weight: bold;
       text-align: right;
@@ -127,7 +153,6 @@
       font-size: 10px;
     }
     
-    /* Remove spinner from number inputs */
     .slip-table input[type="number"] {
       -moz-appearance: textfield;
       appearance: textfield;
@@ -157,7 +182,7 @@
       cursor: pointer;
       font-weight: bold;
       border-radius: 4px;
-      margin-top: 15px;
+      margin-top: 10px;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -199,6 +224,9 @@
     .activity-text {
       font-weight: 500;
       color: #333;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     
     .deduction-table {
@@ -279,9 +307,33 @@
     const user = JSON.parse(savedUser)
     const rancanganId = user.rancangan_id
     
+    // Manual attendance codes
+    const attendanceCodes = [
+      { kod: 'H01', keterangan: 'Hadir Hari Biasa' },
+      { kod: 'H02', keterangan: 'Hadir Hari Minggu' },
+      { kod: 'H03', keterangan: 'Hadir Hari Cuti Umum' },
+      { kod: 'C02', keterangan: 'Cuti Tahunan' },
+      { kod: 'C03', keterangan: 'Cuti Sakit' },
+      { kod: 'C04', keterangan: 'Cuti Bersalin' },
+      { kod: 'C05', keterangan: 'Cuti Tanpa Gaji' },
+      { kod: 'C06', keterangan: 'Cuti Haji' },
+      { kod: 'C07', keterangan: 'Cuti Mingguan' },
+      { kod: 'C09', keterangan: 'OFF - Menunggu pulang' },
+      { kod: 'C10', keterangan: 'Cuti Sakit Wad' },
+      { kod: 'C11', keterangan: 'Cuti Bencana' },
+      { kod: 'C12', keterangan: 'Cuti Paterniti' },
+      { kod: 'C13', keterangan: 'Cuti Ehsan' },
+      { kod: 'C14', keterangan: 'Cuti Kuarantin' },
+      { kod: 'L01', keterangan: 'Rukun Tetangga' },
+      { kod: 'L02', keterangan: 'Rela/Askar Wataniah' },
+      { kod: 'L03', keterangan: 'Kesatuan' },
+      { kod: 'L04', keterangan: 'Cacat Sementara' },
+      { kod: 'L05', keterangan: 'DiGantung Kerja' },
+      { kod: 'P01', keterangan: 'Ponteng' }
+    ]
+    
     let currentBatchId = null
     let currentWorkGroup = null
-    let attendanceCodes = []
     let ratesList = []
     let workersList = []
     let daysInMonth = 30
@@ -290,8 +342,6 @@
     let currentWorkerIndex = 0
     let currentWorkerData = {}
     let isLocked = false
-    let currentUserRole = user.peranan
-    let currentUserName = user.nama
     let groupActivities = []
     
     window.logout = async () => {
@@ -301,7 +351,6 @@
     }
     
     async function init() {
-      await loadAttendanceCodes()
       await loadRates()
       await loadWorkGroups()
       populateMonthSelect()
@@ -314,11 +363,6 @@
       const months = ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis']
       const select = document.getElementById('bulanSelect')
       select.innerHTML = months.map((m, i) => `<option value="${i+1}">${m}</option>`).join('')
-    }
-    
-    async function loadAttendanceCodes() {
-      const { data } = await supabase.from('attendance_codes').select('*').order('kod')
-      attendanceCodes = data || []
     }
     
     async function loadRates() {
@@ -443,8 +487,7 @@
       const worker = currentWorkerData.worker
       const details = currentWorkerData.details || []
       
-      // Hitung jumlah kolom
-      const totalCols = 3 + daysInMonth + 3 // 3 info + days + 3 (Hari, Kadar, Jumlah)
+      const totalCols = 3 + daysInMonth + 3
       
       let html = `<table class="slip-table" id="mainSlipTable">`
       
@@ -458,7 +501,7 @@
         const date = new Date(currentYear, currentMonth-1, d)
         const dayName = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'][date.getDay()]
         const isWeekend = dayName === currentWorkGroup.hari_minggu
-        html += `<th style="${isWeekend ? 'background:#b8860b;' : ''}">${d}<br><small>${dayName}</small></th>`
+        html += `<th class="day-col" style="${isWeekend ? 'background:#b8860b;' : ''}">${d}<br><small>${dayName}</small></th>`
       }
       
       html += `<th>Jml Hari</th>
@@ -471,10 +514,10 @@
         <td>${worker.nama}</td>
         <td>${worker.no_pekerja}</td>
         <td>${worker.no_passport || '-'}</td>`
-      for (let d = 1; d <= daysInMonth; d++) html += `<td></td>`
+      for (let d = 1; d <= daysInMonth; d++) html += `<td class="day-col"></td>`
       html += `<td></td><td></td><td></td></tr>`
       
-      // Row: Kehadiran
+      // Row: Kehadiran (Manual Dropdown)
       html += `<tr>
         <td colspan="3" class="label-cell">Kehadiran</td>`
       
@@ -489,7 +532,7 @@
         const dayName = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'][date.getDay()]
         const isWeekend = dayName === currentWorkGroup.hari_minggu
         
-        html += `<td class="${isWeekend ? 'weekend' : ''}">
+        html += `<td class="day-col ${isWeekend ? 'weekend' : ''}">
           <select data-tarikh="${tarikh}" class="attendance-select" ${isLocked ? 'disabled' : ''}>
             ${attendanceCodes.map(c => `<option value="${c.kod}" ${attendance === c.kod ? 'selected' : ''}>${c.kod}</option>`).join('')}
           </select>
@@ -525,7 +568,7 @@
           const dayName = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'][date.getDay()]
           const isWeekend = dayName === currentWorkGroup.hari_minggu
           
-          html += `<td class="${isWeekend ? 'weekend' : ''}">
+          html += `<td class="day-col ${isWeekend ? 'weekend' : ''}">
             <input type="number" class="quantity-input" data-tarikh="${tarikh}" data-rate-id="${rate.id}" value="${kuantiti}" step="0.01" min="0" ${isLocked ? 'disabled' : ''}>
           </td>`
         }
@@ -558,15 +601,15 @@
         ${ratesList.map(r => `<option value="${r.kod_aktiviti}">${r.kod_aktiviti} - ${r.perincian || r.jenis_kerja}</option>`).join('')}
       </datalist>`
       
-      // Summary Table (align dengan table atas)
+      // Summary Table
       html += `<table class="slip-table" style="margin-top:10px;">`
       
       // Gaji Kasar
       html += `<tr>
-        <td colspan="${3 + daysInMonth}" class="label-cell" style="text-align:right;">Gaji Kasar</td>
+        <td colspan="${3 + daysInMonth}" class="summary-label">Gaji Kasar</td>
         <td style="width:60px;"></td>
         <td style="width:80px;"></td>
-        <td class="total-cell" id="gajiKasarCell">${grandTotal.toFixed(2)}</td>
+        <td class="summary-value" id="gajiKasarCell">${grandTotal.toFixed(2)}</td>
       </tr>`
       
       // Potongan Collapse
@@ -591,10 +634,10 @@
       
       // Gaji Bersih
       html += `<tr>
-        <td colspan="${3 + daysInMonth}" class="label-cell" style="text-align:right;">Gaji Bersih</td>
+        <td colspan="${3 + daysInMonth}" class="summary-label">Gaji Bersih</td>
         <td></td>
         <td></td>
-        <td class="total-cell" id="gajiBersihCell">${grandTotal.toFixed(2)}</td>
+        <td class="summary-value" id="gajiBersihCell">${grandTotal.toFixed(2)}</td>
       </tr>`
       
       html += `</table>`
@@ -614,7 +657,8 @@
       document.querySelectorAll('.attendance-select').forEach(sel => {
         if (['H01','H02','H03'].includes(sel.value)) totalHari++
       })
-      document.getElementById('totalHariCell').textContent = totalHari
+      const cell = document.getElementById('totalHariCell')
+      if (cell) cell.textContent = totalHari
     }
     
     window.addActivity = async () => {
@@ -631,7 +675,6 @@
       
       groupActivities.push(rate)
       
-      // Save empty details for all workers
       const detailsToSave = []
       for (const worker of workersList) {
         for (let d = 1; d <= daysInMonth; d++) {
