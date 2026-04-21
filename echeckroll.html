@@ -106,7 +106,6 @@
       white-space: nowrap;
     }
     
-    /* Fixed width for all columns */
     .slip-table th:first-child,
     .slip-table td:first-child { width: 160px; max-width: 160px; }
     
@@ -116,10 +115,8 @@
     .slip-table th:nth-child(3),
     .slip-table td:nth-child(3) { width: 120px; max-width: 120px; }
     
-    /* Day columns - all same width */
     .slip-table .day-col { width: 60px; min-width: 60px; max-width: 60px; }
     
-    /* Result columns */
     .slip-table .hari-col { width: 60px; }
     .slip-table .kadar-col { width: 80px; }
     .slip-table .jumlah-col { width: 90px; }
@@ -168,6 +165,11 @@
     .slip-table input[type="number"]::-webkit-inner-spin-button {
       -webkit-appearance: none;
       margin: 0;
+    }
+    
+    .slip-table input.blank-input::placeholder {
+      color: #ccc;
+      font-size: 9px;
     }
     
     .weekend { background-color: #fff9c4 !important; }
@@ -254,17 +256,11 @@
       text-align: right;
     }
     
-    .attendance-wrapper {
-      display: flex;
-      align-items: center;
-      gap: 2px;
-    }
-    
-    .attendance-wrapper select { width: 55px; }
-    .attendance-hint {
-      font-size: 8px;
+    .attendance-hint-row {
+      font-size: 9px;
       color: #666;
-      white-space: nowrap;
+      text-align: center;
+      background: #fafafa;
     }
   </style>
 </head>
@@ -327,32 +323,30 @@
     const user = JSON.parse(savedUser)
     const rancanganId = user.rancangan_id
     
-    // Manual attendance codes with lookup
     const attendanceCodes = [
-      { kod: 'H01', keterangan: 'Hadir Hari Biasa' },
-      { kod: 'H02', keterangan: 'Hadir Hari Minggu' },
-      { kod: 'H03', keterangan: 'Hadir Hari Cuti Umum' },
+      { kod: 'H01', keterangan: 'Hadir Biasa' },
+      { kod: 'H02', keterangan: 'Hadir Minggu' },
+      { kod: 'H03', keterangan: 'Hadir Cuti Umum' },
       { kod: 'C02', keterangan: 'Cuti Tahunan' },
       { kod: 'C03', keterangan: 'Cuti Sakit' },
       { kod: 'C04', keterangan: 'Cuti Bersalin' },
       { kod: 'C05', keterangan: 'Cuti Tanpa Gaji' },
       { kod: 'C06', keterangan: 'Cuti Haji' },
       { kod: 'C07', keterangan: 'Cuti Mingguan' },
-      { kod: 'C09', keterangan: 'OFF - Menunggu pulang' },
-      { kod: 'C10', keterangan: 'Cuti Sakit Wad' },
+      { kod: 'C09', keterangan: 'OFF' },
+      { kod: 'C10', keterangan: 'Sakit Wad' },
       { kod: 'C11', keterangan: 'Cuti Bencana' },
-      { kod: 'C12', keterangan: 'Cuti Paterniti' },
+      { kod: 'C12', keterangan: 'Paterniti' },
       { kod: 'C13', keterangan: 'Cuti Ehsan' },
-      { kod: 'C14', keterangan: 'Cuti Kuarantin' },
+      { kod: 'C14', keterangan: 'Kuarantin' },
       { kod: 'L01', keterangan: 'Rukun Tetangga' },
-      { kod: 'L02', keterangan: 'Rela/Askar Wataniah' },
+      { kod: 'L02', keterangan: 'Rela' },
       { kod: 'L03', keterangan: 'Kesatuan' },
-      { kod: 'L04', keterangan: 'Cacat Sementara' },
-      { kod: 'L05', keterangan: 'DiGantung Kerja' },
+      { kod: 'L04', keterangan: 'Cacat' },
+      { kod: 'L05', keterangan: 'Gantung' },
       { kod: 'P01', keterangan: 'Ponteng' }
     ]
     
-    // Build lookup map
     const attendanceMap = Object.fromEntries(attendanceCodes.map(c => [c.kod, c.keterangan]))
     
     let currentBatchId = null
@@ -396,12 +390,19 @@
     }
     
     async function loadIncentives() {
+      const bulan = parseInt(document.getElementById('bulanSelect')?.value) || currentMonth
+      const tahun = parseInt(document.getElementById('tahunInput')?.value) || currentYear
+      
       const { data } = await supabase
         .from('incentives')
         .select('*')
         .eq('rancangan_id', rancanganId)
-        .eq('status', 'AKTIF')
+        .eq('bulan', bulan)
+        .eq('tahun', tahun)
+        .eq('locked', false)
+      
       incentivesList = data || []
+      console.log('Incentives loaded:', incentivesList.length, 'for', bulan, tahun)
     }
     
     async function loadWorkGroups() {
@@ -439,6 +440,8 @@
       currentMonth = bulan
       currentYear = tahun
       daysInMonth = new Date(tahun, bulan, 0).getDate()
+      
+      await loadIncentives()
       
       const select = document.getElementById('workGroupSelect')
       currentWorkGroup = {
@@ -554,7 +557,20 @@
       for (let d = 1; d <= daysInMonth; d++) html += `<td class="day-col"></td>`
       html += `<td class="hari-col"></td><td class="kadar-col"></td><td class="jumlah-col"></td></tr>`
       
-      // Row: Kehadiran
+      // Row: Kehadiran Hint (sebaris dengan nama)
+      html += `<tr class="attendance-hint-row">
+        <td colspan="3" style="text-align:right; padding-right:10px;">Kod Kehadiran:</td>`
+      
+      for (let d = 1; d <= daysInMonth; d++) {
+        const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+        const dayData = details.find(dt => dt.tarikh === tarikh) || {}
+        const attendance = dayData.attendance_code || 'H01'
+        
+        html += `<td class="day-col attendance-hint-cell" data-tarikh="${tarikh}">${attendanceMap[attendance] || ''}</td>`
+      }
+      html += `<td class="hari-col"></td><td class="kadar-col"></td><td class="jumlah-col"></td></tr>`
+      
+      // Row: Kehadiran Dropdown
       html += `<tr>
         <td colspan="3" class="label-cell">Kehadiran</td>`
       
@@ -570,12 +586,9 @@
         const isWeekend = dayName === currentWorkGroup.hari_minggu
         
         html += `<td class="day-col ${isWeekend ? 'weekend' : ''}">
-          <div class="attendance-wrapper">
-            <select data-tarikh="${tarikh}" class="attendance-select" onchange="updateAttendanceHint(this)" ${isLocked ? 'disabled' : ''}>
-              ${attendanceCodes.map(c => `<option value="${c.kod}" ${attendance === c.kod ? 'selected' : ''}>${c.kod}</option>`).join('')}
-            </select>
-            <span class="attendance-hint">${attendanceMap[attendance]?.substring(0,6) || ''}</span>
-          </div>
+          <select data-tarikh="${tarikh}" class="attendance-select" onchange="updateHintCell(this)" ${isLocked ? 'disabled' : ''}>
+            ${attendanceCodes.map(c => `<option value="${c.kod}" ${attendance === c.kod ? 'selected' : ''}>${c.kod}</option>`).join('')}
+          </select>
         </td>`
       }
       html += `<td class="total-cell hari-col" id="totalHariCell">${totalHari}</td>
@@ -607,8 +620,8 @@
         for (let d = 1; d <= daysInMonth; d++) {
           const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
           const dayData = activityDetails.find(dt => dt.tarikh === tarikh) || {}
-          const kuantiti = dayData.kuantiti || 0
-          rowTotalKuantiti += parseFloat(kuantiti)
+          const kuantiti = dayData.kuantiti || ''
+          rowTotalKuantiti += parseFloat(kuantiti) || 0
           rowKadar = dayData.kadar_diguna || harga || 0
           
           const date = new Date(currentYear, currentMonth-1, d)
@@ -616,7 +629,7 @@
           const isWeekend = dayName === currentWorkGroup.hari_minggu
           
           html += `<td class="day-col ${isWeekend ? 'weekend' : ''}">
-            <input type="number" class="quantity-input" data-tarikh="${tarikh}" data-activity-id="${id}" data-activity-type="${activity.type}" value="${kuantiti}" step="0.01" min="0" ${isLocked ? 'disabled' : ''}>
+            <input type="number" class="quantity-input blank-input" data-tarikh="${tarikh}" data-activity-id="${id}" data-activity-type="${activity.type}" value="${kuantiti}" step="0.01" min="0" placeholder="0" ${isLocked ? 'disabled' : ''}>
           </td>`
         }
         
@@ -635,7 +648,7 @@
           <div class="activity-add-row">
             <input type="text" id="newKodAktiviti" placeholder="Kod Aktiviti" list="rateCodes" style="width:100px;">
             <button class="btn btn-primary" onclick="addActivity()">➕ Tambah Kerja</button>
-            <select id="newIncentive" style="width:200px;">
+            <select id="newIncentive" style="width:220px;">
               <option value="">Pilih Insentif</option>
               ${incentivesList.map(i => `<option value="${i.id}">${i.nama} (RM ${i.kadar})</option>`).join('')}
             </select>
@@ -662,14 +675,13 @@
         <td class="summary-value jumlah-col" id="gajiKasarCell">${grandTotal.toFixed(2)}</td>
       </tr>`
       
-      // Gaji Kasar Label
       html += `<tr>
         <td colspan="${3 + daysInMonth}" class="summary-label">Gaji Kasar</td>
         <td class="hari-col"></td><td class="kadar-col"></td>
         <td class="summary-value jumlah-col">${grandTotal.toFixed(2)}</td>
       </tr>`
       
-      // Potongan Collapse
+      // Potongan
       html += `<tr>
         <td colspan="${totalCols}">
           <div class="collapse-header" onclick="toggleCollapse()">
@@ -677,13 +689,13 @@
           </div>
           <div class="collapse-content" id="collapseContent">
             <table class="deduction-table">
-              <tr><td>KWSP</td><td><input type="number" class="deduction-input" data-ded="KWSP" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-              <tr><td>SOCSO</td><td><input type="number" class="deduction-input" data-ded="SOCSO" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-              <tr><td>EIS</td><td><input type="number" class="deduction-input" data-ded="EIS" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-              <tr><td>Perubatan</td><td><input type="number" class="deduction-input" data-ded="Perubatan" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-              <tr><td>Elektrik</td><td><input type="number" class="deduction-input" data-ded="Elektrik" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-              <tr><td>Air</td><td><input type="number" class="deduction-input" data-ded="Air" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
-              <tr><td>Pendahuluan Gaji</td><td><input type="number" class="deduction-input" data-ded="Pendahuluan" value="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+              <tr><td>KWSP</td><td><input type="number" class="deduction-input" data-ded="KWSP" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+              <tr><td>SOCSO</td><td><input type="number" class="deduction-input" data-ded="SOCSO" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+              <tr><td>EIS</td><td><input type="number" class="deduction-input" data-ded="EIS" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+              <tr><td>Perubatan</td><td><input type="number" class="deduction-input" data-ded="Perubatan" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+              <tr><td>Elektrik</td><td><input type="number" class="deduction-input" data-ded="Elektrik" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+              <tr><td>Air</td><td><input type="number" class="deduction-input" data-ded="Air" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
+              <tr><td>Pendahuluan Gaji</td><td><input type="number" class="deduction-input" data-ded="Pendahuluan" value="" placeholder="0.00" step="0.01" ${isLocked ? 'disabled' : ''}></td></tr>
             </table>
           </div>
         </td>
@@ -705,17 +717,19 @@
         document.querySelectorAll('.kadar-input').forEach(inp => inp.addEventListener('input', () => recalculate()))
         document.querySelectorAll('.deduction-input').forEach(inp => inp.addEventListener('input', () => recalculate()))
         document.querySelectorAll('.attendance-select').forEach(sel => sel.addEventListener('change', () => {
-          updateAttendanceHint(sel)
+          updateHintCell(sel)
           updateTotalHari()
         }))
       }
     }
     
-    window.updateAttendanceHint = (select) => {
-      const wrapper = select.closest('.attendance-wrapper')
-      const hint = wrapper.querySelector('.attendance-hint')
-      const kod = select.value
-      hint.textContent = attendanceMap[kod]?.substring(0,8) || ''
+    window.updateHintCell = (select) => {
+      const td = select.closest('td')
+      const tarikh = select.dataset.tarikh
+      const hintCell = document.querySelector(`.attendance-hint-cell[data-tarikh="${tarikh}"]`)
+      if (hintCell) {
+        hintCell.textContent = attendanceMap[select.value] || ''
+      }
     }
     
     function updateTotalHari() {
@@ -808,9 +822,6 @@
     }
     
     window.removeActivity = async (id, type) => {
-      const activity = groupActivities.find(a => a.id === id && a.type === type)
-      if (!activity) return
-      
       groupActivities = groupActivities.filter(a => !(a.id === id && a.type === type))
       
       const deleteQuery = supabase
