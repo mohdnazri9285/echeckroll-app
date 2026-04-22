@@ -352,8 +352,6 @@
     let editMode = false
     
     const workerDataCache = new Map()
-    
-    // Storage key untuk last batch
     const LAST_BATCH_KEY = `echeckroll_last_batch_${rancanganId}`
     
     window.logout = async () => {
@@ -370,7 +368,6 @@
       document.getElementById('bulanSelect').value = currentMonth
       document.getElementById('tahunInput').value = currentYear
       
-      // Auto-load last batch if exists
       await autoLoadLastBatch()
     }
     
@@ -380,8 +377,6 @@
       
       try {
         const { workGroupId, bulan, tahun } = JSON.parse(lastBatch)
-        
-        // Check if work group still exists
         const { data } = await supabase
           .from('work_groups')
           .select('id')
@@ -392,8 +387,6 @@
           document.getElementById('workGroupSelect').value = workGroupId
           document.getElementById('bulanSelect').value = bulan
           document.getElementById('tahunInput').value = tahun
-          
-          // Auto-load the batch
           await loadBatch()
         } else {
           localStorage.removeItem(LAST_BATCH_KEY)
@@ -467,7 +460,6 @@
       
       if (!workGroupId) { alert('Sila pilih Kumpulan Kerja'); return }
       
-      // Save last batch
       saveLastBatch(workGroupId, bulan, tahun)
       
       currentMonth = bulan
@@ -505,11 +497,12 @@
         document.getElementById('lockBtn').style.display = isLocked ? 'none' : 'inline-block'
         showMessage(isLocked ? '🔒 Batch telah dikunci' : '📂 Batch sedia ada', 'info')
         
+        // Fixed query - without manual_activity in or clause
         const { data: details } = await supabase
           .from('payroll_details')
           .select('rate_id, rates(kod_aktiviti, perincian, harga), incentive_id, incentives(nama, kadar), manual_activity')
           .eq('batch_id', currentBatchId)
-          .or('rate_id.not.is.null,incentive_id.not.is.null,manual_activity.not.is.null')
+          .or('rate_id.not.is.null,incentive_id.not.is.null')
         
         const activityMap = new Map()
         details?.forEach(d => {
@@ -520,7 +513,7 @@
           } else if (d.manual_activity) {
             activityMap.set(`manual_${d.manual_activity}`, { 
               type: 'manual', 
-              data: { name: d.manual_activity, harga: d.kadar_diguna }, 
+              data: { name: d.manual_activity, harga: 65.39 }, 
               id: d.manual_activity 
             })
           }
@@ -541,10 +534,8 @@
       }
       
       workerDataCache.clear()
-      
       await loadWorkerData(workersList[0].id)
       
-      // Update UI buttons
       editMode = false
       updateButtons()
     }
@@ -605,7 +596,6 @@
       
       let html = `<table class="slip-table" id="mainSlipTable">`
       
-      // Header
       html += `<tr>
         <th>Nama Pekerja</th>
         <th>No Pekerja</th>
@@ -623,7 +613,6 @@
         <th class="jumlah-col">Jumlah (RM)</th>
       </tr>`
       
-      // Row: Nama & Passport
       html += `<tr>
         <td>${worker.nama}</td>
         <td>${worker.no_pekerja}</td>
@@ -631,7 +620,6 @@
       for (let d = 1; d <= daysInMonth; d++) html += `<td class="day-col"></td>`
       html += `<td class="hari-col"></td><td class="kadar-col"></td><td class="jumlah-col"></td></tr>`
       
-      // Row: Kehadiran Hint
       html += `<tr class="attendance-hint-row">
         <td colspan="3" style="text-align:right; padding-right:10px;">Kod Kehadiran:</td>`
       
@@ -645,7 +633,6 @@
       }
       html += `<td class="hari-col"></td><td class="kadar-col"></td><td class="jumlah-col"></td></tr>`
       
-      // Row: Kehadiran Dropdown
       html += `<tr>
         <td colspan="3" class="label-cell">Kehadiran</td>`
       
@@ -669,7 +656,6 @@
       html += `<td class="total-cell hari-col" id="totalHariCell">${totalHari}</td>
         <td class="kadar-col"></td><td class="jumlah-col"></td></tr>`
       
-      // Activity Rows
       let grandTotal = 0
       
       groupActivities.forEach((activity, idx) => {
@@ -771,13 +757,13 @@
       
       <div class="collapse-content" id="collapseContent">
         <table class="deduction-table">
-          <tr><td style="width:150px;">KWSP</td><td><input type="number" class="deduction-input" data-ded="KWSP" value="" placeholder="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
-          <tr><td>SOCSO</td><td><input type="number" class="deduction-input" data-ded="SOCSO" value="" placeholder="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
-          <tr><td>EIS</td><td><input type="number" class="deduction-input" data-ded="EIS" value="" placeholder="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
-          <tr><td>Perubatan</td><td><input type="number" class="deduction-input" data-ded="Perubatan" value="" placeholder="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
-          <tr><td>Elektrik</td><td><input type="number" class="deduction-input" data-ded="Elektrik" value="" placeholder="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
-          <tr><td>Air</td><td><input type="number" class="deduction-input" data-ded="Air" value="" placeholder="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
-          <tr><td>Pendahuluan Gaji</td><td><input type="number" class="deduction-input" data-ded="Pendahuluan" value="" placeholder="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
+          <tr><td style="width:150px;">KWSP</td><td><input type="number" class="deduction-input" data-ded="KWSP" value="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
+          <tr><td>SOCSO</td><td><input type="number" class="deduction-input" data-ded="SOCSO" value="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
+          <tr><td>EIS</td><td><input type="number" class="deduction-input" data-ded="EIS" value="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
+          <tr><td>Perubatan</td><td><input type="number" class="deduction-input" data-ded="Perubatan" value="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
+          <tr><td>Elektrik</td><td><input type="number" class="deduction-input" data-ded="Elektrik" value="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
+          <tr><td>Air</td><td><input type="number" class="deduction-input" data-ded="Air" value="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
+          <tr><td>Pendahuluan Gaji</td><td><input type="number" class="deduction-input" data-ded="Pendahuluan" value="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
         </table>
       </div>
       
@@ -812,9 +798,7 @@
     window.updateHintCell = (select) => {
       const tarikh = select.dataset.tarikh
       const hintCell = document.querySelector(`.attendance-hint-cell[data-tarikh="${tarikh}"]`)
-      if (hintCell) {
-        hintCell.textContent = attendanceMap[select.value]?.keterangan || ''
-      }
+      if (hintCell) hintCell.textContent = attendanceMap[select.value]?.keterangan || ''
     }
     
     function updateTotalHari() {
@@ -909,17 +893,13 @@
       document.querySelectorAll('#gajiKasarCell').forEach(cell => cell.textContent = grandTotal.toFixed(2))
       
       let totalDeductions = 0
-      document.querySelectorAll('.deduction-input').forEach(inp => {
-        totalDeductions += parseFloat(inp.value) || 0
-      })
+      document.querySelectorAll('.deduction-input').forEach(inp => totalDeductions += parseFloat(inp.value) || 0)
       
       const gajiBersih = grandTotal - totalDeductions
       document.querySelectorAll('#gajiBersihCell, #gajiBersihCell2').forEach(cell => cell.textContent = gajiBersih.toFixed(2))
     }
     
-    window.toggleCollapse = () => {
-      document.getElementById('collapseContent').classList.toggle('show')
-    }
+    window.toggleCollapse = () => document.getElementById('collapseContent').classList.toggle('show')
     
     window.prevWorker = () => {
       if (currentWorkerIndex > 0) {
@@ -944,11 +924,7 @@
     
     function saveCurrentWorkerToCache() {
       if (!currentWorkerData.worker) return
-      
-      if (editMode) {
-        collectFormData()
-      }
-      
+      if (editMode) collectFormData()
       workerDataCache.set(currentWorkerData.worker.id, currentWorkerData)
     }
     
@@ -958,9 +934,7 @@
       
       const details = []
       const attendanceMap2 = {}
-      document.querySelectorAll('.attendance-select').forEach(sel => {
-        attendanceMap2[sel.dataset.tarikh] = sel.value
-      })
+      document.querySelectorAll('.attendance-select').forEach(sel => attendanceMap2[sel.dataset.tarikh] = sel.value)
       
       document.querySelectorAll('.activity-row').forEach(row => {
         const activityId = row.dataset.activityId
@@ -1012,8 +986,14 @@
       if (!currentWorkerData.worker) { alert('Tiada pekerja dipilih'); return }
       
       collectFormData()
-      
       const detailsToSave = currentWorkerData.details
+      
+      console.log('💾 Saving', detailsToSave.length, 'items for worker', currentWorkerData.worker.nama)
+      
+      if (detailsToSave.length === 0) {
+        showMessage('⚠️ Tiada data untuk disimpan', 'info')
+        return
+      }
       
       await supabase
         .from('payroll_details')
@@ -1021,15 +1001,14 @@
         .eq('batch_id', currentBatchId)
         .eq('worker_id', currentWorkerData.worker.id)
       
-      if (detailsToSave.length > 0) {
-        const { error } = await supabase
-          .from('payroll_details')
-          .insert(detailsToSave)
-        
-        if (error) {
-          showMessage('❌ Gagal simpan: ' + error.message, 'error')
-          return
-        }
+      const { error } = await supabase
+        .from('payroll_details')
+        .insert(detailsToSave)
+      
+      if (error) {
+        console.error('❌ Insert error:', error)
+        showMessage('❌ Gagal simpan: ' + error.message, 'error')
+        return
       }
       
       workerDataCache.set(currentWorkerData.worker.id, currentWorkerData)
