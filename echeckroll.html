@@ -7,261 +7,59 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; }
-    .navbar {
-      background: #1b5e20;
-      color: white;
-      padding: 12px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+    .navbar { background: #1b5e20; color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
     .navbar h1 { font-size: 20px; }
     .nav-links { display: flex; gap: 15px; }
     .nav-links a { color: white; text-decoration: none; font-size: 14px; }
-    .btn-logout {
-      background: #c62828;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
+    .btn-logout { background: #c62828; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
     .container { max-width: 100%; margin: 15px; }
-    
-    .control-panel {
-      background: white;
-      border-radius: 8px;
-      padding: 15px;
-      margin-bottom: 15px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-    .control-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+    .control-panel { background: white; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .control-group { display: flex; align-items: center; gap: 8px; }
     .control-group label { font-weight: 500; font-size: 13px; }
-    .control-group select, .control-group input {
-      padding: 6px 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 13px;
-    }
-    .btn {
-      padding: 6px 12px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 500;
-      font-size: 13px;
-    }
+    .control-group select, .control-group input { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+    .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 13px; }
     .btn-primary { background: #2e7d32; color: white; }
     .btn-secondary { background: #6c757d; color: white; }
     .btn-success { background: #28a745; color: white; }
     .btn-danger { background: #c62828; color: white; }
     .btn-info { background: #17a2b8; color: white; }
     .btn-warning { background: #ffc107; color: #333; }
-    
-    .worker-nav {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      margin-left: auto;
-    }
+    .worker-nav { display: flex; align-items: center; gap: 15px; margin-left: auto; }
     .worker-nav select { min-width: 250px; }
-    
-    .slip-container {
-      background: white;
-      border-radius: 8px;
-      padding: 20px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      margin-bottom: 20px;
-      overflow-x: auto;
-    }
-    
-    .slip-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 11px;
-      min-width: 1400px;
-      table-layout: fixed;
-    }
-    
-    .slip-table th {
-      background: #2e7d32;
-      color: white;
-      padding: 6px 3px;
-      text-align: center;
-      border: 1px solid #1b5e20;
-      white-space: nowrap;
-    }
-    
-    .slip-table td {
-      padding: 4px 3px;
-      border: 1px solid #ddd;
-      vertical-align: middle;
-      white-space: nowrap;
-    }
-    
-    .slip-table th:first-child,
-    .slip-table td:first-child { width: 160px; max-width: 160px; }
-    
-    .slip-table th:nth-child(2),
-    .slip-table td:nth-child(2) { width: 100px; max-width: 100px; }
-    
-    .slip-table th:nth-child(3),
-    .slip-table td:nth-child(3) { width: 120px; max-width: 120px; }
-    
+    .slip-container { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; overflow-x: auto; }
+    .slip-table { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 1400px; table-layout: fixed; }
+    .slip-table th { background: #2e7d32; color: white; padding: 6px 3px; text-align: center; border: 1px solid #1b5e20; white-space: nowrap; }
+    .slip-table td { padding: 4px 3px; border: 1px solid #ddd; vertical-align: middle; white-space: nowrap; }
+    .slip-table th:first-child, .slip-table td:first-child { width: 160px; max-width: 160px; }
+    .slip-table th:nth-child(2), .slip-table td:nth-child(2) { width: 100px; max-width: 100px; }
+    .slip-table th:nth-child(3), .slip-table td:nth-child(3) { width: 120px; max-width: 120px; }
     .slip-table .day-col { width: 60px; min-width: 60px; max-width: 60px; }
-    
     .slip-table .hari-col { width: 60px; }
     .slip-table .kadar-col { width: 80px; }
     .slip-table .jumlah-col { width: 90px; }
-    
-    .slip-table .label-cell {
-      background: #f8f9fa;
-      font-weight: 500;
-      text-align: left;
-    }
-    
-    .slip-table .total-cell {
-      background: #e8f5e9;
-      font-weight: bold;
-      text-align: right;
-      padding-right: 8px;
-    }
-    
-    .slip-table .summary-label {
-      background: #e8f5e9;
-      font-weight: bold;
-      text-align: right;
-      padding-right: 10px;
-    }
-    
-    .slip-table .summary-value {
-      background: #e8f5e9;
-      font-weight: bold;
-      text-align: right;
-      padding-right: 8px;
-    }
-    
-    .slip-table input, .slip-table select {
-      width: 100%;
-      padding: 3px;
-      border: 1px solid #ccc;
-      border-radius: 3px;
-      font-size: 10px;
-    }
-    
-    .slip-table input[type="number"] {
-      -moz-appearance: textfield;
-      appearance: textfield;
-      text-align: right;
-    }
-    .slip-table input[type="number"]::-webkit-outer-spin-button,
-    .slip-table input[type="number"]::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-    
-    .slip-table input:disabled, .slip-table select:disabled {
-      background: #f5f5f5;
-      color: #333;
-      border-color: #ddd;
-    }
-    
+    .slip-table .label-cell { background: #f8f9fa; font-weight: 500; text-align: left; }
+    .slip-table .total-cell { background: #e8f5e9; font-weight: bold; text-align: right; padding-right: 8px; }
+    .slip-table .summary-label { background: #e8f5e9; font-weight: bold; text-align: right; padding-right: 10px; }
+    .slip-table .summary-value { background: #e8f5e9; font-weight: bold; text-align: right; padding-right: 8px; }
+    .slip-table input, .slip-table select { width: 100%; padding: 3px; border: 1px solid #ccc; border-radius: 3px; font-size: 10px; }
+    .slip-table input[type="number"] { -moz-appearance: textfield; appearance: textfield; text-align: right; }
+    .slip-table input[type="number"]::-webkit-outer-spin-button, .slip-table input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .slip-table input:disabled, .slip-table select:disabled { background: #f5f5f5; color: #333; border-color: #ddd; }
     .weekend { background-color: #fff9c4 !important; }
-    
-    .status-message {
-      padding: 8px 15px;
-      border-radius: 4px;
-      margin-bottom: 10px;
-      font-size: 13px;
-    }
+    .status-message { padding: 8px 15px; border-radius: 4px; margin-bottom: 10px; font-size: 13px; }
     .status-info { background: #d1ecf1; color: #0c5460; }
     .status-success { background: #d4edda; color: #155724; }
     .status-error { background: #f8d7da; color: #721c24; }
-    
-    .collapse-header {
-      background: #e8f5e9;
-      padding: 8px 10px;
-      cursor: pointer;
-      font-weight: bold;
-      border-radius: 4px;
-      margin-top: 10px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    
-    .collapse-content {
-      display: none;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      margin-top: 5px;
-    }
-    
+    .collapse-header { background: #e8f5e9; padding: 8px 10px; cursor: pointer; font-weight: bold; border-radius: 4px; margin-top: 10px; display: flex; align-items: center; gap: 10px; }
+    .collapse-content { display: none; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px; }
     .collapse-content.show { display: block; }
-    
-    .activity-add-row {
-      display: flex;
-      gap: 5px;
-      align-items: center;
-      margin: 10px 0;
-      padding: 10px;
-      background: #f0f8ff;
-      border-radius: 6px;
-      flex-wrap: wrap;
-    }
-    
-    .delete-btn {
-      background: #c62828;
-      color: white;
-      border: none;
-      padding: 2px 6px;
-      border-radius: 3px;
-      cursor: pointer;
-      font-size: 10px;
-      margin-left: 10px;
-    }
-    
-    .activity-text {
-      font-weight: 500;
-      color: #333;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    
-    .deduction-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    
-    .deduction-table td {
-      padding: 4px 8px;
-      border: none;
-    }
-    
-    .deduction-table input {
-      width: 100px;
-      padding: 4px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      text-align: right;
-    }
-    
-    .attendance-hint-row {
-      font-size: 9px;
-      color: #666;
-      text-align: center;
-      background: #fafafa;
-    }
+    .activity-add-row { display: flex; gap: 5px; align-items: center; margin: 10px 0; padding: 10px; background: #f0f8ff; border-radius: 6px; flex-wrap: wrap; }
+    .delete-btn { background: #c62828; color: white; border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-size: 10px; margin-left: 10px; }
+    .activity-text { font-weight: 500; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .deduction-table { width: 100%; border-collapse: collapse; }
+    .deduction-table td { padding: 4px 8px; border: none; }
+    .deduction-table input { width: 100px; padding: 4px; border: 1px solid #ccc; border-radius: 4px; text-align: right; }
+    .attendance-hint-row { font-size: 9px; color: #666; text-align: center; background: #fafafa; }
   </style>
 </head>
 <body>
@@ -336,708 +134,283 @@
     
     const attendanceMap = Object.fromEntries(attendanceCodes.map(c => [c.kod, c]))
     
-    let currentBatchId = null
-    let currentWorkGroup = null
-    let ratesList = []
-    let ratesCache = {}
-    let workersList = []
-    let incentivesList = []
-    let daysInMonth = 30
-    let currentMonth = new Date().getMonth() + 1
-    let currentYear = new Date().getFullYear()
-    let currentWorkerIndex = 0
-    let currentWorkerData = { worker: null, details: [] }
-    let isLocked = false
-    let groupActivities = []
-    let editMode = false
-    
+    let currentBatchId = null, currentWorkGroup = null, ratesList = [], ratesCache = {}, workersList = [], incentivesList = []
+    let daysInMonth = 30, currentMonth = new Date().getMonth() + 1, currentYear = new Date().getFullYear()
+    let currentWorkerIndex = 0, currentWorkerData = { worker: null, details: [] }, isLocked = false, groupActivities = [], editMode = false
     const workerDataCache = new Map()
     const LAST_BATCH_KEY = `echeckroll_last_batch_${rancanganId}`
     
-    window.logout = async () => {
-      await supabase.auth.signOut()
-      localStorage.removeItem('echeckroll_user')
-      window.location.href = 'login.html'
-    }
+    window.logout = async () => { await supabase.auth.signOut(); localStorage.removeItem('echeckroll_user'); window.location.href = 'login.html' }
     
     async function init() {
-      await loadRates()
-      await loadWorkGroups()
-      populateMonthSelect()
-      
+      await loadRates(); await loadWorkGroups(); populateMonthSelect()
       document.getElementById('bulanSelect').value = currentMonth
       document.getElementById('tahunInput').value = currentYear
-      
       await autoLoadLastBatch()
     }
     
     async function autoLoadLastBatch() {
-      const lastBatch = localStorage.getItem(LAST_BATCH_KEY)
-      if (!lastBatch) return
-      
+      const lastBatch = localStorage.getItem(LAST_BATCH_KEY); if (!lastBatch) return
       try {
         const { workGroupId, bulan, tahun } = JSON.parse(lastBatch)
-        const { data } = await supabase
-          .from('work_groups')
-          .select('id')
-          .eq('id', workGroupId)
-          .maybeSingle()
-        
+        const { data } = await supabase.from('work_groups').select('id').eq('id', workGroupId).maybeSingle()
         if (data) {
           document.getElementById('workGroupSelect').value = workGroupId
           document.getElementById('bulanSelect').value = bulan
           document.getElementById('tahunInput').value = tahun
           await loadBatch()
-        } else {
-          localStorage.removeItem(LAST_BATCH_KEY)
-        }
-      } catch (e) {
-        localStorage.removeItem(LAST_BATCH_KEY)
-      }
+        } else localStorage.removeItem(LAST_BATCH_KEY)
+      } catch (e) { localStorage.removeItem(LAST_BATCH_KEY) }
     }
     
-    function saveLastBatch(workGroupId, bulan, tahun) {
-      localStorage.setItem(LAST_BATCH_KEY, JSON.stringify({ workGroupId, bulan, tahun }))
-    }
-    
+    function saveLastBatch(workGroupId, bulan, tahun) { localStorage.setItem(LAST_BATCH_KEY, JSON.stringify({ workGroupId, bulan, tahun })) }
     function populateMonthSelect() {
       const months = ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis']
-      const select = document.getElementById('bulanSelect')
-      select.innerHTML = months.map((m, i) => `<option value="${i+1}">${m}</option>`).join('')
+      document.getElementById('bulanSelect').innerHTML = months.map((m, i) => `<option value="${i+1}">${m}</option>`).join('')
     }
     
-    async function loadRates() {
-      const { data } = await supabase.from('rates').select('*').eq('rancangan_id', rancanganId)
-      ratesList = data || []
-      ratesCache = {}
-      ratesList.forEach(r => { ratesCache[r.kod_aktiviti] = r })
-    }
-    
+    async function loadRates() { const { data } = await supabase.from('rates').select('*').eq('rancangan_id', rancanganId); ratesList = data || []; ratesCache = {}; ratesList.forEach(r => { ratesCache[r.id] = r; ratesCache[r.kod_aktiviti] = r }) }
     async function loadIncentives() {
       const bulan = parseInt(document.getElementById('bulanSelect')?.value) || currentMonth
       const tahun = parseInt(document.getElementById('tahunInput')?.value) || currentYear
-      
-      const { data } = await supabase
-        .from('incentives')
-        .select('*')
-        .eq('rancangan_id', rancanganId)
-        .eq('bulan', bulan)
-        .eq('tahun', tahun)
-        .eq('locked', false)
-      
+      const { data } = await supabase.from('incentives').select('*').eq('rancangan_id', rancanganId).eq('bulan', bulan).eq('tahun', tahun).eq('locked', false)
       incentivesList = data || []
     }
-    
     async function loadWorkGroups() {
       const { data } = await supabase.from('work_groups').select('*').eq('rancangan_id', rancanganId)
       const select = document.getElementById('workGroupSelect')
       select.innerHTML = '<option value="">Pilih Kumpulan</option>'
-      data?.forEach(g => {
-        select.innerHTML += `<option value="${g.id}" data-hari="${g.hari_minggu}">${g.nama_kumpulan} (${g.hari_minggu})</option>`
-      })
+      data?.forEach(g => { select.innerHTML += `<option value="${g.id}" data-hari="${g.hari_minggu}">${g.nama_kumpulan} (${g.hari_minggu})</option>` })
     }
-    
     async function loadWorkersForGroup(groupId) {
-      const { data } = await supabase
-        .from('work_group_members')
-        .select('worker_id, workers(*)')
-        .eq('work_group_id', groupId)
+      const { data } = await supabase.from('work_group_members').select('worker_id, workers(*)').eq('work_group_id', groupId)
       workersList = data?.map(d => d.workers).filter(w => w.status === 'AKTIF') || []
-      
       const workerSelect = document.getElementById('workerSelect')
       workerSelect.innerHTML = workersList.map(w => `<option value="${w.id}">${w.nama} (${w.no_pekerja})</option>`).join('')
-      
-      if (workersList.length > 0) {
-        currentWorkerIndex = 0
-        workerSelect.value = workersList[0].id
-      }
+      if (workersList.length > 0) { currentWorkerIndex = 0; workerSelect.value = workersList[0].id }
     }
     
     window.loadBatch = async () => {
       const bulan = parseInt(document.getElementById('bulanSelect').value)
       const tahun = parseInt(document.getElementById('tahunInput').value)
       const workGroupId = document.getElementById('workGroupSelect').value
-      
       if (!workGroupId) { alert('Sila pilih Kumpulan Kerja'); return }
       
       saveLastBatch(workGroupId, bulan, tahun)
-      
-      currentMonth = bulan
-      currentYear = tahun
-      daysInMonth = new Date(tahun, bulan, 0).getDate()
-      
+      currentMonth = bulan; currentYear = tahun; daysInMonth = new Date(tahun, bulan, 0).getDate()
       await loadIncentives()
       
       const select = document.getElementById('workGroupSelect')
-      currentWorkGroup = {
-        id: workGroupId,
-        nama: select.options[select.selectedIndex].text,
-        hari_minggu: select.options[select.selectedIndex].dataset.hari
-      }
-      
+      currentWorkGroup = { id: workGroupId, nama: select.options[select.selectedIndex].text, hari_minggu: select.options[select.selectedIndex].dataset.hari }
       await loadWorkersForGroup(workGroupId)
+      if (workersList.length === 0) { alert('Tiada pekerja dalam kumpulan ini'); return }
       
-      if (workersList.length === 0) {
-        alert('Tiada pekerja dalam kumpulan ini')
-        return
-      }
-      
-      const { data: batch } = await supabase
-        .from('payroll_batches')
-        .select('*')
-        .eq('rancangan_id', rancanganId)
-        .eq('work_group_id', workGroupId)
-        .eq('bulan', bulan)
-        .eq('tahun', tahun)
-        .maybeSingle()
+      const { data: batch } = await supabase.from('payroll_batches').select('*').eq('rancangan_id', rancanganId).eq('work_group_id', workGroupId).eq('bulan', bulan).eq('tahun', tahun).maybeSingle()
       
       if (batch) {
-        currentBatchId = batch.id
-        isLocked = batch.locked || false
+        currentBatchId = batch.id; isLocked = batch.locked || false
         document.getElementById('lockBtn').style.display = isLocked ? 'none' : 'inline-block'
         showMessage(isLocked ? '🔒 Batch telah dikunci' : '📂 Batch sedia ada', 'info')
         
-        // Fixed query - without manual_activity in or clause
-        const { data: details } = await supabase
-          .from('payroll_details')
-          .select('rate_id, rates(kod_aktiviti, perincian, harga), incentive_id, incentives(nama, kadar), manual_activity')
-          .eq('batch_id', currentBatchId)
-          .or('rate_id.not.is.null,incentive_id.not.is.null')
-        
+        const { data: details } = await supabase.from('payroll_details').select('*').eq('batch_id', currentBatchId)
         const activityMap = new Map()
-        details?.forEach(d => {
+        
+        for (const d of (details || [])) {
           if (d.rate_id) {
-            activityMap.set(`rate_${d.rate_id}`, { type: 'rate', data: d.rates, id: d.rate_id })
+            if (!ratesCache[d.rate_id]) { const { data: r } = await supabase.from('rates').select('*').eq('id', d.rate_id).maybeSingle(); if (r) ratesCache[d.rate_id] = r }
+            const rate = ratesCache[d.rate_id]
+            if (rate) activityMap.set(`rate_${d.rate_id}`, { type: 'rate', data: rate, id: d.rate_id })
           } else if (d.incentive_id) {
-            activityMap.set(`inc_${d.incentive_id}`, { type: 'incentive', data: d.incentives, id: d.incentive_id })
+            const { data: inc } = await supabase.from('incentives').select('*').eq('id', d.incentive_id).maybeSingle()
+            if (inc) activityMap.set(`inc_${d.incentive_id}`, { type: 'incentive', data: inc, id: d.incentive_id })
           } else if (d.manual_activity) {
-            activityMap.set(`manual_${d.manual_activity}`, { 
-              type: 'manual', 
-              data: { name: d.manual_activity, harga: 65.39 }, 
-              id: d.manual_activity 
-            })
+            activityMap.set(`manual_${d.manual_activity}`, { type: 'manual', data: { name: d.manual_activity, harga: d.kadar_diguna || 65.39 }, id: d.manual_activity })
           }
-        })
+        }
         groupActivities = Array.from(activityMap.values())
       } else {
-        const { data: newBatch } = await supabase
-          .from('payroll_batches')
-          .insert({ rancangan_id: rancanganId, work_group_id: workGroupId, bulan, tahun })
-          .select('id')
-          .single()
-        
-        currentBatchId = newBatch.id
-        isLocked = false
-        groupActivities = []
+        const { data: newBatch } = await supabase.from('payroll_batches').insert({ rancangan_id: rancanganId, work_group_id: workGroupId, bulan, tahun }).select('id').single()
+        currentBatchId = newBatch.id; isLocked = false; groupActivities = []
         document.getElementById('lockBtn').style.display = 'inline-block'
         showMessage('🆕 Batch baru dicipta', 'success')
       }
       
-      workerDataCache.clear()
-      await loadWorkerData(workersList[0].id)
-      
-      editMode = false
-      updateButtons()
+      workerDataCache.clear(); await loadWorkerData(workersList[0].id); editMode = false; updateButtons()
     }
     
     async function loadWorkerData(workerId) {
-      const worker = workersList.find(w => w.id === workerId)
-      if (!worker) return
-      
-      if (workerDataCache.has(workerId)) {
-        currentWorkerData = workerDataCache.get(workerId)
-      } else {
-        const { data } = await supabase
-          .from('payroll_details')
-          .select('*')
-          .eq('batch_id', currentBatchId)
-          .eq('worker_id', workerId)
-        
-        currentWorkerData = { worker, details: data || [] }
-        workerDataCache.set(workerId, currentWorkerData)
+      const worker = workersList.find(w => w.id === workerId); if (!worker) return
+      if (workerDataCache.has(workerId)) { currentWorkerData = workerDataCache.get(workerId) }
+      else {
+        const { data } = await supabase.from('payroll_details').select('*').eq('batch_id', currentBatchId).eq('worker_id', workerId)
+        currentWorkerData = { worker, details: data || [] }; workerDataCache.set(workerId, currentWorkerData)
       }
-      
-      document.getElementById('workerSelect').value = workerId
-      currentWorkerIndex = workersList.findIndex(w => w.id === workerId)
-      
-      renderSlip()
+      document.getElementById('workerSelect').value = workerId; currentWorkerIndex = workersList.findIndex(w => w.id === workerId); renderSlip()
     }
     
     function updateButtons() {
-      if (isLocked) {
-        document.getElementById('editBtn').style.display = 'none'
-        document.getElementById('saveBtn').style.display = 'none'
-        return
-      }
-      
-      if (editMode) {
-        document.getElementById('editBtn').style.display = 'none'
-        document.getElementById('saveBtn').style.display = 'inline-block'
-      } else {
-        document.getElementById('editBtn').style.display = 'inline-block'
-        document.getElementById('saveBtn').style.display = 'none'
-      }
+      if (isLocked) { document.getElementById('editBtn').style.display = 'none'; document.getElementById('saveBtn').style.display = 'none'; return }
+      if (editMode) { document.getElementById('editBtn').style.display = 'none'; document.getElementById('saveBtn').style.display = 'inline-block' }
+      else { document.getElementById('editBtn').style.display = 'inline-block'; document.getElementById('saveBtn').style.display = 'none' }
     }
     
-    window.enableEdit = () => {
-      editMode = true
-      updateButtons()
-      renderSlip()
-    }
+    window.enableEdit = () => { editMode = true; updateButtons(); renderSlip() }
     
     function renderSlip() {
-      const container = document.getElementById('slipContainer')
-      const worker = currentWorkerData.worker
-      if (!worker) return
-      
-      const details = currentWorkerData.details || []
-      const totalCols = 3 + daysInMonth + 3
-      const disabled = !editMode || isLocked
-      
-      let html = `<table class="slip-table" id="mainSlipTable">`
-      
-      html += `<tr>
-        <th>Nama Pekerja</th>
-        <th>No Pekerja</th>
-        <th>No Passport</th>`
-      
+      const container = document.getElementById('slipContainer'), worker = currentWorkerData.worker; if (!worker) return
+      const details = currentWorkerData.details || [], totalCols = 3 + daysInMonth + 3, disabled = !editMode || isLocked
+      let html = `<table class="slip-table"><tr><th>Nama Pekerja</th><th>No Pekerja</th><th>No Passport</th>`
       for (let d = 1; d <= daysInMonth; d++) {
-        const date = new Date(currentYear, currentMonth-1, d)
-        const dayName = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'][date.getDay()]
-        const isWeekend = dayName === currentWorkGroup.hari_minggu
+        const date = new Date(currentYear, currentMonth-1, d), dayName = ['AHAD','ISNIN','SELASA','RABU','KHAMIS','JUMAAT','SABTU'][date.getDay()], isWeekend = dayName === currentWorkGroup.hari_minggu
         html += `<th class="day-col" style="${isWeekend ? 'background:#b8860b;' : ''}">${d}<br><small>${dayName}</small></th>`
       }
-      
-      html += `<th class="hari-col">Jml Hari</th>
-        <th class="kadar-col">Kadar (RM)</th>
-        <th class="jumlah-col">Jumlah (RM)</th>
-      </tr>`
-      
-      html += `<tr>
-        <td>${worker.nama}</td>
-        <td>${worker.no_pekerja}</td>
-        <td>${worker.no_passport || '-'}</td>`
+      html += `<th class="hari-col">Jml Hari</th><th class="kadar-col">Kadar (RM)</th><th class="jumlah-col">Jumlah (RM)</th></tr>`
+      html += `<tr><td>${worker.nama}</td><td>${worker.no_pekerja}</td><td>${worker.no_passport || '-'}</td>`
       for (let d = 1; d <= daysInMonth; d++) html += `<td class="day-col"></td>`
       html += `<td class="hari-col"></td><td class="kadar-col"></td><td class="jumlah-col"></td></tr>`
-      
-      html += `<tr class="attendance-hint-row">
-        <td colspan="3" style="text-align:right; padding-right:10px;">Kod Kehadiran:</td>`
-      
+      html += `<tr class="attendance-hint-row"><td colspan="3" style="text-align:right;">Kod Kehadiran:</td>`
       for (let d = 1; d <= daysInMonth; d++) {
-        const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-        const dayData = details.find(dt => dt.tarikh === tarikh) || {}
-        const attendance = dayData.attendance_code || 'H01'
-        const hint = attendanceMap[attendance]?.keterangan || ''
-        
-        html += `<td class="day-col attendance-hint-cell" data-tarikh="${tarikh}">${hint}</td>`
+        const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`, dayData = details.find(dt => dt.tarikh === tarikh) || {}, attendance = dayData.attendance_code || 'H01'
+        html += `<td class="day-col attendance-hint-cell" data-tarikh="${tarikh}">${attendanceMap[attendance]?.keterangan || ''}</td>`
       }
       html += `<td class="hari-col"></td><td class="kadar-col"></td><td class="jumlah-col"></td></tr>`
-      
-      html += `<tr>
-        <td colspan="3" class="label-cell">Kehadiran</td>`
-      
+      html += `<tr><td colspan="3" class="label-cell">Kehadiran</td>`
       let totalHari = 0
       for (let d = 1; d <= daysInMonth; d++) {
-        const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-        const dayData = details.find(dt => dt.tarikh === tarikh) || {}
-        const attendance = dayData.attendance_code || 'H01'
+        const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`, dayData = details.find(dt => dt.tarikh === tarikh) || {}, attendance = dayData.attendance_code || 'H01'
         if (['H01','H02','H03'].includes(attendance)) totalHari++
-        
-        const date = new Date(currentYear, currentMonth-1, d)
-        const dayName = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'][date.getDay()]
-        const isWeekend = dayName === currentWorkGroup.hari_minggu
-        
-        html += `<td class="day-col ${isWeekend ? 'weekend' : ''}">
-          <select data-tarikh="${tarikh}" class="attendance-select" onchange="updateHintCell(this)" ${disabled ? 'disabled' : ''}>
-            ${attendanceCodes.map(c => `<option value="${c.kod}" ${attendance === c.kod ? 'selected' : ''}>${c.kod}</option>`).join('')}
-          </select>
-        </td>`
+        const date = new Date(currentYear, currentMonth-1, d), dayName = ['AHAD','ISNIN','SELASA','RABU','KHAMIS','JUMAAT','SABTU'][date.getDay()], isWeekend = dayName === currentWorkGroup.hari_minggu
+        html += `<td class="day-col ${isWeekend ? 'weekend' : ''}"><select data-tarikh="${tarikh}" class="attendance-select" onchange="updateHintCell(this)" ${disabled ? 'disabled' : ''}>${attendanceCodes.map(c => `<option value="${c.kod}" ${attendance === c.kod ? 'selected' : ''}>${c.kod}</option>`).join('')}</select></td>`
       }
-      html += `<td class="total-cell hari-col" id="totalHariCell">${totalHari}</td>
-        <td class="kadar-col"></td><td class="jumlah-col"></td></tr>`
+      html += `<td class="total-cell hari-col" id="totalHariCell">${totalHari}</td><td class="kadar-col"></td><td class="jumlah-col"></td></tr>`
       
       let grandTotal = 0
-      
-      groupActivities.forEach((activity, idx) => {
-        const isIncentive = activity.type === 'incentive'
-        const isManual = activity.type === 'manual'
-        const data = activity.data
-        const id = activity.id
+      groupActivities.forEach(activity => {
+        const isIncentive = activity.type === 'incentive', isManual = activity.type === 'manual', data = activity.data, id = activity.id
         const name = isIncentive ? data.nama : (isManual ? data.name : `${data.kod_aktiviti} - ${data.perincian || data.jenis_kerja}`)
         const harga = isIncentive ? data.kadar : (isManual ? data.harga : data.harga)
-        
-        const activityDetails = details.filter(d => {
-          if (isIncentive) return d.incentive_id === id
-          if (isManual) return d.manual_activity === id
-          return d.rate_id === id
-        })
-        
+        const activityDetails = details.filter(d => isIncentive ? d.incentive_id === id : (isManual ? d.manual_activity === id : d.rate_id === id))
         let rowKadar = activityDetails[0]?.kadar_diguna || harga || 0
         
-        html += `<tr class="activity-row" data-activity-id="${id}" data-activity-type="${activity.type}">
-          <td colspan="3" class="activity-text">
-            ${name}
-            ${editMode && !isLocked ? `<button class="delete-btn" onclick="removeActivity('${id}', '${activity.type}')">✕</button>` : ''}
-          </td>`
-        
+        html += `<tr class="activity-row" data-activity-id="${id}" data-activity-type="${activity.type}"><td colspan="3" class="activity-text">${name}${editMode && !isLocked ? `<button class="delete-btn" onclick="removeActivity('${id}', '${activity.type}')">✕</button>` : ''}</td>`
         for (let d = 1; d <= daysInMonth; d++) {
-          const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-          const dayData = activityDetails.find(dt => dt.tarikh === tarikh) || {}
-          const kuantiti = dayData.kuantiti || ''
-          
-          const date = new Date(currentYear, currentMonth-1, d)
-          const dayName = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'][date.getDay()]
-          const isWeekend = dayName === currentWorkGroup.hari_minggu
-          
-          html += `<td class="day-col ${isWeekend ? 'weekend' : ''}">
-            <input type="number" class="quantity-input blank-input" data-tarikh="${tarikh}" data-activity-id="${id}" data-activity-type="${activity.type}" value="${kuantiti}" step="0.01" min="0" placeholder="0" ${disabled ? 'disabled' : ''}>
-          </td>`
+          const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`, dayData = activityDetails.find(dt => dt.tarikh === tarikh) || {}, kuantiti = dayData.kuantiti || ''
+          const date = new Date(currentYear, currentMonth-1, d), dayName = ['AHAD','ISNIN','SELASA','RABU','KHAMIS','JUMAAT','SABTU'][date.getDay()], isWeekend = dayName === currentWorkGroup.hari_minggu
+          html += `<td class="day-col ${isWeekend ? 'weekend' : ''}"><input type="number" class="quantity-input" data-tarikh="${tarikh}" data-activity-id="${id}" value="${kuantiti}" step="0.01" min="0" placeholder="0" ${disabled ? 'disabled' : ''}></td>`
         }
-        
         let rowTotal = 0
         for (let d = 1; d <= daysInMonth; d++) {
-          const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-          const dayData = activityDetails.find(dt => dt.tarikh === tarikh) || {}
-          const kuantiti = parseFloat(dayData.kuantiti) || 0
-          const attendance = details.find(dt => dt.tarikh === tarikh)?.attendance_code || 'H01'
-          const multiplier = attendanceMap[attendance]?.multiplier || 1
+          const tarikh = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`, dayData = activityDetails.find(dt => dt.tarikh === tarikh) || {}, kuantiti = parseFloat(dayData.kuantiti) || 0
+          const attendance = details.find(dt => dt.tarikh === tarikh)?.attendance_code || 'H01', multiplier = attendanceMap[attendance]?.multiplier || 1
           rowTotal += kuantiti * multiplier
         }
-        
-        const rowJumlah = rowTotal * rowKadar
-        grandTotal += rowJumlah
-        
-        html += `<td class="total-cell hari-col">${rowTotal.toFixed(2)}</td>
-          <td class="kadar-col"><input type="number" class="kadar-input" data-activity-id="${id}" value="${rowKadar.toFixed(2)}" step="0.01" ${disabled ? 'disabled' : ''}></td>
-          <td class="total-cell jumlah-col">${rowJumlah.toFixed(2)}</td>
-        </tr>`
+        const rowJumlah = rowTotal * rowKadar; grandTotal += rowJumlah
+        html += `<td class="total-cell hari-col">${rowTotal.toFixed(2)}</td><td class="kadar-col"><input type="number" class="kadar-input" value="${rowKadar.toFixed(2)}" step="0.01" ${disabled ? 'disabled' : ''}></td><td class="total-cell jumlah-col">${rowJumlah.toFixed(2)}</td></tr>`
       })
       
       if (editMode && !isLocked) {
-        html += `<tr><td colspan="${totalCols}">
-          <div class="activity-add-row">
-            <input type="text" id="newKodAktiviti" placeholder="Kod Aktiviti" list="rateCodes" style="width:100px;" autocomplete="off">
-            <button class="btn btn-primary" onclick="addActivity()">➕ Tambah Kerja</button>
-            <select id="newIncentive" style="width:220px;">
-              <option value="">Pilih Insentif</option>
-              ${incentivesList.map(i => `<option value="${i.id}">${i.nama} (RM ${i.kadar})</option>`).join('')}
-            </select>
-            <button class="btn btn-info" onclick="addIncentive()">🎁 Tambah Insentif</button>
-          </div>
-        </td></tr>`
+        html += `<tr><td colspan="${totalCols}"><div class="activity-add-row"><input type="text" id="newKodAktiviti" placeholder="Kod Aktiviti" list="rateCodes" style="width:100px;" autocomplete="off"><button class="btn btn-primary" onclick="addActivity()">➕ Tambah Kerja</button><select id="newIncentive" style="width:220px;"><option value="">Pilih Insentif</option>${incentivesList.map(i => `<option value="${i.id}">${i.nama} (RM ${i.kadar})</option>`).join('')}</select><button class="btn btn-info" onclick="addIncentive()">🎁 Tambah Insentif</button></div></td></tr>`
       }
+      html += `</table><datalist id="rateCodes">${ratesList.map(r => `<option value="${r.kod_aktiviti}">${r.kod_aktiviti} - ${r.perincian || r.jenis_kerja}</option>`).join('')}</datalist>`
       
-      html += `</table>`
-      
-      html += `<datalist id="rateCodes">
-        ${ratesList.map(r => `<option value="${r.kod_aktiviti}">${r.kod_aktiviti} - ${r.perincian || r.jenis_kerja}</option>`).join('')}
-      </datalist>`
-      
-      html += `<table class="slip-table" style="margin-top:10px;">
-        <tr>
-          <td style="width:160px;"></td><td style="width:100px;"></td><td style="width:120px;"></td>`
+      html += `<table class="slip-table" style="margin-top:10px;"><tr><td style="width:160px;"></td><td style="width:100px;"></td><td style="width:120px;"></td>`
       for (let d = 1; d <= daysInMonth; d++) html += `<td class="day-col"></td>`
-      html += `<td class="hari-col"></td><td class="kadar-col"></td>
-        <td class="summary-value jumlah-col" id="gajiKasarCell">${grandTotal.toFixed(2)}</td>
-      </tr>
-      <tr>
-        <td colspan="${3 + daysInMonth}" class="summary-label">Gaji Kasar</td>
-        <td class="hari-col"></td><td class="kadar-col"></td>
-        <td class="summary-value jumlah-col">${grandTotal.toFixed(2)}</td>
-      </tr>
-      <tr>
-        <td colspan="${3 + daysInMonth + 2}" style="padding:0;">
-          <div class="collapse-header" onclick="toggleCollapse()" style="margin:0; border-radius:0;">
-            <span>▼</span> Potongan Gaji
-          </div>
-        </td>
-        <td class="jumlah-col" style="background:#e8f5e9;"></td>
-      </tr>
-      </table>
-      
-      <div class="collapse-content" id="collapseContent">
-        <table class="deduction-table">
-          <tr><td style="width:150px;">KWSP</td><td><input type="number" class="deduction-input" data-ded="KWSP" value="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
-          <tr><td>SOCSO</td><td><input type="number" class="deduction-input" data-ded="SOCSO" value="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
-          <tr><td>EIS</td><td><input type="number" class="deduction-input" data-ded="EIS" value="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
-          <tr><td>Perubatan</td><td><input type="number" class="deduction-input" data-ded="Perubatan" value="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
-          <tr><td>Elektrik</td><td><input type="number" class="deduction-input" data-ded="Elektrik" value="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
-          <tr><td>Air</td><td><input type="number" class="deduction-input" data-ded="Air" value="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
-          <tr><td>Pendahuluan Gaji</td><td><input type="number" class="deduction-input" data-ded="Pendahuluan" value="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>
-        </table>
-      </div>
-      
-      <table class="slip-table" style="margin-top:5px;">
-        <tr>
-          <td style="width:160px;"></td><td style="width:100px;"></td><td style="width:120px;"></td>`
+      html += `<td class="hari-col"></td><td class="kadar-col"></td><td class="summary-value jumlah-col" id="gajiKasarCell">${grandTotal.toFixed(2)}</td></tr>`
+      html += `<tr><td colspan="${3 + daysInMonth}" class="summary-label">Gaji Kasar</td><td class="hari-col"></td><td class="kadar-col"></td><td class="summary-value jumlah-col">${grandTotal.toFixed(2)}</td></tr>`
+      html += `<tr><td colspan="${3 + daysInMonth + 2}" style="padding:0;"><div class="collapse-header" onclick="toggleCollapse()"><span>▼</span> Potongan Gaji</div></td><td class="jumlah-col" style="background:#e8f5e9;"></td></tr></table>`
+      html += `<div class="collapse-content" id="collapseContent"><table class="deduction-table">`
+      const deductions = ['KWSP','SOCSO','EIS','Perubatan','Elektrik','Air','Pendahuluan Gaji']
+      deductions.forEach(d => { html += `<tr><td style="width:150px;">${d}</td><td><input type="number" class="deduction-input" value="0.00" step="0.01" ${disabled ? 'disabled' : ''}></td></tr>` })
+      html += `</table></div>`
+      html += `<table class="slip-table" style="margin-top:5px;"><tr><td style="width:160px;"></td><td style="width:100px;"></td><td style="width:120px;"></td>`
       for (let d = 1; d <= daysInMonth; d++) html += `<td class="day-col"></td>`
-      html += `<td class="hari-col"></td><td class="kadar-col"></td>
-        <td class="summary-value jumlah-col" id="gajiBersihCell">${grandTotal.toFixed(2)}</td>
-      </tr>
-      <tr>
-        <td colspan="${3 + daysInMonth}" class="summary-label">Gaji Bersih</td>
-        <td class="hari-col"></td><td class="kadar-col"></td>
-        <td class="summary-value jumlah-col" id="gajiBersihCell2">${grandTotal.toFixed(2)}</td>
-      </tr>
-      </table>`
+      html += `<td class="hari-col"></td><td class="kadar-col"></td><td class="summary-value jumlah-col" id="gajiBersihCell">${grandTotal.toFixed(2)}</td></tr>`
+      html += `<tr><td colspan="${3 + daysInMonth}" class="summary-label">Gaji Bersih</td><td class="hari-col"></td><td class="kadar-col"></td><td class="summary-value jumlah-col">${grandTotal.toFixed(2)}</td></tr></table>`
       
       container.innerHTML = html
-      
       if (editMode && !isLocked) {
-        document.querySelectorAll('.quantity-input').forEach(inp => inp.addEventListener('input', () => recalculate()))
-        document.querySelectorAll('.kadar-input').forEach(inp => inp.addEventListener('input', () => recalculate()))
-        document.querySelectorAll('.deduction-input').forEach(inp => inp.addEventListener('input', () => recalculate()))
-        document.querySelectorAll('.attendance-select').forEach(sel => sel.addEventListener('change', () => {
-          updateHintCell(sel)
-          updateTotalHari()
-          recalculate()
-        }))
+        document.querySelectorAll('.quantity-input, .kadar-input, .deduction-input').forEach(inp => inp.addEventListener('input', recalculate))
+        document.querySelectorAll('.attendance-select').forEach(sel => sel.addEventListener('change', () => { updateHintCell(sel); updateTotalHari(); recalculate() }))
       }
     }
     
-    window.updateHintCell = (select) => {
-      const tarikh = select.dataset.tarikh
-      const hintCell = document.querySelector(`.attendance-hint-cell[data-tarikh="${tarikh}"]`)
-      if (hintCell) hintCell.textContent = attendanceMap[select.value]?.keterangan || ''
-    }
-    
-    function updateTotalHari() {
-      let totalHari = 0
-      document.querySelectorAll('.attendance-select').forEach(sel => {
-        if (['H01','H02','H03'].includes(sel.value)) totalHari++
-      })
-      const cell = document.getElementById('totalHariCell')
-      if (cell) cell.textContent = totalHari
-    }
+    window.updateHintCell = (sel) => { const tarikh = sel.dataset.tarikh, cell = document.querySelector(`.attendance-hint-cell[data-tarikh="${tarikh}"]`); if (cell) cell.textContent = attendanceMap[sel.value]?.keterangan || '' }
+    function updateTotalHari() { let total = 0; document.querySelectorAll('.attendance-select').forEach(s => { if (['H01','H02','H03'].includes(s.value)) total++ }); const cell = document.getElementById('totalHariCell'); if (cell) cell.textContent = total }
     
     window.addActivity = () => {
-      if (!editMode) return
-      
-      const kod = document.getElementById('newKodAktiviti')?.value?.trim()
-      if (!kod) { alert('Masukkan Kod Aktiviti'); return }
-      
-      const rate = ratesCache[kod] || ratesList.find(r => r.kod_aktiviti === kod)
-      if (!rate) { alert('Kod Aktiviti tidak dijumpai'); return }
-      
-      if (groupActivities.some(a => a.type === 'rate' && a.id === rate.id)) {
-        alert('Aktiviti ini sudah ada')
-        return
-      }
-      
+      if (!editMode) return; const kod = document.getElementById('newKodAktiviti')?.value?.trim(); if (!kod) { alert('Masukkan Kod'); return }
+      const rate = ratesCache[kod] || ratesList.find(r => r.kod_aktiviti === kod); if (!rate) { alert('Kod tidak dijumpai'); return }
+      if (groupActivities.some(a => a.type === 'rate' && a.id === rate.id)) { alert('Sudah ada'); return }
       groupActivities.push({ type: 'rate', data: rate, id: rate.id })
-      
-      if (Math.abs(rate.harga - 65.39) < 0.01) {
-        const klmExists = groupActivities.some(a => a.type === 'manual' && a.id === 'KLM')
-        if (!klmExists) {
-          groupActivities.push({ 
-            type: 'manual', 
-            data: { name: 'Kerja Lebih Masa', harga: 65.39 }, 
-            id: 'KLM' 
-          })
-        }
-      }
-      
+      if (Math.abs(rate.harga - 65.39) < 0.01 && !groupActivities.some(a => a.type === 'manual' && a.id === 'KLM')) groupActivities.push({ type: 'manual', data: { name: 'Kerja Lebih Masa', harga: 65.39 }, id: 'KLM' })
       renderSlip()
     }
-    
     window.addIncentive = () => {
-      if (!editMode) return
-      
-      const incentiveId = document.getElementById('newIncentive')?.value
-      if (!incentiveId) { alert('Pilih Insentif'); return }
-      
-      const incentive = incentivesList.find(i => i.id === incentiveId)
-      if (!incentive) { alert('Insentif tidak dijumpai'); return }
-      
-      if (groupActivities.some(a => a.type === 'incentive' && a.id === incentive.id)) {
-        alert('Insentif ini sudah ada')
-        return
-      }
-      
-      groupActivities.push({ type: 'incentive', data: incentive, id: incentive.id })
-      renderSlip()
+      if (!editMode) return; const id = document.getElementById('newIncentive')?.value; if (!id) { alert('Pilih Insentif'); return }
+      const inc = incentivesList.find(i => i.id === id); if (!inc) { alert('Tidak dijumpai'); return }
+      if (groupActivities.some(a => a.type === 'incentive' && a.id === inc.id)) { alert('Sudah ada'); return }
+      groupActivities.push({ type: 'incentive', data: inc, id: inc.id }); renderSlip()
     }
-    
-    window.removeActivity = (id, type) => {
-      if (!editMode) return
-      groupActivities = groupActivities.filter(a => !(a.id === id && a.type === type))
-      renderSlip()
-    }
+    window.removeActivity = (id, type) => { if (!editMode) return; groupActivities = groupActivities.filter(a => !(a.id === id && a.type === type)); renderSlip() }
     
     function recalculate() {
-      let grandTotal = 0
-      
+      let grand = 0
       document.querySelectorAll('.activity-row').forEach(row => {
-        const activityId = row.dataset.activityId
-        const activityType = row.dataset.activityType
-        let rowTotal = 0
-        let kadar = parseFloat(row.querySelector('.kadar-input')?.value) || 0
-        
-        row.querySelectorAll('.quantity-input').forEach(inp => {
-          if (inp.dataset.activityId === activityId && inp.dataset.activityType === activityType) {
-            const tarikh = inp.dataset.tarikh
-            const attendanceSelect = document.querySelector(`.attendance-select[data-tarikh="${tarikh}"]`)
-            const multiplier = attendanceMap[attendanceSelect?.value]?.multiplier || 1
-            rowTotal += (parseFloat(inp.value) || 0) * multiplier
-          }
-        })
-        
-        const jumlah = rowTotal * kadar
-        const cells = row.querySelectorAll('td')
-        cells[cells.length - 3].textContent = rowTotal.toFixed(2)
-        cells[cells.length - 1].textContent = jumlah.toFixed(2)
-        
-        grandTotal += jumlah
+        const id = row.dataset.activityId, type = row.dataset.activityType; let total = 0
+        const kadar = parseFloat(row.querySelector('.kadar-input')?.value) || 0
+        row.querySelectorAll('.quantity-input').forEach(inp => { if (inp.dataset.activityId === id) { const tarikh = inp.dataset.tarikh, att = document.querySelector(`.attendance-select[data-tarikh="${tarikh}"]`), mult = attendanceMap[att?.value]?.multiplier || 1; total += (parseFloat(inp.value) || 0) * mult } })
+        const jumlah = total * kadar, cells = row.querySelectorAll('td'); cells[cells.length-3].textContent = total.toFixed(2); cells[cells.length-1].textContent = jumlah.toFixed(2); grand += jumlah
       })
-      
-      document.querySelectorAll('#gajiKasarCell').forEach(cell => cell.textContent = grandTotal.toFixed(2))
-      
-      let totalDeductions = 0
-      document.querySelectorAll('.deduction-input').forEach(inp => totalDeductions += parseFloat(inp.value) || 0)
-      
-      const gajiBersih = grandTotal - totalDeductions
-      document.querySelectorAll('#gajiBersihCell, #gajiBersihCell2').forEach(cell => cell.textContent = gajiBersih.toFixed(2))
+      document.querySelectorAll('#gajiKasarCell').forEach(c => c.textContent = grand.toFixed(2))
+      let ded = 0; document.querySelectorAll('.deduction-input').forEach(i => ded += parseFloat(i.value) || 0)
+      document.querySelectorAll('#gajiBersihCell').forEach(c => c.textContent = (grand - ded).toFixed(2))
     }
     
     window.toggleCollapse = () => document.getElementById('collapseContent').classList.toggle('show')
+    window.prevWorker = () => { if (currentWorkerIndex > 0) { saveCurrentWorkerToCache(); currentWorkerIndex--; loadWorkerData(workersList[currentWorkerIndex].id) } }
+    window.nextWorker = () => { if (currentWorkerIndex < workersList.length - 1) { saveCurrentWorkerToCache(); currentWorkerIndex++; loadWorkerData(workersList[currentWorkerIndex].id) } }
+    document.getElementById('workerSelect').addEventListener('change', e => { saveCurrentWorkerToCache(); loadWorkerData(e.target.value) })
     
-    window.prevWorker = () => {
-      if (currentWorkerIndex > 0) {
-        saveCurrentWorkerToCache()
-        currentWorkerIndex--
-        loadWorkerData(workersList[currentWorkerIndex].id)
-      }
-    }
-    
-    window.nextWorker = () => {
-      if (currentWorkerIndex < workersList.length - 1) {
-        saveCurrentWorkerToCache()
-        currentWorkerIndex++
-        loadWorkerData(workersList[currentWorkerIndex].id)
-      }
-    }
-    
-    document.getElementById('workerSelect').addEventListener('change', (e) => {
-      saveCurrentWorkerToCache()
-      loadWorkerData(e.target.value)
-    })
-    
-    function saveCurrentWorkerToCache() {
-      if (!currentWorkerData.worker) return
-      if (editMode) collectFormData()
-      workerDataCache.set(currentWorkerData.worker.id, currentWorkerData)
-    }
-    
+    function saveCurrentWorkerToCache() { if (!currentWorkerData.worker) return; if (editMode) collectFormData(); workerDataCache.set(currentWorkerData.worker.id, currentWorkerData) }
     function collectFormData() {
-      const worker = currentWorkerData.worker
-      if (!worker) return
-      
-      const details = []
-      const attendanceMap2 = {}
-      document.querySelectorAll('.attendance-select').forEach(sel => attendanceMap2[sel.dataset.tarikh] = sel.value)
-      
+      const worker = currentWorkerData.worker; if (!worker) return; const details = [], attMap = {}
+      document.querySelectorAll('.attendance-select').forEach(s => attMap[s.dataset.tarikh] = s.value)
       document.querySelectorAll('.activity-row').forEach(row => {
-        const activityId = row.dataset.activityId
-        const activityType = row.dataset.activityType
-        const kadarInput = row.querySelector('.kadar-input')
-        const kadarDiguna = parseFloat(kadarInput?.value) || 0
-        
-        const activity = groupActivities.find(a => a.id === activityId)
-        const kadarAsal = activity?.data?.harga || kadarDiguna
-        
+        const id = row.dataset.activityId, type = row.dataset.activityType, kadar = parseFloat(row.querySelector('.kadar-input')?.value) || 0
+        const act = groupActivities.find(a => a.id === id), asal = act?.data?.harga || kadar
         row.querySelectorAll('.quantity-input').forEach(inp => {
-          const tarikh = inp.dataset.tarikh
-          const kuantiti = parseFloat(inp.value) || 0
-          const attendance = attendanceMap2[tarikh] || 'H01'
-          
-          const item = {
-            batch_id: currentBatchId,
-            worker_id: worker.id,
-            tarikh,
-            attendance_code: attendance,
-            kuantiti,
-            kadar_asal: kadarAsal,
-            kadar_diguna: kadarDiguna
-          }
-          
-          if (activityType === 'rate') {
-            item.rate_id = activityId
-            item.incentive_id = null
-            item.manual_activity = null
-          } else if (activityType === 'incentive') {
-            item.rate_id = null
-            item.incentive_id = activityId
-            item.manual_activity = null
-          } else {
-            item.rate_id = null
-            item.incentive_id = null
-            item.manual_activity = activityId
-          }
-          
+          const tarikh = inp.dataset.tarikh, qty = parseFloat(inp.value) || 0, att = attMap[tarikh] || 'H01'
+          const item = { batch_id: currentBatchId, worker_id: worker.id, tarikh, attendance_code: att, kuantiti: qty, kadar_asal: asal, kadar_diguna: kadar, rate_id: null, incentive_id: null, manual_activity: null }
+          if (type === 'rate') item.rate_id = id; else if (type === 'incentive') item.incentive_id = id; else item.manual_activity = id
           details.push(item)
         })
       })
-      
       currentWorkerData.details = details
     }
     
     window.saveCurrentWorker = async () => {
       if (isLocked) { alert('Batch dikunci'); return }
-      if (!currentWorkerData.worker) { alert('Tiada pekerja dipilih'); return }
+      if (!currentWorkerData.worker) { alert('Tiada pekerja'); return }
+      collectFormData(); const details = currentWorkerData.details
+      console.log('💾 Saving', details.length, 'items for', currentWorkerData.worker.nama)
+      if (details.length === 0) { showMessage('⚠️ Tiada data', 'info'); return }
       
-      collectFormData()
-      const detailsToSave = currentWorkerData.details
+      await supabase.from('payroll_details').delete().eq('batch_id', currentBatchId).eq('worker_id', currentWorkerData.worker.id)
+      const { error } = await supabase.from('payroll_details').insert(details)
+      if (error) { console.error('❌ Insert error:', error); showMessage('❌ Gagal: ' + error.message, 'error'); return }
       
-      console.log('💾 Saving', detailsToSave.length, 'items for worker', currentWorkerData.worker.nama)
-      
-      if (detailsToSave.length === 0) {
-        showMessage('⚠️ Tiada data untuk disimpan', 'info')
-        return
-      }
-      
-      await supabase
-        .from('payroll_details')
-        .delete()
-        .eq('batch_id', currentBatchId)
-        .eq('worker_id', currentWorkerData.worker.id)
-      
-      const { error } = await supabase
-        .from('payroll_details')
-        .insert(detailsToSave)
-      
-      if (error) {
-        console.error('❌ Insert error:', error)
-        showMessage('❌ Gagal simpan: ' + error.message, 'error')
-        return
-      }
-      
-      workerDataCache.set(currentWorkerData.worker.id, currentWorkerData)
-      editMode = false
-      updateButtons()
-      renderSlip()
-      showMessage('✅ Data berjaya disimpan!', 'success')
+      workerDataCache.set(currentWorkerData.worker.id, currentWorkerData); editMode = false; updateButtons(); renderSlip()
+      showMessage('✅ Disimpan!', 'success')
     }
     
     window.lockBatch = async () => {
-      if (!confirm('Tutup urusniaga? Selepas ini data tidak boleh diubah.')) return
-      
+      if (!confirm('Tutup urusniaga?')) return
       await supabase.from('payroll_batches').update({ locked: true }).eq('id', currentBatchId)
-      isLocked = true
-      editMode = false
-      updateButtons()
-      document.getElementById('lockBtn').style.display = 'none'
-      showMessage('🔒 Batch telah dikunci!', 'success')
-      renderSlip()
+      isLocked = true; editMode = false; updateButtons(); document.getElementById('lockBtn').style.display = 'none'
+      showMessage('🔒 Dikunci!', 'success'); renderSlip()
     }
     
-    function showMessage(msg, type) {
-      const msgDiv = document.getElementById('statusMessage')
-      msgDiv.textContent = msg
-      msgDiv.className = `status-message status-${type}`
-      msgDiv.style.display = 'block'
-      setTimeout(() => msgDiv.style.display = 'none', 4000)
-    }
-    
+    function showMessage(msg, type) { const d = document.getElementById('statusMessage'); d.textContent = msg; d.className = `status-message status-${type}`; d.style.display = 'block'; setTimeout(() => d.style.display = 'none', 4000) }
     init()
   </script>
 </body>
