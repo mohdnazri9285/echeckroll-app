@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eCheckroll - Sistem Pintar</title>
+    
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="manifest" href="site.webmanifest">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; font-family: 'Calibri', 'Segoe UI', sans-serif; }
+        body { background: #f0f4f8; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
+        .container { 
+            display: flex; flex-direction: column; height: 100vh; 
+            max-width: 100%; background: white; 
+            padding: 8px 15px; 
+            overflow: hidden;
+        }
+
+        .header-area { flex-shrink: 0; }
+        .header {
+            display: grid; grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px; margin-bottom: 4px; background: #fff9c4; padding: 6px;
+            border-radius: 4px; border: 1px solid #fbc02d; font-weight: bold; text-align: center;
+        }
+        .header select, .header input { padding: 3px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; width: 100%; text-align: center; font-weight: bold; }
+        .header label { display: block; font-size: 11px; color: #555; margin-bottom: 1px; }
+
+        .action-bar { display: flex; gap: 5px; align-items: center; margin: 3px 0; flex-wrap: wrap; flex-shrink: 0; }
+        .btn { padding: 4px 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px; }
+        .btn-primary { background: #2e7d32; color: white; }
+        .btn-danger { background: #c62828; color: white; }
+        .btn-outline { background: white; border: 1px solid #2e7d32; color: #2e7d32; }
+        .btn-print { background: #f57c00; color: white; }
+        .btn-logout { background: #757575; color: white; margin-left: auto; }
+        .btn-sm { padding: 3px 8px; font-size: 11px; }
+
+        .tabs-container { display: flex; border-bottom: 1px solid #b0bec5; margin-bottom: 2px; background: #f5f5f5; padding-top: 2px; flex-shrink: 0; }
+        .tab-item { padding: 4px 12px; border: 1px solid #b0bec5; border-bottom: none; background: #e0e0e0; border-radius: 4px 4px 0 0; cursor: pointer; font-size: 12px; font-weight: bold; margin-right: 2px; display: flex; align-items: center; gap: 5px; }
+        .tab-item.active { background: white; border-bottom: 2px solid white; }
+        .tab-item .close-tab { color: #c62828; cursor: pointer; font-weight: bold; margin-left: 5px; font-size: 14px; }
+        .btn-add-tab { background: none; border: none; color: #2e7d32; font-size: 18px; cursor: pointer; padding: 0 8px; }
+        .tab-item .tab-name { display: inline-block; cursor: text; padding: 0 4px; }
+        .tab-item .tab-name-input { display: none; background: transparent; border: none; font-size: 12px; font-weight: bold; outline: none; width: 80px; text-align: center; font-family: inherit; }
+
+        .main-layout { display: flex; gap: 8px; flex-grow: 1; overflow: hidden; }
+
+        .side-panel { 
+            width: 110px; 
+            background: linear-gradient(135deg, #c62828, #b71c1c);
+            border: 2px solid #8e0000; border-radius: 8px; 
+            padding: 10px; overflow-y: auto; flex-shrink: 0; text-align: center;
+            box-shadow: inset 0 2px 5px rgba(255,255,255,0.2), 0 4px 8px rgba(0,0,0,0.3);
+            color: white;
+        }
+        .side-panel h5 { margin: 6px 0; font-size: 13px; color: #ffffff; cursor: pointer; font-weight: bold; }
+        .side-panel h5:hover { color: #ffeb3b; }
+        .month-list { padding-left: 5px; display: none; font-size: 12px; }
+        .month-list.open { display: block; }
+        .month-item { padding: 2px 0; cursor: pointer; color: #ffcdd2; }
+        .month-item:hover { color: #ffffff; font-weight: bold; }
+        .month-item.active-bold { color: #ffeb3b; font-weight: bold; }
+
+        .table-wrapper { flex-grow: 1; overflow: auto; position: relative; border: 1px solid #dee2e6; border-radius: 4px; }
+        .echeckroll-table {
+            width: 100%; border-collapse: collapse; font-size: 11px;
+        }
+        .echeckroll-table th, .echeckroll-table td {
+            border: 1px solid #b0bec5; padding: 1px 2px;
+            text-align: center; vertical-align: middle; min-width: 14px;
+        }
+        .echeckroll-table th { background: #e3f2fd; font-weight: bold; font-size: 10px; }
+        .echeckroll-table .row-label { background: #f5f5f5; font-weight: bold; text-align: left; padding-left: 6px; font-size: 11px; white-space: nowrap; }
+        .echeckroll-table .worker-header-row { background: #fff9c4; font-weight: bold; }
+        .echeckroll-table .worker-data-row { background: #ffffff; }
+        .echeckroll-table .off-day { background: #ffcdd2 !important; color: #c62828; font-weight: bold; }
+        .echeckroll-table .highlight-col { background: #ffecb3; }
+        .echeckroll-table .total-row { background: #e8f5e9; font-weight: bold; }
+        .echeckroll-table .gross-row { background: #fff3e0; font-weight: bold; }
+        .echeckroll-table .deduction-row { background: #ffebee; }
+        .echeckroll-table .net-row { background: #c8e6c9; font-weight: bold; font-size: 13px; }
+
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        .editable-input { width: 100%; border: none; background: transparent; text-align: center; font-size: 11px; padding: 0; font-family: inherit; }
+        .editable-input:focus { outline: 2px solid #2e7d32; background: #e8f5e9; }
+        .editable-input.number { text-align: right; padding-right: 2px; }
+        .editable-input:disabled { background: #e0e0e0; color: #777; }
+        .daily-input { width: 100%; border: none; background: #fffde7; text-align: center; font-size: 11px; padding: 2px 0; }
+        .daily-input:focus { outline: 2px solid #1976d2; background: #ffffff; }
+        .daily-input:disabled { background: #e0e0e0; color: #777; }
+
+        .check-sm { width: 14px; height: 14px; cursor: pointer; }
+        .check-afc { accent-color: #1976d2; }
+        .check-fc { accent-color: #2e7d32; }
+        .check-sm:disabled { cursor: not-allowed; }
+        .del-btn { color: #c62828; cursor: pointer; font-weight: bold; font-size: 13px; padding: 0 4px; }
+
+        @media print {
+            .action-bar, .btn, .side-panel, .tabs-container { display: none !important; }
+            .container { padding: 0; height: auto; overflow: visible; }
+            .table-wrapper { overflow: visible; }
+        }
+        @media (max-width: 768px) {
+            .header { grid-template-columns: 1fr; gap: 5px; }
+            .main-layout { flex-direction: column; }
+            .side-panel { width: 100%; display: flex; overflow-x: auto; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="appArea">
+    <div class="container">
+        <div class="header-area">
+            <div class="header">
+                <div>
+                    <label>BULAN</label>
+                    <select id="bulan" onchange="updateCalendar()">
+                        <option value="0">JANUARI</option><option value="1">FEBRUARI</option>
+                        <option value="2">MAC</option><option value="3">APRIL</option>
+                        <option value="4">MEI</option><option value="5">JUN</option>
+                        <option value="6" selected>JULAI</option><option value="7">OGOS</option>
+                        <option value="8">SEPTEMBER</option><option value="9">OKTOBER</option>
+                        <option value="10">NOVEMBER</option><option value="11">DISEMBER</option>
+                    </select>
+                </div>
+                <div>
+                    <label>TAHUN</label>
+                    <select id="tahun" onchange="updateCalendar()">
+                        <option value="2020">2020</option><option value="2021">2021</option>
+                        <option value="2022">2022</option><option value="2023">2023</option>
+                        <option value="2024">2024</option><option value="2025">2025</option>
+                        <option value="2026" selected>2026</option>
+                        <option value="2027">2027</option><option value="2028">2028</option>
+                        <option value="2029">2029</option><option value="2030">2030</option>
+                    </select>
+                </div>
+                <div>
+                    <label>RANCANGAN</label>
+                    <input type="text" id="kumpulan" value="Lurah Bilut" placeholder="Nama Rancangan">
+                </div>
+            </div>
+
+            <div class="action-bar">
+                <button class="btn btn-primary btn-sm" onclick="kiraSemua()">🔄 Kira</button>
+                <button class="btn btn-outline btn-sm" onclick="tambahPekerja()">➕ Tambah Pekerja</button>
+                <button class="btn btn-print btn-sm" onclick="window.print()">🖨️ Cetak</button>
+                <button class="btn btn-outline btn-sm" onclick="simpanData()" style="background:#e3f2fd; border-color:#1976d2;">💾 Simpan Data</button>
+                
+                <label style="font-size:11px; display:flex; align-items:center; gap:4px; background:#f5f5f5; padding:2px 6px; border-radius:4px; cursor:pointer;">
+                    <input type="checkbox" id="syncCheck" onchange="toggleSync()"> Produktiviti Sama
+                </label>
+                
+                <div style="font-size:11px; font-weight:bold; color:#555; margin-left:10px;">
+                    Status: <span id="statusTutup">Buka</span>
+                </div>
+                <button id="btnTutup" class="btn btn-danger btn-sm" onclick="toggleTutup()" style="display:none;">🔒 Tutup</button>
+                <button id="btnBuka" class="btn btn-outline btn-sm" onclick="toggleTutup()" style="display:none;">🔓 Buka</button>
+                <span style="font-size:11px; color:#888; margin-left:auto;" id="userLabel"></span>
+                <button class="btn btn-logout btn-sm" onclick="doLogout()">🚪 Keluar</button>
+            </div>
+
+            <div class="tabs-container" id="tabsContainer">
+                <!-- Rendered by JS -->
+            </div>
+        </div>
+
+        <div class="main-layout">
+            <div class="side-panel" id="sidePanel">
+                <!-- Populated by JS -->
+            </div>
+
+            <div class="table-wrapper">
+                <table class="echeckroll-table" id="mainTable">
+                    <thead id="tableHead"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    //  SECTION 1: LOGIN CHECK (Read from localStorage)
+    // ============================================================
+    const validUsers = {
+        '1234': { id: '1234', pass: 'init1234', role: 'FS', name: 'FS 1 Lurah Bilut' },
+        '1235': { id: '1235', pass: 'init1234', role: 'FS', name: 'FS 2 Lurah Bilut' },
+        '1236': { id: '1236', pass: 'init1234', role: 'FS', name: 'FS 3 Lurah Bilut' },
+        '1237': { id: '1237', pass: 'init1234', role: 'AFC', name: 'AFC Lurah Bilut' },
+        '1238': { id: '1238', pass: 'init1234', role: 'FC', name: 'FC Lurah Bilut' }
+    };
+    let currentUser = null;
+    let isClosed = false;
+    let syncEnabled = false;
+
+    function checkUser() {
+        const storedId = localStorage.getItem('echeckroll_user_id');
+        const user = validUsers[storedId];
+
+        // If no valid user or user is Admin, bounce back to login
+        if (!user || user.role === 'ADMIN') {
+            window.location.href = 'login.html';
+            return;
+        }
+
+        currentUser = user;
+        document.getElementById('userLabel').innerText = user.name + ' (' + user.role + ')';
+        
+        updateButtons();
+        renderSidePanel();
+        initSampleData();
+        renderTabs();
+        updateCalendar();
+    }
+
+    function doLogout() {
+        localStorage.removeItem('echeckroll_user_id');
+        localStorage.removeItem('echeckroll_user_role');
+        localStorage.removeItem('echeckroll_user_name');
+        window.location.href = 'login.html';
+    }
+
+    // ============================================================
+    //  SECTION 2: DATA STRUCTURE & SAVE/LOAD
+    // ============================================================
+    let daysInMonth = 31;
+    let offDayIndices = []; // Changed from sundayIndices to generic offDay
+    let groups = [];
+    let currentGroupIndex = 0;
+    let nextGroupId = 10; 
+
+    function initSampleData() {
+        const defaultPotongan = [
+            { label: 'KWSP', nilai: 0 },
+            { label: 'SOCSO', nilai: 0 },
+            { label: 'SIP', nilai: 0 },
+            { label: 'ELEKTRIK', nilai: 0 },
+            { label: 'AIR', nilai: 0 },
+            { label: 'RAWATAN', nilai: 0 }
+        ];
+
+        groups = [];
+        for (let i = 0; i < 10; i++) {
+            let workers = [{
+                id: (i + 1) * 100 + 1,
+                nama: i === 0 ? 'HALUDIN BIN ABD RAHMAN' : 'PEKERJA ' + (i + 1),
+                noKP: i === 0 ? '660920015883' : 'XXXXXXXXXXXX',
+                umur: i === 0 ? 60 : 30,
+                jantina: 'L',
+                hari: Array(31).fill(''),
+                aktiviti: [{ kod: '0101', nama: 'Menuai Sawit - Buah (kg)', unit: '', kadar: 0.50, kuantitiHarian: Array(31).fill(0) }],
+                elaun_motorsikal: 0, 
+                elaun_rumah: 0,      
+                potongan: JSON.parse(JSON.stringify(defaultPotongan)),
+                leaveRates: {},      
+                afcCheck: Array(31).fill(false),
+                fcCheck: Array(31).fill(false)
+            }];
+            groups.push({ id: i, name: 'Kumpulan ' + (i + 1), workers: workers });
+        }
+        currentGroupIndex = 0;
+        nextGroupId = 11;
+    }
+
+    function simpanData() {
+        const bulan = document.getElementById('bulan').value;
+        const tahun = document.getElementById('tahun').value;
+        const key = `echeckroll_data_${tahun}_${bulan}`;
+        const dataToSave = {
+            groups: groups,
+            isClosed: isClosed,
+            currentGroupIndex: currentGroupIndex,
+            nextGroupId: nextGroupId
+        };
+        localStorage.setItem(key, JSON.stringify(dataToSave));
+        alert('✅ Data untuk ' + document.getElementById('bulan').options[bulan].text + ' ' + tahun + ' telah disimpan!');
+    }
+
+    const originalInit = initSampleData;
+    initSampleData = function() {
+        const bulan = document.getElementById('bulan').value;
+        const tahun = document.getElementById('tahun').value;
+        const key = `echeckroll_data_${tahun}_${bulan}`;
+        const saved = localStorage.getItem(key);
+        if (saved) {
+            const data = JSON.parse(saved);
+            groups = data.groups;
+            isClosed = data.isClosed || false;
+            currentGroupIndex = data.currentGroupIndex || 0;
+            nextGroupId = data.nextGroupId || 11;
+        } else {
+            originalInit();
+        }
+    };
+
+    // ============================================================
+    //  SECTION 3: SIDEBAR & CALENDAR (Dynamic Weekly Off)
+    // ============================================================
+    function renderSidePanel() {
+        const panel = document.getElementById('sidePanel');
+        let html = '';
+        const currentMonth = parseInt(document.getElementById('bulan').value);
+        const months = ['Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogos','Sep','Okt','Nov','Dis'];
+
+        for (let y = 2026; y <= 2027; y++) {
+            html += `<h5 onclick="toggleYear(${y})">${y} <span id="arrow-${y}">▶</span></h5>`;
+            html += `<div class="month-list" id="year-${y}">`;
+            months.forEach((m, i) => {
+                const isActive = (y === 2026 && i === currentMonth);
+                const activeClass = isActive ? 'active-bold' : '';
+                html += `<div class="month-item ${activeClass}" onclick="switchMonth(${y}, ${i})">${m}</div>`;
+            });
+            html += `</div>`;
+        }
+        panel.innerHTML = html;
+        document.getElementById('year-2026').classList.add('open');
+        document.getElementById('arrow-2026').innerText = '▼';
+    }
+
+    function toggleYear(y) {
+        const el = document.getElementById(`year-${y}`);
+        const arrow = document.getElementById(`arrow-${y}`);
+        if (el) {
+            el.classList.toggle('open');
+            arrow.innerText = el.classList.contains('open') ? '▼' : '▶';
+        }
+    }
+
+    function switchMonth(year, monthIndex) {
+        document.getElementById('tahun').value = year;
+        document.getElementById('bulan').selectedIndex = monthIndex;
+        renderSidePanel();
+        updateCalendar();
+    }
+
+    function getProjectWeeklyOff() {
+        // Determine project ID. For this demo, let's use 'fpm305' as default
+        // In production, this would be read from the URL param
+        const projectId = 'fpm305'; 
+        
+        const offDataStr = localStorage.getItem('echeckroll_weekly_offs');
+        if (offDataStr) {
+            const offData = JSON.parse(offDataStr);
+            return offData[projectId] || 'Sunday'; // Default to Sunday if not set
+        }
+        return 'Sunday';
+    }
+
+    function getDayIndex(dayName) {
+        const map = {
+            'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
+            'Thursday': 4, 'Friday': 5, 'Saturday': 6
+        };
+        return map[dayName] !== undefined ? map[dayName] : 0;
+    }
+
+    function updateCalendar() {
+        const bulan = parseInt(document.getElementById('bulan').value);
+        const tahun = parseInt(document.getElementById('tahun').value);
+        daysInMonth = new Date(tahun, bulan + 1, 0).getDate();
+
+        // Get the day index for the weekly off (e.g., Friday = 5)
+        const weeklyOffDayName = getProjectWeeklyOff();
+        const offDayIndex = getDayIndex(weeklyOffDayName);
+
+        offDayIndices = [];
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dayOfWeek = new Date(tahun, bulan, d).getDay();
+            if (dayOfWeek === offDayIndex) {
+                offDayIndices.push(d - 1);
+            }
+        }
+        renderTable();
+    }
+
+    const LEAVE_MAP = {
+        'CA': 'CUTI AM', 'CT': 'CUTI TAHUNAN', 'MC': 'CUTI SAKIT', 'CB': 'CUTI BERSALIN',
+        'CTG': 'CUTI TANPA GAJI', 'HAJI': 'CUTI HAJI', 'CM': 'CUTI MINGGUAN', 'OFF': 'OFF',
+        'WAD': 'CUTI SAKIT WAD', 'CBN': 'CUTI BENCANA', 'CP': 'CUTI PATERNITI',
+        'CE': 'CUTI EHSAN', 'CK': 'CUTI KUARANTIN', 'H': 'HADIR HARI BIASA',
+        'HHM': 'HADIR HARI MINGGU', 'HCU': 'HADIR HARI CUTI UMUM', 'RT': 'RUKUN TETANGGA',
+        'RELA': 'RELA/ASKAR WATANIAH', 'KS': 'KESATUAN', 'CS': 'CACAT SEMENTARA',
+        'GK': 'DIGANTUNG KERJA', 'P': 'PONTENG'
+    };
+    const PAID_LEAVE_CODES = ['CA', 'CT', 'MC', 'CB', 'HAJI', 'CM', 'OFF', 'WAD', 'CBN', 'CP', 'CE', 'CK'];
+
+    // ============================================================
+    //  SECTION 4: RENDER TABLE
+    // ============================================================
+    function renderTable() {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        const group = groups[currentGroupIndex];
+        if (!group) return;
+        const isEditable = !isClosed;
+
+        group.workers.forEach((worker, wIdx) => {
+            if (!worker.hari || !Array.isArray(worker.hari)) worker.hari = Array(31).fill('');
+            if (!worker.aktiviti) worker.aktiviti = [];
+            if (!worker.leaveRates) worker.leaveRates = {};
+
+            let labelRow = document.createElement('tr');
+            labelRow.className = 'worker-header-row';
+            let labelHtml = `
+                <th style="min-width:25px;">Bil</th>
+                <th style="min-width:90px;">NAMA</th>
+                <th style="min-width:75px;">No. K/P</th>
+                <th style="min-width:20px;">U</th>
+                <th style="min-width:15px;">J</th>
+            `;
+            for (let d = 0; d < 31; d++) {
+                const isOff = offDayIndices.includes(d);
+                const isDisabled = d >= daysInMonth;
+                const cls = isOff ? 'off-day' : (isDisabled ? 'disabled' : 'highlight-col');
+                const style = isDisabled ? 'background:#e0e0e0; color:#999;' : '';
+                labelHtml += `<th class="${cls}" style="${style}min-width:14px;">${(d+1)}</th>`;
+            }
+            labelHtml += `
+                <th style="min-width:30px;">Bil.Hr</th>
+                <th style="min-width:35px;">Kadar</th>
+                <th style="min-width:45px;">Jumlah</th>
+                <th style="min-width:20px; background:#ffebee;">✕</th>
+            `;
+            labelRow.innerHTML = labelHtml;
+            tbody.appendChild(labelRow);
+
+            let dataRow = document.createElement('tr');
+            dataRow.className = 'worker-data-row';
+            dataRow.innerHTML = `
+                <td style="background:#fff9c4; font-weight:bold; font-size:12px;">${wIdx + 1}</td>
+                <td style="background:#fff9c4; font-weight:bold; font-size:12px; text-align:left;">
+                    <input type="text" class="editable-input" value="${worker.nama}" ${isEditable ? '' : 'disabled'} onchange="groups[${currentGroupIndex}].workers[${wIdx}].nama = this.value;">
+                </td>
+                <td style="background:#fff9c4; font-weight:bold; font-size:12px;">
+                    <input type="text" class="editable-input" value="${worker.noKP}" ${isEditable ? '' : 'disabled'} onchange="groups[${currentGroupIndex}].workers[${wIdx}].noKP = this.value;">
+                </td>
+                <td style="background:#fff9c4; font-weight:bold; font-size:12px;">
+                    <input type="number" class="editable-input number" value="${worker.umur}" ${isEditable ? '' : 'disabled'} onchange="groups[${currentGroupIndex}].workers[${wIdx}].umur = parseInt(this.value) || 0;">
+                </td>
+                <td style="background:#fff9c4; font-weight:bold; font-size:12px;">
+                    <select class="editable-input" ${isEditable ? '' : 'disabled'} onchange="groups[${currentGroupIndex}].workers[${wIdx}].jantina = this.value;">
+                        <option value="L" ${worker.jantina === 'L' ? 'selected' : ''}>L</option>
+                        <option value="P" ${worker.jantina === 'P' ? 'selected' : ''}>P</option>
+                    </select>
+                </td>
+            `;
+
+            let totalHariBekerja = 0;
+            for (let d = 0; d < 31; d++) {
+                const isOff = offDayIndices.includes(d);
+                const isDisabled = d >= daysInMonth;
+                const bg = isDisabled ? '#e0e0e0' : (isOff ? '#ffcdd2' : '#ffecb3');
+                const val = (worker.hari && worker.hari[d]) ? worker.hari[d] : '';
+                
+                if (val === '1') totalHariBekerja += 1;
+
+                dataRow.innerHTML += `
+                    <td style="background:${bg}; padding:0;">
+                        <input type="text" class="daily-input" value="${val}" ${isDisabled || !isEditable ? 'disabled' : ''} onchange="updateKehadiran(${wIdx}, ${d}, this.value)">
+                    </td>
+                `;
+            }
+            const totalGajiAktiviti = worker.aktiviti.reduce((sum, act) => {
+                return sum + (act.kuantitiHarian.reduce((a,b) => a+b, 0) * act.kadar);
+            }, 0);
+            const totalElaun = (worker.elaun_motorsikal || 0) + (worker.elaun_rumah || 0);
+            const gajiKasar = totalGajiAktiviti + totalElaun;
+
+            dataRow.innerHTML += `
+                <td>${totalHariBekerja}</td>
+                <td></td>
+                <td>${gajiKasar.toFixed(2)}</td>
+                <td style="background:#ffebee; cursor:pointer;" onclick="padamPekerja(${wIdx})">✕</td>
+            `;
+            tbody.appendChild(dataRow);
+
+            const elaunList = [
+                { label: 'ELAUN MOTORSIKAL', field: 'elaun_motorsikal' },
+                { label: 'ELAUN RUMAH', field: 'elaun_rumah' }
+            ];
+            elaunList.forEach((el) => {
+                let row = document.createElement('tr');
+                row.innerHTML = `<td></td><td class="row-label" style="padding-left:10px;">${el.label}</td><td></td><td></td><td></td>`;
+                for (let d = 0; d < 31; d++) {
+                    const bg = d >= daysInMonth ? '#e0e0e0' : '';
+                    row.innerHTML += `<td style="background:${bg};"></td>`;
+                }
+                row.innerHTML += `<td></td><td></td><td><input type="number" class="editable-input number" value="${worker[el.field]}" ${isEditable ? '' : 'disabled'} step="0.01" onchange="updateElaun(${wIdx}, '${el.field}', this.value);">`;
+                tbody.appendChild(row);
+            });
+
+            let headerActRow = document.createElement('tr');
+            headerActRow.style.backgroundColor = '#fff9c4';
+            headerActRow.style.borderTop = '2px solid #ddd';
+            headerActRow.innerHTML = `
+                <td></td>
+                <td class="row-label" style="text-align:center; font-weight:bold; padding-left:5px; min-width:180px; border-right:1px solid #b0bec5;">AKTIVITI KERJA</td>
+                <td style="border-right:1px solid #b0bec5; font-weight:bold;">KOD</td>
+                <td style="border-right:1px solid #b0bec5; font-weight:bold;">PKT</td>
+                <td style="font-weight:bold;">BLOK</td>
+            `;
+            for (let d = 0; d < 31; d++) {
+                const bg = d >= daysInMonth ? '#e0e0e0' : '#fffde7';
+                headerActRow.innerHTML += `<td style="background:${bg}; border-bottom:1px solid #b0bec5;"></td>`;
+            }
+            headerActRow.innerHTML += `<td></td><td></td><td></td><td></td>`;
+            tbody.appendChild(headerActRow);
+
+            worker.aktiviti.forEach((act, aIdx) => {
+                let row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><span class="del-btn" onclick="padamAktiviti(${wIdx}, ${aIdx})">✕</span></td>
+                    <td class="row-label" style="padding-left:4px;">
+                        <input list="kuk-list-${currentGroupIndex}" class="editable-input" style="text-align:left; width:100%;" value="${act.kod ? act.kod + ' - ' + act.nama : ''}" placeholder="Taip kod / nama kerja" ${isEditable ? '' : 'disabled'} onchange="updateActName(${wIdx}, ${aIdx}, this.value)">
+                        <datalist id="kuk-list-${currentGroupIndex}">
+                            <option value="0101 - Menuai Sawit - Buah (kg)">
+                            <option value="0201 - Kerja Lebih Masa (jam)">
+                            <option value="0301 - Merumput - Kimia (ha)">
+                            <option value="0401 - Pengangkutan Buah (tan)">
+                        </datalist>
+                    </td>
+                    <td><input type="text" class="editable-input" value="${act.kod || ''}" ${isEditable ? '' : 'disabled'}></td>
+                    <td><input type="text" class="editable-input" value="" placeholder="PKT" ${isEditable ? '' : 'disabled'}></td>
+                    <td><input type="text" class="editable-input" value="" placeholder="Blok" ${isEditable ? '' : 'disabled'}></td>
+                `;
+
+                let totalQty = 0;
+                for (let d = 0; d < 31; d++) {
+                    const isOff = offDayIndices.includes(d);
+                    const dayValue = worker.hari[d] || '';
+                    const isLeaveDay = LEAVE_MAP[dayValue] !== undefined;
+                    // FIX: Removed 'isOff' from disabled condition. Weekly off days are open for editing unless a leave code is entered.
+                    const isDisabled = d >= daysInMonth || !isEditable || isLeaveDay;
+                    // FIX: Changed background to standard yellow for productivity, even on off days.
+                    const bg = (d >= daysInMonth ? '#e0e0e0' : '#fffde7');
+                    let val = act.kuantitiHarian[d] || 0;
+                    if (val != 0) totalQty += val;
+                    row.innerHTML += `<td style="background:${bg}; padding:0;"><input type="number" class="daily-input" value="${val > 0 ? val : ''}" step="0.01" ${isDisabled ? 'disabled' : ''} onchange="updateDailyQty(${wIdx}, ${aIdx}, ${d}, this.value)"></td>`;
+                }
+                const totalJumlah = totalQty * act.kadar;
+                row.innerHTML += `
+                    <td class="total-row">${totalQty.toFixed(2)}</td>
+                    <td class="total-row"><input type="number" class="editable-input number" style="width:100%;" value="${act.kadar}" ${isEditable ? '' : 'disabled'} step="0.01" onchange="updateActKadar(${wIdx}, ${aIdx}, this.value);"></td>
+                    <td class="total-row">${totalJumlah.toFixed(2)}</td>
+                    <td></td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            let addRow = document.createElement('tr');
+            addRow.innerHTML = `<td></td><td class="row-label" style="padding-left:4px;"><button class="btn btn-outline btn-sm" onclick="tambahAktiviti(${wIdx})" ${isEditable ? '' : 'disabled'}>➕ Aktiviti</button></td><td></td><td></td><td></td>`;
+            for (let d = 0; d < 31; d++) { addRow.innerHTML += `<td style="background:${d>=daysInMonth?'#e0e0e0':''};"></td>`; }
+            addRow.innerHTML += `<td></td><td></td><td></td><td></td>`;
+            tbody.appendChild(addRow);
+
+            const presentLeaveCodes = [];
+            const leaveCounts = {};
+            for (let d = 0; d < 31; d++) {
+                const val = worker.hari[d] || '';
+                if (LEAVE_MAP[val]) {
+                    if (!leaveCounts[val]) {
+                        presentLeaveCodes.push(val);
+                        leaveCounts[val] = 1;
+                    } else {
+                        leaveCounts[val]++;
+                    }
+                }
+            }
+
+            presentLeaveCodes.forEach(code => {
+                const label = LEAVE_MAP[code];
+                const isPaidLeave = PAID_LEAVE_CODES.includes(code);
+                const currentRate = worker.leaveRates[code] || 0;
+                const totalCuti = leaveCounts[code] || 0;
+                const totalJumlahCuti = totalCuti * currentRate;
+
+                let row = document.createElement('tr');
+                row.style.backgroundColor = '#e3f2fd';
+                row.innerHTML = `
+                    <td></td>
+                    <td class="row-label" style="text-align:center; font-weight:bold; padding-left:5px; border-right:1px solid #b0bec5;">${label}</td>
+                    <td></td><td></td><td></td>
+                `;
+
+                for (let d = 0; d < 31; d++) {
+                    const val = worker.hari[d] || '';
+                    const isCuti = val === code;
+                    const isOff = offDayIndices.includes(d);
+                    const bg = isOff ? '#ffcdd2' : (d >= daysInMonth ? '#e0e0e0' : '');
+                    row.innerHTML += `<td style="background:${bg};">${isCuti ? '1' : ''}</td>`;
+                }
+                row.innerHTML += `
+                    <td class="total-row">${totalCuti}</td>
+                    <td class="total-row">
+                        <input type="number" class="editable-input number" style="width:100%;" value="${currentRate}" ${!isPaidLeave || !isEditable ? 'disabled' : ''} step="0.01" onchange="updateLeaveRate(${wIdx}, '${code}', this.value);">
+                    </td>
+                    <td class="total-row">${totalJumlahCuti.toFixed(2)}</td>
+                    <td></td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            let dividerRow = document.createElement('tr');
+            dividerRow.style.backgroundColor = '#ffffff';
+            dividerRow.style.borderTop = '1px solid #b0bec5';
+            dividerRow.style.borderBottom = '1px solid #b0bec5';
+            dividerRow.innerHTML = `<td colspan="42" style="height:3px; padding:0;"></td>`;
+            tbody.appendChild(dividerRow);
+
+            let totalLeaveAmount = 0;
+            presentLeaveCodes.forEach(code => {
+                if (PAID_LEAVE_CODES.includes(code)) {
+                    totalLeaveAmount += (leaveCounts[code] || 0) * (worker.leaveRates[code] || 0);
+                }
+            });
+            const gajiKasarWithLeave = gajiKasar + totalLeaveAmount;
+
+            let grossRow = document.createElement('tr');
+            grossRow.innerHTML = `<td></td><td class="gross-row" style="text-align:left; padding-left:8px;">GAJI KASAR</td><td></td><td></td><td></td>`;
+            for (let d = 0; d < 31; d++) { grossRow.innerHTML += `<td style="background:${d>=daysInMonth?'#e0e0e0':''};"></td>`; }
+            grossRow.innerHTML += `<td></td><td></td><td class="gross-row">${gajiKasarWithLeave.toFixed(2)}</td><td></td>`;
+            tbody.appendChild(grossRow);
+
+            ['Disemak AFC', 'Disahkan FC'].forEach((label, idx) => {
+                let row = document.createElement('tr');
+                const isRole = idx === 0 ? (currentUser.role === 'AFC') : (currentUser.role === 'FC');
+                const roleKey = idx === 0 ? 'afcCheck' : 'fcCheck';
+                const checkClass = idx === 0 ? 'check-afc' : 'check-fc';
+                row.innerHTML = `<td></td><td class="row-label" style="text-align:center; font-weight:bold; background:${idx===0?'#e3f2fd':'#e8f5e9'};">${label}</td><td></td><td></td><td></td>`;
+                for (let d = 0; d < 31; d++) {
+                    const isOff = offDayIndices.includes(d);
+                    const isDisabled = d >= daysInMonth || isClosed || !isRole;
+                    const bg = isOff ? '#ffcdd2' : (isDisabled ? '#e0e0e0' : '');
+                    row.innerHTML += `<td style="background:${bg};"><input type="checkbox" class="check-sm ${checkClass}" ${worker[roleKey][d] ? 'checked' : ''} ${isDisabled ? 'disabled' : ''} onchange="updateCheck(${wIdx}, ${d}, '${roleKey}', this.checked)"></td>`;
+                }
+                row.innerHTML += `<td></td><td></td><td></td><td></td>`;
+                tbody.appendChild(row);
+            });
+
+            worker.potongan.forEach((p, pIdx) => {
+                let row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><span class="del-btn" onclick="padamPotongan(${wIdx}, ${pIdx})">✕</span></td>
+                    <td class="deduction-row" style="text-align:left; padding-left:8px;">
+                        <input type="text" class="editable-input" style="text-align:left;" value="${p.label}" ${isEditable ? '' : 'disabled'} onchange="updatePotonganLabel(${wIdx}, ${pIdx}, this.value);">
+                    </td>
+                    <td></td><td></td><td></td>
+                    <td colspan="31" style="background:#f5f5f5; border-left:1px solid #b0bec5; border-right:1px solid #b0bec5;"></td>
+                    <td></td><td></td>
+                    <td class="deduction-row"><input type="number" class="editable-input number" value="${p.nilai}" ${isEditable ? '' : 'disabled'} step="0.01" onchange="updatePotonganNilai(${wIdx}, ${pIdx}, this.value);"></td>
+                    <td></td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            let addDedRow = document.createElement('tr');
+            addDedRow.innerHTML = `<td></td><td class="row-label" style="padding-left:8px;"><button class="btn btn-outline btn-sm" onclick="tambahPotongan(${wIdx})" ${isEditable ? '' : 'disabled'}>➕ Tambah Potongan</button></td><td></td><td></td><td></td><td colspan="31" style="background:#f5f5f5; border-left:1px solid #b0bec5; border-right:1px solid #b0bec5;"></td><td></td><td></td><td></td><td></td>`;
+            tbody.appendChild(addDedRow);
+
+            let netRow = document.createElement('tr');
+            const totalPotongan = worker.potongan.reduce((sum, p) => sum + (p.nilai || 0), 0);
+            const gajiBersih = gajiKasarWithLeave - totalPotongan;
+            netRow.innerHTML = `<td></td><td class="net-row" style="text-align:left; padding-left:8px;">GAJI BERSIH</td><td></td><td></td><td></td>`;
+            for (let d = 0; d < 31; d++) { netRow.innerHTML += `<td style="background:${d>=daysInMonth?'#e0e0e0':''};"></td>`; }
+            netRow.innerHTML += `<td></td><td></td><td class="net-row">${gajiBersih.toFixed(2)}</td><td></td>`;
+            tbody.appendChild(netRow);
+
+            let spacer = document.createElement('tr');
+            spacer.style.backgroundColor = '#ffffff';
+            spacer.innerHTML = `<td colspan="42" style="height:15px; border:none; padding:0;"></td>`;
+            tbody.appendChild(spacer);
+        });
+    }
+
+    // ============================================================
+    //  SECTION 5: LOGIK FUNGSI & SYNC
+    // ============================================================
+    function toggleSync() {
+        syncEnabled = document.getElementById('syncCheck').checked;
+    }
+
+    function updateKehadiran(wIdx, day, value) {
+        groups[currentGroupIndex].workers[wIdx].hari[day] = value;
+        renderTable();
+    }
+
+    function updateDailyQty(wIdx, aIdx, day, value) {
+        const numVal = parseFloat(value);
+        const group = groups[currentGroupIndex];
+        const worker = group.workers[wIdx];
+        worker.aktiviti[aIdx].kuantitiHarian[day] = isNaN(numVal) ? 0 : numVal;
+        if (syncEnabled) {
+            group.workers.forEach(w => {
+                if (w.id !== worker.id && w.aktiviti[aIdx]) {
+                    w.aktiviti[aIdx].kuantitiHarian[day] = isNaN(numVal) ? 0 : numVal;
+                }
+            });
+        }
+        renderTable();
+    }
+
+    function updateActKadar(wIdx, aIdx, value) {
+        const rate = parseFloat(value) || 0;
+        const group = groups[currentGroupIndex];
+        const worker = group.workers[wIdx];
+        worker.aktiviti[aIdx].kadar = rate;
+        if (syncEnabled) {
+            group.workers.forEach(w => {
+                if (w.id !== worker.id && w.aktiviti[aIdx]) {
+                    w.aktiviti[aIdx].kadar = rate;
+                }
+            });
+        }
+        renderTable();
+    }
+
+    function updateActName(wIdx, aIdx, value) {
+        const group = groups[currentGroupIndex];
+        const worker = group.workers[wIdx];
+        if (value.includes('0101')) {
+            worker.aktiviti[aIdx].kod = '0101';
+            worker.aktiviti[aIdx].nama = 'Menuai Sawit - Buah (kg)';
+        } else if (value.includes('0201')) {
+            worker.aktiviti[aIdx].kod = '0201';
+            worker.aktiviti[aIdx].nama = 'Kerja Lebih Masa (jam)';
+        } else {
+            worker.aktiviti[aIdx].kod = '';
+            worker.aktiviti[aIdx].nama = value;
+        }
+        group.workers.forEach(w => {
+            if (w.id !== worker.id && w.aktiviti[aIdx]) {
+                w.aktiviti[aIdx].kod = worker.aktiviti[aIdx].kod;
+                w.aktiviti[aIdx].nama = worker.aktiviti[aIdx].nama;
+            }
+        });
+        renderTable();
+    }
+
+    function updateElaun(wIdx, field, value) {
+        groups[currentGroupIndex].workers[wIdx][field] = parseFloat(value) || 0;
+        renderTable();
+    }
+
+    function updatePotonganNilai(wIdx, pIdx, value) {
+        const val = parseFloat(value) || 0;
+        const group = groups[currentGroupIndex];
+        group.workers[wIdx].potongan[pIdx].nilai = val;
+        group.workers.forEach(w => {
+            if (w.id !== group.workers[wIdx].id && w.potongan[pIdx]) {
+                w.potongan[pIdx].nilai = val;
+            }
+        });
+        renderTable(); 
+    }
+
+    function updatePotonganLabel(wIdx, pIdx, value) {
+        const group = groups[currentGroupIndex];
+        group.workers[wIdx].potongan[pIdx].label = value;
+        group.workers.forEach(w => {
+            if (w.id !== group.workers[wIdx].id && w.potongan[pIdx]) {
+                w.potongan[pIdx].label = value;
+            }
+        });
+        renderTable();
+    }
+
+    function updateLeaveRate(wIdx, code, value) {
+        const val = parseFloat(value) || 0;
+        const group = groups[currentGroupIndex];
+        group.workers[wIdx].leaveRates[code] = val;
+        renderTable();
+    }
+
+    function updateCheck(wIdx, day, roleKey, checked) {
+        if (isClosed) return;
+        groups[currentGroupIndex].workers[wIdx][roleKey][day] = checked;
+        renderTable();
+    }
+
+    function tambahAktiviti(wIdx) {
+        const group = groups[currentGroupIndex];
+        const newAct = { kod: '', nama: '', unit: '', kadar: 0, kuantitiHarian: Array(31).fill(0) };
+        group.workers.forEach(w => w.aktiviti.push(JSON.parse(JSON.stringify(newAct))));
+        renderTable();
+    }
+
+    function padamAktiviti(wIdx, aIdx) {
+        const group = groups[currentGroupIndex];
+        const worker = group.workers[wIdx];
+        if (worker.aktiviti.length <= 1) { alert('Tidak boleh padam aktiviti terakhir.'); return; }
+        if (!confirm('Padam aktiviti ini?')) return;
+        worker.aktiviti.splice(aIdx, 1);
+        group.workers.forEach(w => {
+            if (w.id !== worker.id && w.aktiviti.length > aIdx) w.aktiviti.splice(aIdx, 1);
+        });
+        renderTable();
+    }
+
+    function tambahPotongan(wIdx) {
+        const group = groups[currentGroupIndex];
+        const newDed = { label: 'LAIN-LAIN', nilai: 0 };
+        group.workers.forEach(w => {
+            w.potongan.push(JSON.parse(JSON.stringify(newDed)));
+        });
+        renderTable();
+    }
+
+    function padamPotongan(wIdx, pIdx) {
+        const group = groups[currentGroupIndex];
+        const worker = group.workers[wIdx];
+        if (worker.potongan.length <= 1) { alert('Tidak boleh padam potongan terakhir.'); return; }
+        if (!confirm('Padam potongan ini?')) return;
+        worker.potongan.splice(pIdx, 1);
+        group.workers.forEach(w => {
+            if (w.id !== worker.id && w.potongan.length > pIdx) w.potongan.splice(pIdx, 1);
+        });
+        renderTable();
+    }
+
+    function tambahPekerja() {
+        const group = groups[currentGroupIndex];
+        const newWorker = {
+            id: Date.now(),
+            nama: 'PEKERJA BARU',
+            noKP: 'XXXXXXXXXXXX',
+            umur: 30,
+            jantina: 'L',
+            hari: Array(31).fill(''),
+            aktiviti: group.workers.length > 0 ? JSON.parse(JSON.stringify(group.workers[0].aktiviti)) : [{ kod: '0101', nama: 'Menuai Sawit - Buah (kg)', unit: '', kadar: 0.50, kuantitiHarian: Array(31).fill(0) }],
+            elaun_motorsikal: 0,
+            elaun_rumah: 0,
+            potongan: group.workers.length > 0 ? JSON.parse(JSON.stringify(group.workers[0].potongan)) : [ { label: 'KWSP', nilai: 0 } ],
+            leaveRates: group.workers.length > 0 ? JSON.parse(JSON.stringify(group.workers[0].leaveRates)) : {},
+            afcCheck: Array(31).fill(false),
+            fcCheck: Array(31).fill(false)
+        };
+        group.workers.push(newWorker);
+        renderTable();
+    }
+
+    function padamPekerja(wIdx) {
+        const group = groups[currentGroupIndex];
+        if (group.workers.length <= 1) { alert('Tidak boleh padam pekerja terakhir.'); return; }
+        if (!confirm('Padam pekerja ini?')) return;
+        group.workers.splice(wIdx, 1);
+        renderTable();
+    }
+
+    function bersihkanData(wIdx) {
+        if (!confirm('Bersihkan semua data kehadiran & produktiviti untuk pekerja ini?')) return;
+        const w = groups[currentGroupIndex].workers[wIdx];
+        w.hari = Array(31).fill('');
+        w.aktiviti.forEach(act => act.kuantitiHarian = Array(31).fill(0));
+        renderTable();
+    }
+
+    function updateButtons() {
+        const isFC = currentUser && currentUser.role === 'FC';
+        document.getElementById('btnTutup').style.display = (isFC && !isClosed) ? 'inline-block' : 'none';
+        document.getElementById('btnBuka').style.display = (isFC && isClosed) ? 'inline-block' : 'none';
+        document.getElementById('statusTutup').innerText = isClosed ? '🔒 Tutup' : '✅ Buka';
+    }
+
+    function toggleTutup() {
+        if (currentUser.role !== 'FC') return;
+        if (!isClosed) {
+            if (!confirm('Tutup urusniaga ini? FS/AFC tidak boleh edit lagi.')) return;
+            isClosed = true;
+        } else {
+            if (!confirm('Buka semula urusniaga ini?')) return;
+            isClosed = false;
+        }
+        const bulan = document.getElementById('bulan').value;
+        const tahun = document.getElementById('tahun').value;
+        const key = `echeckroll_data_${tahun}_${bulan}`;
+        const saved = localStorage.getItem(key);
+        if (saved) {
+            const data = JSON.parse(saved);
+            data.isClosed = isClosed;
+            localStorage.setItem(key, JSON.stringify(data));
+        }
+        updateButtons();
+        renderTable();
+    }
+
+    function kiraSemua() { renderTable(); }
+
+    // ============================================================
+    //  SECTION 6: TABS / KUMPULAN LOGIC
+    // ============================================================
+    function addNewGroup() {
+        const defaultPotongan = [
+            { label: 'KWSP', nilai: 0 },
+            { label: 'SOCSO', nilai: 0 },
+            { label: 'SIP', nilai: 0 }
+        ];
+        const newGroup = {
+            id: nextGroupId++,
+            name: 'Kumpulan ' + (groups.length + 1),
+            workers: [{
+                id: Date.now(),
+                nama: 'PEKERJA BARU',
+                noKP: 'XXXXXXXXXXXX',
+                umur: 30,
+                jantina: 'L',
+                hari: Array(31).fill(''),
+                aktiviti: [{ kod: '0101', nama: 'Menuai Sawit - Buah (kg)', unit: '', kadar: 0.50, kuantitiHarian: Array(31).fill(0) }],
+                elaun_motorsikal: 0,
+                elaun_rumah: 0,
+                potongan: JSON.parse(JSON.stringify(defaultPotongan)),
+                leaveRates: {},
+                afcCheck: Array(31).fill(false),
+                fcCheck: Array(31).fill(false)
+            }]
+        };
+        groups.push(newGroup);
+        renderTabs();
+        currentGroupIndex = groups.length - 1;
+        renderTable();
+        updateButtons();
+    }
+
+    function renderTabs() {
+        const container = document.getElementById('tabsContainer');
+        let html = '';
+        let visibleGroups = groups.map((g, idx) => idx);
+        
+        visibleGroups.forEach((idx) => {
+            const g = groups[idx]; 
+            if (!g) return;
+            const active = idx === currentGroupIndex ? 'active' : '';
+            html += `<div class="tab-item ${active}" onclick="switchGroup(${idx})">
+                <span class="tab-name" id="tab-name-${idx}" ondblclick="event.stopPropagation(); enableEdit(${idx})">${g.name}</span>
+                <input class="tab-name-input" id="tab-input-${idx}" value="${g.name}" onblur="saveEdit(${idx})" onkeydown="if(event.key==='Enter') this.blur();" />
+                <span class="close-tab" onclick="event.stopPropagation(); removeGroup(${idx})">×</span>
+            </div>`;
+        });
+
+        if (currentUser.role !== 'AFC' && currentUser.role !== 'FC') {
+            html += `<button class="btn-add-tab" onclick="addNewGroup()">+</button>`;
+        }
+        container.innerHTML = html;
+    }
+
+    function enableEdit(idx) {
+        const span = document.getElementById(`tab-name-${idx}`);
+        const input = document.getElementById(`tab-input-${idx}`);
+        if(span && input) {
+            span.style.display = 'none';
+            input.style.display = 'inline-block';
+            input.focus();
+            input.select();
+        }
+    }
+
+    function saveEdit(idx) {
+        const span = document.getElementById(`tab-name-${idx}`);
+        const input = document.getElementById(`tab-input-${idx}`);
+        if(span && input) {
+            const newName = input.value.trim() || groups[idx].name;
+            if(groups[idx]) groups[idx].name = newName;
+            span.innerText = newName;
+            span.style.display = 'inline-block';
+            input.style.display = 'none';
+        }
+    }
+
+    function switchGroup(idx) {
+        currentGroupIndex = idx;
+        renderTabs();
+        renderTable();
+    }
+
+    function removeGroup(idx) {
+        if (groups.length <= 1) { alert('Tidak boleh padam kumpulan terakhir.'); return; }
+        if (!confirm('Padam kumpulan ini? (Pekerja di dalamnya akan turut terpadam)')) return;
+        groups.splice(idx, 1);
+        if (currentGroupIndex >= groups.length) currentGroupIndex = groups.length - 1;
+        renderTabs();
+        renderTable();
+    }
+
+    // ============================================================
+    //  SECTION 7: BOOT UP
+    // ============================================================
+    window.onload = function() {
+        checkUser();
+    };
+</script>
+</body>
+</html>

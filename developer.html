@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Developer - eCheckroll</title>
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="manifest" href="site.webmanifest">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* ===== GLOBAL & FIT WINDOW ===== */
+        * { box-sizing: border-box; font-family: 'Calibri', 'Segoe UI', sans-serif; }
+        body { background: #f0f4f8; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
+        .container { 
+            display: flex; flex-direction: column; height: 100vh; 
+            max-width: 100%; background: white; 
+            padding: 8px 15px; 
+            overflow: hidden;
+        }
+
+        .header-area { flex-shrink: 0; }
+        .header {
+            display: grid; grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px; margin-bottom: 4px; background: #fff9c4; padding: 6px;
+            border-radius: 4px; border: 1px solid #fbc02d; font-weight: bold; text-align: center;
+        }
+        .header input { padding: 3px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; width: 100%; text-align: center; font-weight: bold; }
+        .header label { display: block; font-size: 11px; color: #555; margin-bottom: 1px; }
+
+        .action-bar { display: flex; gap: 5px; align-items: center; margin: 3px 0; flex-wrap: wrap; flex-shrink: 0; }
+        .btn { padding: 4px 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px; }
+        .btn-primary { background: #2e7d32; color: white; }
+        .btn-danger { background: #c62828; color: white; }
+        .btn-warning { background: #ff9800; color: white; }
+        .btn-outline { background: white; border: 1px solid #2e7d32; color: #2e7d32; }
+        .btn-logout { background: #757575; color: white; margin-left: auto; }
+
+        .main-layout { display: flex; gap: 8px; flex-grow: 1; overflow: hidden; }
+
+        .side-panel { 
+            width: 150px; 
+            background: linear-gradient(135deg, #c62828, #b71c1c);
+            border: 2px solid #8e0000; border-radius: 8px; 
+            padding: 10px; overflow-y: auto; flex-shrink: 0; 
+            box-shadow: inset 0 2px 5px rgba(255,255,255,0.2), 0 4px 8px rgba(0,0,0,0.3);
+            color: white; text-align: center;
+        }
+        .side-panel h5 { margin: 0 0 10px 0; font-size: 14px; color: #ffeb3b; }
+
+        .content-area { 
+            flex-grow: 1; overflow-y: auto; position: relative; 
+            border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; background: white;
+        }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        
+        .dev-card {
+            background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 15px; margin-bottom: 15px; max-width: 600px;
+        }
+        .dev-card h3 { margin-top: 0; }
+        .dev-card code { background: #e9ecef; padding: 2px 4px; border-radius: 4px; font-size: 13px; }
+        
+        .log-area {
+            background: #212529; color: #fff; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; white-space: pre-wrap;
+        }
+
+        @media (max-width: 768px) {
+            .header { grid-template-columns: 1fr; gap: 5px; }
+            .main-layout { flex-direction: column; }
+            .side-panel { width: 100%; display: flex; flex-wrap: wrap; padding: 5px; }
+            .side-panel h5 { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="appArea">
+    <div class="container">
+        <div class="header-area">
+            <div class="header">
+                <div>
+                    <label>PORTAL DEV</label>
+                    <input type="text" value="eCheckroll Debug Panel" disabled>
+                </div>
+                <div>
+                    <label>STATUS SISTEM</label>
+                    <input type="text" id="statusHeader" value="Prototype Mode (localStorage)" disabled>
+                </div>
+                <div>
+                    <label>PEMBANGUN</label>
+                    <input type="text" id="devUser" value="Developer" disabled>
+                </div>
+            </div>
+            <div class="action-bar">
+                <div style="font-size:12px; font-weight:bold; color:#555; margin-right:auto;">⚠️ Alat Ujian & Debug</div>
+                <button class="btn btn-logout btn-sm" onclick="doLogout()">🚪 Log Keluar</button>
+            </div>
+        </div>
+
+        <div class="main-layout">
+            <div class="side-panel">
+                <h5><i class="fas fa-bug"></i> DEV</h5>
+                <div class="side-menu-item active" onclick="switchSection('tools')" style="color:#ffeb3b; font-weight:bold; cursor:pointer;">
+                    <i class="fas fa-tools"></i> Tools
+                </div>
+                <div class="side-menu-item" onclick="switchSection('logs')" style="color:#ffcdd2; cursor:pointer; padding:8px 0;">
+                    <i class="fas fa-terminal"></i> Logs
+                </div>
+            </div>
+
+            <div class="content-area" id="contentArea">
+                <div class="content-section active" id="sec-tools">
+                    <h2><i class="fas fa-tools"></i> Alat Debug & Reset</h2>
+                    
+                    <div class="dev-card">
+                        <h3><i class="fas fa-undo-alt"></i> Reset Data</h3>
+                        <p>Padam <strong>semua data</strong> yang disimpan dalam <code>localStorage</code>. Ini akan mengembalikan sistem ke keadaan asal (kosong).</p>
+                        <button class="btn btn-danger" onclick="resetAllData()">🗑️ Reset Semua Data</button>
+                    </div>
+
+                    <div class="dev-card">
+                        <h3><i class="fas fa-database"></i> Reload Mock Data</h3>
+                        <p>Jika anda telah padam data atau mahu memulakan ujian dari awal, klik butang ini untuk <strong>memuatkan semula Mock Data</strong> (10 kumpulan, 3 Rancangan, Pengguna Demo).</p>
+                        <button class="btn btn-warning" onclick="seedMockData()">📥 Muat Semula Mock Data</button>
+                    </div>
+
+                    <div class="dev-card">
+                        <h3><i class="fas fa-print"></i> Semak Struktur Data</h3>
+                        <p>Paparkan struktur data semasa yang tersimpan dalam <code>localStorage</code> untuk semakan.</p>
+                        <button class="btn btn-outline btn-sm" onclick="viewLocalStorage()">📋 Papar localStorage</button>
+                        <div id="dataDisplay" class="log-area" style="margin-top:10px;">Klik butang di atas untuk melihat data...</div>
+                    </div>
+                </div>
+
+                <div class="content-section" id="sec-logs">
+                    <h2><i class="fas fa-terminal"></i> Log Sistem (Console)</h2>
+                    <p>Nota kepada Pembangun: Sila gunakan <strong>F12 -> Console</strong> untuk melihat log terperinci. Anda juga boleh klik butang di bawah untuk membersihkan log console.</p>
+                    <button class="btn btn-outline btn-sm" onclick="console.clear(); alert('Console telah dibersihkan!');">🧹 Clear Console</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    //  SECTION 1: AUTH & REDIRECT
+    // ============================================================
+    const validUsers = {
+        '9999': { id: '9999', pass: 'dev1234', role: 'DEV', name: 'Developer' }
+    };
+
+    function checkUser() {
+        const storedId = localStorage.getItem('echeckroll_user_id');
+        const user = validUsers[storedId];
+
+        // If no valid user or not a developer, bounce back to login
+        if (!user || user.role !== 'DEV') {
+            window.location.href = 'login.html';
+            return;
+        }
+        document.getElementById('devUser').value = user.name || 'Developer';
+    }
+
+    function doLogout() {
+        localStorage.removeItem('echeckroll_user_id');
+        localStorage.removeItem('echeckroll_user_role');
+        localStorage.removeItem('echeckroll_user_name');
+        window.location.href = 'login.html';
+    }
+
+    // ============================================================
+    //  SECTION 2: NAVIGATION
+    // ============================================================
+    function switchSection(sectionId) {
+        document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+        document.getElementById(`sec-${sectionId}`).classList.add('active');
+    }
+
+    // ============================================================
+    //  SECTION 3: CORE DEBUG FUNCTIONS
+    // ============================================================
+    function resetAllData() {
+        if (!confirm('⚠️ Anda pasti mahu PADAM SEMUA DATA? Tindakan ini TIDAK boleh dipulihkan!')) return;
+        
+        // Clear all eCheckroll related keys
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.startsWith('echeckroll_')) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        
+        alert('✅ Semua data dalam localStorage telah dibersihkan! Sila refresh halaman.');
+        viewLocalStorage(); // Refresh the data view
+    }
+
+    function seedMockData() {
+        // This resets the data structure used in echeckroll.html
+        const defaultData = {
+            groups: [],
+            isClosed: false,
+            currentGroupIndex: 0,
+            nextGroupId: 11
+        };
+
+        // Re-init 10 groups (copying logic from echeckroll.html)
+        const defaultPotongan = [
+            { label: 'KWSP', nilai: 0 }, { label: 'SOCSO', nilai: 0 }, { label: 'SIP', nilai: 0 },
+            { label: 'ELEKTRIK', nilai: 0 }, { label: 'AIR', nilai: 0 }, { label: 'RAWATAN', nilai: 0 }
+        ];
+        for (let i = 0; i < 10; i++) {
+            defaultData.groups.push({
+                id: i,
+                name: 'Kumpulan ' + (i + 1),
+                workers: [{
+                    id: (i + 1) * 100 + 1,
+                    nama: i === 0 ? 'HALUDIN BIN ABD RAHMAN' : 'PEKERJA ' + (i + 1),
+                    noKP: i === 0 ? '660920015883' : 'XXXXXXXXXXXX',
+                    umur: i === 0 ? 60 : 30,
+                    jantina: 'L',
+                    hari: Array(31).fill(''),
+                    aktiviti: [{ kod: '0101', nama: 'Menuai Sawit - Buah (kg)', unit: '', kadar: 0.50, kuantitiHarian: Array(31).fill(0) }],
+                    elaun_motorsikal: 0,
+                    elaun_rumah: 0,
+                    potongan: JSON.parse(JSON.stringify(defaultPotongan)),
+                    leaveRates: {},
+                    afcCheck: Array(31).fill(false),
+                    fcCheck: Array(31).fill(false)
+                }]
+            });
+        }
+
+        // Simpan ke localStorage untuk Bulan 6 (Julai 2026)
+        localStorage.setItem('echeckroll_data_2026_6', JSON.stringify(defaultData));
+        
+        // Reset Weekly Off settings to default
+        localStorage.setItem('echeckroll_weekly_offs', JSON.stringify({
+            'fpm305': 'Sunday', 'fpm306': 'Sunday', 'fpm307': 'Sunday'
+        }));
+
+        alert('✅ Mock Data telah dimuatkan semula! Anda boleh login semula.');
+        viewLocalStorage();
+    }
+
+    function viewLocalStorage() {
+        const display = document.getElementById('dataDisplay');
+        let html = '';
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.startsWith('echeckroll_')) {
+                const val = localStorage.getItem(key);
+                // Truncate very long strings
+                const displayVal = val.length > 300 ? val.substring(0, 300) + '... (truncated)' : val;
+                html += `<strong>${key}</strong>\n${displayVal}\n\n`;
+            }
+        }
+        display.innerText = html || 'Tiada data eCheckroll ditemui dalam localStorage.';
+    }
+
+    // ============================================================
+    //  SECTION 4: BOOT UP
+    // ============================================================
+    window.onload = function() {
+        checkUser();
+    };
+</script>
+</body>
+</html>

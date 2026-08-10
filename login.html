@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Masuk - eCheckroll</title>
+    
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="manifest" href="site.webmanifest">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { margin: 0; padding: 0; height: 100vh; overflow: hidden; }
+
+        #loginPage {
+            position: relative; width: 100vw; height: 100vh;
+            background: url('loginpic.png') no-repeat center center;
+            background-size: cover;
+            display: flex; justify-content: center; align-items: center;
+        }
+        #loginPage::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            backdrop-filter: blur(4px);
+            background: rgba(0, 0, 0, 0.2);
+            z-index: 1;
+        }
+
+        .login-box {
+            position: relative; z-index: 2;
+            width: 400px; padding: 40px 35px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 24px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            text-align: center; color: white;
+        }
+
+        .login-box h1 { margin: 0 0 5px 0; font-size: 32px; font-weight: 700; letter-spacing: 1px; }
+        .login-box h1 i { color: #4caf50; }
+        .login-box p { margin: 0 0 30px 0; font-size: 15px; opacity: 0.9; }
+
+        .login-group { position: relative; margin-bottom: 20px; text-align: left; }
+        .login-group i {
+            position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
+            color: rgba(255,255,255,0.8); font-size: 16px;
+        }
+        .login-group input {
+            width: 100%; padding: 14px 15px 14px 45px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 30px;
+            color: white; font-size: 15px; outline: none; transition: 0.3s;
+        }
+        .login-group input::placeholder { color: rgba(255,255,255,0.7); }
+        .login-group input:focus { background: rgba(255, 255, 255, 0.3); border-color: #4caf50; }
+
+        .login-btn {
+            width: 100%; padding: 14px;
+            background: linear-gradient(90deg, #2e7d32, #4caf50);
+            border: none; border-radius: 30px;
+            color: white; font-size: 16px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4); transition: 0.3s;
+            margin-top: 5px;
+        }
+        .login-btn:hover { transform: scale(1.02); }
+
+        .login-error {
+            color: #ffebee; margin-top: 15px; display: none;
+            font-size: 14px; text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body>
+
+<div id="loginPage">
+    <div class="login-box">
+        <h1><i class="fas fa-leaf"></i> eCheckroll</h1>
+        <p>Sistem Pengiraan Gaji Tenaga Kerja</p>
+        
+        <div class="login-group">
+            <i class="fas fa-user"></i>
+            <input type="text" id="loginId" placeholder="Nama Pengguna" value="1234">
+        </div>
+        <div class="login-group">
+            <i class="fas fa-lock"></i>
+            <input type="password" id="loginPass" placeholder="Kata Laluan" value="init1234">
+        </div>
+        
+        <button class="login-btn" onclick="doLogin()">Log Masuk</button>
+        <div id="loginError" class="login-error">ID atau Kata Laluan salah!</div>
+    </div>
+</div>
+
+<script>
+    const users = {
+        '8888': { id: '8888', pass: 'admin123', role: 'ADMIN', name: 'Admin HQ' },
+        '9999': { id: '9999', pass: 'dev1234', role: 'DEV', name: 'Developer' },
+        '1234': { id: '1234', pass: 'init1234', role: 'FS', name: 'FS 1 Lurah Bilut' },
+        '1235': { id: '1235', pass: 'init1234', role: 'FS', name: 'FS 2 Lurah Bilut' },
+        '1236': { id: '1236', pass: 'init1234', role: 'FS', name: 'FS 3 Lurah Bilut' },
+        '1237': { id: '1237', pass: 'init1234', role: 'AFC', name: 'AFC Lurah Bilut' },
+        '1238': { id: '1238', pass: 'init1234', role: 'FC', name: 'FC Lurah Bilut' }
+    };
+
+    function doLogin() {
+        const id = document.getElementById('loginId').value.trim();
+        const pass = document.getElementById('loginPass').value.trim();
+        const user = users[id];
+        const errorBox = document.getElementById('loginError');
+
+        if (user && user.pass === pass) {
+            errorBox.style.display = 'none';
+            
+            localStorage.setItem('echeckroll_user_id', id);
+            localStorage.setItem('echeckroll_user_role', user.role);
+            localStorage.setItem('echeckroll_user_name', user.name);
+            
+            // LOGIK PILIH HALAMAN BERDASARKAN PERANAN (ROLE)
+            if (user.role === 'ADMIN') {
+                window.location.href = 'admin.html';
+            } else if (user.role === 'DEV') {
+                window.location.href = 'developer.html';
+            } else {
+                window.location.href = 'echeckroll.html';
+            }
+        } else {
+            errorBox.style.display = 'block';
+        }
+    }
+
+    document.getElementById('loginPass').addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            doLogin();
+        }
+    });
+</script>
+
+</body>
+</html>

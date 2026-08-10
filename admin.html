@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - eCheckroll</title>
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="manifest" href="site.webmanifest">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* ===== GLOBAL & FIT WINDOW ===== */
+        * { box-sizing: border-box; font-family: 'Calibri', 'Segoe UI', sans-serif; }
+        body { background: #f0f4f8; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
+        .container { 
+            display: flex; flex-direction: column; height: 100vh; 
+            max-width: 100%; background: white; 
+            padding: 8px 15px; 
+            overflow: hidden;
+        }
+
+        /* ===== HEADER APP ===== */
+        #appArea { height: 100vh; overflow: hidden; }
+        .header-area { flex-shrink: 0; }
+        .header {
+            display: grid; grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px; margin-bottom: 4px; background: #fff9c4; padding: 6px;
+            border-radius: 4px; border: 1px solid #fbc02d; font-weight: bold; text-align: center;
+        }
+        .header input { padding: 3px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; width: 100%; text-align: center; font-weight: bold; }
+        .header label { display: block; font-size: 11px; color: #555; margin-bottom: 1px; }
+
+        /* ===== ACTION BAR ===== */
+        .action-bar { display: flex; gap: 5px; align-items: center; margin: 3px 0; flex-wrap: wrap; flex-shrink: 0; }
+        .btn { padding: 4px 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px; }
+        .btn-primary { background: #2e7d32; color: white; }
+        .btn-danger { background: #c62828; color: white; }
+        .btn-outline { background: white; border: 1px solid #2e7d32; color: #2e7d32; }
+        .btn-logout { background: #757575; color: white; margin-left: auto; }
+        .btn-sm { padding: 3px 8px; font-size: 11px; }
+
+        /* ===== MAIN LAYOUT ===== */
+        .main-layout { display: flex; gap: 8px; flex-grow: 1; overflow: hidden; }
+
+        /* ===== SIDEBAR (3D RED) ===== */
+        .side-panel { 
+            width: 150px; 
+            background: linear-gradient(135deg, #c62828, #b71c1c);
+            border: 2px solid #8e0000; border-radius: 8px; 
+            padding: 10px; overflow-y: auto; flex-shrink: 0; 
+            box-shadow: inset 0 2px 5px rgba(255,255,255,0.2), 0 4px 8px rgba(0,0,0,0.3);
+            color: white;
+        }
+        .side-panel h5 { margin: 0 0 10px 0; font-size: 14px; color: #ffeb3b; text-align: center; }
+        .side-menu-item { 
+            padding: 8px 0; cursor: pointer; font-size: 13px; color: #ffcdd2; 
+            border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 8px;
+        }
+        .side-menu-item:hover { color: #ffffff; font-weight: bold; }
+        .side-menu-item.active { color: #ffeb3b; font-weight: bold; background: rgba(255,255,255,0.1); padding-left: 8px; border-radius: 4px; }
+
+        /* ===== CONTENT AREA ===== */
+        .content-area { 
+            flex-grow: 1; overflow-y: auto; position: relative; 
+            border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; background: white;
+        }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        
+        .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+        .admin-table th, .admin-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .admin-table th { background: #f5f5f5; }
+
+        .upload-box { border: 2px dashed #ccc; padding: 20px; text-align: center; background: #fafafa; margin-bottom: 15px; border-radius: 8px; }
+        .upload-box input[type="file"] { margin-top: 10px; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
+        .form-group select, .form-group input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; max-width: 300px; }
+
+        @media (max-width: 768px) {
+            .header { grid-template-columns: 1fr; gap: 5px; }
+            .main-layout { flex-direction: column; }
+            .side-panel { width: 100%; display: flex; flex-wrap: wrap; padding: 5px; gap: 5px; }
+            .side-panel h5 { width: 100%; }
+            .side-menu-item { flex: 1; justify-content: center; padding: 5px; border-bottom: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== APP ===== -->
+<div id="appArea">
+    <div class="container">
+        
+        <!-- HEADER -->
+        <div class="header-area">
+            <div class="header">
+                <div>
+                    <label>PORTAL ADMIN</label>
+                    <input type="text" value="eCheckroll Admin Control" disabled>
+                </div>
+                <div>
+                    <label>STATUS SISTEM</label>
+                    <input type="text" id="statusHeader" value="Online & Stable" disabled>
+                </div>
+                <div>
+                    <label>PENTADBIR</label>
+                    <input type="text" id="adminUser" value="Admin HQ" disabled>
+                </div>
+            </div>
+
+            <!-- ACTION BAR -->
+            <div class="action-bar">
+                <div style="font-size:12px; font-weight:bold; color:#555; margin-right:auto;">Selamat Datang ke Panel Admin</div>
+                <button class="btn btn-logout btn-sm" onclick="doLogout()">🚪 Log Keluar</button>
+            </div>
+        </div>
+
+        <!-- MAIN LAYOUT -->
+        <div class="main-layout">
+            
+            <!-- SIDEBAR -->
+            <div class="side-panel">
+                <h5><i class="fas fa-crown"></i> ADMIN</h5>
+                <div class="side-menu-item active" onclick="switchSection('dashboard')">
+                    <i class="fas fa-chart-pie"></i> Ringkasan
+                </div>
+                <div class="side-menu-item" onclick="switchSection('rates')">
+                    <i class="fas fa-coins"></i> Kadar Upah
+                </div>
+                <div class="side-menu-item" onclick="switchSection('leaves')">
+                    <i class="fas fa-umbrella-beach"></i> Cuti Berbayar
+                </div>
+                <div class="side-menu-item" onclick="switchSection('users')">
+                    <i class="fas fa-users"></i> Pengguna
+                </div>
+                <div class="side-menu-item" onclick="switchSection('projects')">
+                    <i class="fas fa-tree"></i> Rancangan
+                </div>
+                <div class="side-menu-item" onclick="switchSection('weeklyoff')">
+                    <i class="fas fa-calendar-alt"></i> Cuti Mingguan
+                </div>
+            </div>
+
+            <!-- CONTENT AREA -->
+            <div class="content-area" id="contentArea">
+                
+                <!-- 1. RINGKASAN -->
+                <div class="content-section active" id="sec-dashboard">
+                    <h2><i class="fas fa-chart-pie"></i> Ringkasan Sistem</h2>
+                    <div style="display:flex; gap:20px; flex-wrap:wrap; margin-top:15px;">
+                        <div style="background:#e3f2fd; padding:20px; border-radius:8px; min-width:150px;">
+                            <h3 style="margin:0; color:#1976d2;">0</h3>
+                            <span>Rancangan Aktif</span>
+                        </div>
+                        <div style="background:#e8f5e9; padding:20px; border-radius:8px; min-width:150px;">
+                            <h3 style="margin:0; color:#2e7d32;">0</h3>
+                            <span>Pengguna Berdaftar</span>
+                        </div>
+                        <div style="background:#fff3e0; padding:20px; border-radius:8px; min-width:150px;">
+                            <h3 style="margin:0; color:#ef6c00;">0</h3>
+                            <span>Kadar Upah Aktif</span>
+                        </div>
+                    </div>
+                    <p style="margin-top:20px; color:#777;">*Data ini akan dikemaskini apabila anda mula melakukan upload atau kemaskini data.</p>
+                </div>
+
+                <!-- 2. KADAR UPAH -->
+                <div class="content-section" id="sec-rates">
+                    <h2><i class="fas fa-coins"></i> Kemaskini Kadar Upah</h2>
+                    <div class="upload-box">
+                        <p><i class="fas fa-file-excel" style="color:#2e7d32; font-size:24px;"></i> <br>Muat naik fail Excel Kadar Upah</p>
+                        <input type="file" accept=".xlsx, .xls">
+                        <button class="btn btn-primary btn-sm" onclick="alert('Mock Upload: Kadar Upah berjaya dikemaskini! (Fasa DB akan datang)')">📤 Upload & Simpan</button>
+                    </div>
+                    <table class="admin-table">
+                        <thead><tr><th>Kod Aktiviti</th><th>Penerangan</th><th>Unit</th><th>Kadar (RM)</th></tr></thead>
+                        <tbody>
+                            <tr><td>0101</td><td>Menuai Sawit - Buah</td><td>kg</td><td>0.50</td></tr>
+                            <tr><td>0201</td><td>Kerja Lebih Masa</td><td>jam</td><td>7.00</td></tr>
+                            <tr><td colspan="4" style="text-align:center; color:#999;">Senarai akan dipanjangkan selepas upload fail sebenar</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 3. CUTI BERBAYAR -->
+                <div class="content-section" id="sec-leaves">
+                    <h2><i class="fas fa-umbrella-beach"></i> Kemaskini Cuti Berbayar</h2>
+                    <div class="upload-box">
+                        <p><i class="fas fa-file-excel" style="color:#1976d2; font-size:24px;"></i> <br>Muat naik fail Excel Senarai Cuti</p>
+                        <input type="file" accept=".xlsx, .xls">
+                        <button class="btn btn-primary btn-sm" onclick="alert('Mock Upload: Cuti Berbayar berjaya dikemaskini!')">📤 Upload & Simpan</button>
+                    </div>
+                    <table class="admin-table">
+                        <thead><tr><th>Kod Cuti</th><th>Penerangan</th><th>Status</th></tr></thead>
+                        <tbody>
+                            <tr><td>CT</td><td>Cuti Tahunan</td><td>Berbayar</td></tr>
+                            <tr><td>MC</td><td>Cuti Sakit</td><td>Berbayar</td></tr>
+                            <tr><td>P</td><td>Ponteng</td><td>Tidak Berbayar</td></tr>
+                            <tr><td colspan="3" style="text-align:center; color:#999;">Senarai akan dipanjangkan selepas upload fail sebenar</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 4. PENGGUNA -->
+                <div class="content-section" id="sec-users">
+                    <h2><i class="fas fa-users"></i> Kemaskini Pengguna</h2>
+                    <div class="upload-box">
+                        <p><i class="fas fa-file-excel" style="color:#c62828; font-size:24px;"></i> <br>Muat naik fail Excel Senarai Pengguna</p>
+                        <input type="file" accept=".xlsx, .xls">
+                        <button class="btn btn-primary btn-sm" onclick="alert('Mock Upload: Pengguna berjaya dikemaskini!')">📤 Upload & Simpan</button>
+                    </div>
+                    <table class="admin-table">
+                        <thead><tr><th>ID Login</th><th>Nama</th><th>Peranan</th><th>Rancangan</th></tr></thead>
+                        <tbody>
+                            <tr><td>1234</td><td>FS 1</td><td>FS</td><td>fpm305</td></tr>
+                            <tr><td>1237</td><td>AFC Lurah</td><td>AFC</td><td>fpm305</td></tr>
+                            <tr><td>1238</td><td>FC Lurah</td><td>FC</td><td>fpm305</td></tr>
+                            <tr><td colspan="4" style="text-align:center; color:#999;">Senarai akan dipanjangkan selepas upload fail sebenar</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 5. RANCANGAN -->
+                <div class="content-section" id="sec-projects">
+                    <h2><i class="fas fa-tree"></i> Kemaskini Rancangan</h2>
+                    <div class="upload-box">
+                        <p><i class="fas fa-file-excel" style="color:#2e7d32; font-size:24px;"></i> <br>Muat naik fail Excel Senarai Rancangan</p>
+                        <input type="file" accept=".xlsx, .xls">
+                        <button class="btn btn-primary btn-sm" onclick="alert('Mock Upload: Rancangan berjaya dikemaskini!')">📤 Upload & Simpan</button>
+                    </div>
+                    <table class="admin-table">
+                        <thead><tr><th>Kod Rancangan (PK)</th><th>Nama Rancangan</th></tr></thead>
+                        <tbody>
+                            <tr><td>fpm305</td><td>FPMSB Lurah Bilut</td></tr>
+                            <tr><td>fpm306</td><td>FPMSB Redong</td></tr>
+                            <tr><td>fpm307</td><td>FPMSB Lenga</td></tr>
+                            <tr><td colspan="2" style="text-align:center; color:#999;">Senarai akan dipanjangkan selepas upload fail sebenar</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 6. CUTI MINGGUAN (NEW) -->
+                <div class="content-section" id="sec-weeklyoff">
+                    <h2><i class="fas fa-calendar-alt"></i> Tetapan Hari Cuti Mingguan</h2>
+                    <p style="color:#777; font-size:13px;">Tetapkan hari cuti mingguan bagi setiap Rancangan (Projek). Contoh: Ahad untuk Rancangan Lurah Bilut, Jumaat untuk Rancangan Redong.</p>
+                    
+                    <div style="background:#f9f9f9; padding:15px; border-radius:8px; border:1px solid #eee; margin-bottom:20px; max-width:500px;">
+                        <div class="form-group">
+                            <label>Pilih Rancangan (Projek)</label>
+                            <select id="weeklyProject">
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Pilih Hari Cuti Mingguan</label>
+                            <select id="weeklyDay">
+                                <option value="Sunday">Ahad</option>
+                                <option value="Monday">Isnin</option>
+                                <option value="Tuesday">Selasa</option>
+                                <option value="Wednesday">Rabu</option>
+                                <option value="Thursday">Khamis</option>
+                                <option value="Friday">Jumaat</option>
+                                <option value="Saturday">Sabtu</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="updateWeeklyOff()">💾 Simpan Tetapan</button>
+                    </div>
+
+                    <h3>Senarai Tetapan Semasa:</h3>
+                    <table class="admin-table" id="weeklyOffTable">
+                        <thead><tr><th>Kod Rancangan</th><th>Hari Cuti Mingguan</th></tr></thead>
+                        <tbody>
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    //  SECTION 1: AUTH CHECK & REDIRECT LOGIC
+    // ============================================================
+    const validUsers = {
+        '8888': { id: '8888', pass: 'admin123', role: 'ADMIN' },
+        '1234': { id: '1234', pass: 'init1234', role: 'FS' },
+        '1235': { id: '1235', pass: 'init1234', role: 'FS' },
+        '1236': { id: '1236', pass: 'init1234', role: 'FS' },
+        '1237': { id: '1237', pass: 'init1234', role: 'AFC' },
+        '1238': { id: '1238', pass: 'init1234', role: 'FC' }
+    };
+
+    function checkUser() {
+        // For demo, we check if the URL was accessed via login or directly
+        // Since there is no session yet, we prompt login if not set.
+        // In a real scenario, this reads a session token or URL param.
+        
+        // Mock user for Admin Demo
+        const adminId = '8888';
+        const user = validUsers[adminId];
+
+        if(!user || user.role !== 'ADMIN') {
+            window.location.href = 'login.html';
+            return;
+        }
+
+        document.getElementById('adminUser').value = user.name || 'Admin HQ';
+        initAdminData();
+    }
+
+    function doLogout() {
+        window.location.href = 'login.html';
+    }
+
+    // ============================================================
+    //  SECTION 2: NAVIGATION LOGIC
+    // ============================================================
+    function switchSection(sectionId) {
+        // Update menu active state
+        document.querySelectorAll('.side-menu-item').forEach(el => el.classList.remove('active'));
+        document.querySelector(`.side-menu-item[onclick="switchSection('${sectionId}')"]`).classList.add('active');
+
+        // Update content visibility
+        document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+        document.getElementById(`sec-${sectionId}`).classList.add('active');
+    }
+
+    // ============================================================
+    //  SECTION 3: DATA MANAGEMENT FOR WEEKLY OFF
+    // ============================================================
+    let weeklyOffData = {};
+    const DEFAULT_PROJECTS = [
+        { id: 'fpm305', name: 'FPMSB Lurah Bilut' },
+        { id: 'fpm306', name: 'FPMSB Redong' },
+        { id: 'fpm307', name: 'FPMSB Lenga' }
+    ];
+
+    function loadWeeklyOffs() {
+        const saved = localStorage.getItem('echeckroll_weekly_offs');
+        if(saved) {
+            weeklyOffData = JSON.parse(saved);
+        } else {
+            // Default: All projects default to Sunday
+            DEFAULT_PROJECTS.forEach(p => { weeklyOffData[p.id] = 'Sunday'; });
+            saveWeeklyOffs();
+        }
+    }
+
+    function saveWeeklyOffs() {
+        localStorage.setItem('echeckroll_weekly_offs', JSON.stringify(weeklyOffData));
+    }
+
+    function updateWeeklyOff() {
+        const projId = document.getElementById('weeklyProject').value;
+        const day = document.getElementById('weeklyDay').value;
+        
+        if(!projId) return alert('Sila pilih Rancangan terlebih dahulu.');
+        
+        weeklyOffData[projId] = day;
+        saveWeeklyOffs();
+        renderWeeklyOffs();
+        alert(`✅ Tetapan hari cuti untuk ${projId} telah dikemaskini ke ${day}.`);
+    }
+
+    function renderWeeklyOffs() {
+        // Populate Select Dropdown
+        const projSelect = document.getElementById('weeklyProject');
+        projSelect.innerHTML = '';
+        DEFAULT_PROJECTS.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.innerText = `${p.id} - ${p.name}`;
+            projSelect.appendChild(opt);
+        });
+
+        // Populate Table
+        const tbody = document.querySelector('#weeklyOffTable tbody');
+        tbody.innerHTML = '';
+        
+        DEFAULT_PROJECTS.forEach(p => {
+            const offDay = weeklyOffData[p.id] || 'Ahad (Default)';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${p.id}</td><td><strong>${offDay}</strong></td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // ============================================================
+    //  SECTION 4: BOOT UP
+    // ============================================================
+    function initAdminData() {
+        loadWeeklyOffs();
+        renderWeeklyOffs();
+    }
+
+    window.onload = function() {
+        checkUser();
+    };
+</script>
+</body>
+</html>
