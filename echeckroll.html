@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="ms">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>eCheckroll - Sistem Pintar</title>
     
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
@@ -14,6 +13,7 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        /* ===== KESELURUHAN & DESKTOP (TIDAK DIUBAH) ===== */
         * { box-sizing: border-box; font-family: 'Calibri', 'Segoe UI', sans-serif; }
         body { background: #f0f4f8; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
         .container { 
@@ -41,11 +41,45 @@
         .btn-logout { background: #757575; color: white; margin-left: auto; }
         .btn-sm { padding: 3px 8px; font-size: 11px; }
 
-        .tabs-container { display: flex; border-bottom: 1px solid #b0bec5; margin-bottom: 2px; background: #f5f5f5; padding-top: 2px; flex-shrink: 0; }
-        .tab-item { padding: 4px 12px; border: 1px solid #b0bec5; border-bottom: none; background: #e0e0e0; border-radius: 4px 4px 0 0; cursor: pointer; font-size: 12px; font-weight: bold; margin-right: 2px; display: flex; align-items: center; gap: 5px; }
+        /* ===== FIX MOBILE VIEW: TAB KUMPULAN BOLEH SCROLL ===== */
+        .tabs-container { 
+            display: flex; 
+            border-bottom: 1px solid #b0bec5; 
+            margin-bottom: 2px; 
+            background: #f5f5f5; 
+            padding-top: 2px; 
+            flex-shrink: 0; 
+            
+            /* Tambahan untuk mobile scroll (tidak menjejaskan desktop) */
+            overflow-x: auto;
+            overflow-y: hidden;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+            flex-wrap: nowrap; /* Paksa satu baris */
+        }
+        /* Bar skrol nipis untuk Android & iOS */
+        .tabs-container::-webkit-scrollbar { height: 4px; }
+        .tabs-container::-webkit-scrollbar-thumb { background: #b0bec5; border-radius: 4px; }
+
+        .tab-item { 
+            display: inline-flex; /* Kekal dalam satu baris */
+            padding: 4px 12px; 
+            border: 1px solid #b0bec5; 
+            border-bottom: none; 
+            background: #e0e0e0; 
+            border-radius: 4px 4px 0 0; 
+            cursor: pointer; 
+            font-size: 12px; 
+            font-weight: bold; 
+            margin-right: 2px; 
+            align-items: center; 
+            gap: 5px; 
+            flex-shrink: 0; /* Jangan mampatkan tab */
+        }
         .tab-item.active { background: white; border-bottom: 2px solid white; }
         .tab-item .close-tab { color: #c62828; cursor: pointer; font-weight: bold; margin-left: 5px; font-size: 14px; }
-        .btn-add-tab { background: none; border: none; color: #2e7d32; font-size: 18px; cursor: pointer; padding: 0 8px; }
+        .btn-add-tab { background: none; border: none; color: #2e7d32; font-size: 18px; cursor: pointer; padding: 0 8px; flex-shrink: 0; }
         .tab-item .tab-name { display: inline-block; cursor: text; padding: 0 4px; }
         .tab-item .tab-name-input { display: none; background: transparent; border: none; font-size: 12px; font-weight: bold; outline: none; width: 80px; text-align: center; font-family: inherit; }
 
@@ -107,10 +141,20 @@
             .container { padding: 0; height: auto; overflow: visible; }
             .table-wrapper { overflow: visible; }
         }
+
+        /* ===== MOBILE RESPONSIVE (TANPA MENGUBAH DESIGN ASAL) ===== */
         @media (max-width: 768px) {
             .header { grid-template-columns: 1fr; gap: 5px; }
             .main-layout { flex-direction: column; }
-            .side-panel { width: 100%; display: flex; overflow-x: auto; }
+            .side-panel { width: 100%; display: flex; flex-wrap: wrap; padding: 5px; overflow-x: auto; }
+            .side-panel h5 { flex: 1; min-width: 60px; }
+            .month-list { display: flex !important; flex-wrap: wrap; gap: 5px; padding: 0; }
+            .month-item { padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.1); }
+            
+            /* Pastikan tab Kumpulan tidak pecah baris dan boleh scroll */
+            .tabs-container {
+                padding-bottom: 5px; /* Ruang untuk scrollbar */
+            }
         }
     </style>
 </head>
@@ -335,7 +379,23 @@
     const PAID_LEAVE_CODES = ['CA', 'CT', 'MC', 'CB', 'HAJI', 'CM', 'OFF', 'WAD', 'CBN', 'CP', 'CE', 'CK'];
 
     // ============================================================
-    //  SECTION 5: RENDER TABLE (FIXES: Aktiviti/Kadar Sync Paksa, Rumusan Cuti)
+    //  SECTION 4: MASTER SYNC UTILITY FOR ACTIVITIES
+    // ============================================================
+    function syncActivitiesToAll() {
+        const group = groups[currentGroupIndex];
+        if (!group || group.workers.length === 0) return;
+        // Ambil array aktiviti dari Pekerja Pertama (Master)
+        const masterActivities = JSON.parse(JSON.stringify(group.workers[0].aktiviti));
+        // Salin ke semua pekerja lain
+        group.workers.forEach((w, idx) => {
+            if (idx > 0) {
+                w.aktiviti = masterActivities.map(a => JSON.parse(JSON.stringify(a)));
+            }
+        });
+    }
+
+    // ============================================================
+    //  SECTION 5: RENDER TABLE
     // ============================================================
     function renderTable() {
         const tbody = document.getElementById('tableBody');
@@ -644,7 +704,6 @@
                     let key = (act.kod || '') + '|' + (act.unit || '') + '|' + (act.blok || '');
                     
                     if (!allActivities[key]) {
-                        // Ambil KADAR dari Pekerja 1 supaya Rumusan papar kadar yang sama
                         let firstWorkerRate = 0;
                         if (group.workers.length > 0) {
                             const match = group.workers[0].aktiviti.find(a => 
@@ -680,7 +739,6 @@
                 });
                 totalGrossAll += workerGross;
 
-                // --- FIX: Aggregate Leaves dengan Daily Count & Sum ---
                 worker.hari.forEach((val, idx) => {
                     if (LEAVE_MAP[val]) {
                         let code = val;
@@ -688,13 +746,13 @@
                             allLeaves[code] = { 
                                 code: code, 
                                 label: LEAVE_MAP[code], 
-                                dailyCount: Array(31).fill(0), // Track jumlah pekerja pada hari tertentu
+                                dailyCount: Array(31).fill(0),
                                 totalCount: 0, 
                                 totalRates: 0,
                                 numWorkers: 0
                             };
                         }
-                        allLeaves[code].dailyCount[idx]++; // Kira bilangan hari pada tarikh ini
+                        allLeaves[code].dailyCount[idx]++;
                         allLeaves[code].totalCount++;
                         if (PAID_LEAVE_CODES.includes(code)) {
                             allLeaves[code].totalRates += (worker.leaveRates[code] || 0);
@@ -820,7 +878,7 @@
                 summaryBlock.appendChild(row);
             });
 
-            // --- 6. Summary Leave Rows (FIX: Jumlah Harian & Purata Kadar) ---
+            // --- 6. Summary Leave Rows ---
             if (Object.keys(allLeaves).length > 0) {
                 let sumLeaveHeader = document.createElement('tr');
                 sumLeaveHeader.style.backgroundColor = '#e3f2fd';
@@ -837,9 +895,7 @@
                     let l = allLeaves[code];
                     let isPaid = PAID_LEAVE_CODES.includes(code);
                     
-                    // Kira Purata Kadar
                     let avgRate = l.numWorkers > 0 ? (l.totalRates / l.numWorkers) : 0;
-                    // Kira Jumlah menggunakan (Purata Kadar * Jumlah Hari)
                     let totalAmount = l.totalCount * avgRate;
 
                     let row = document.createElement('tr');
@@ -849,7 +905,6 @@
                         <td class="row-label" style="text-align:center; font-weight:bold; padding-left:5px; border-right:1px solid #b0bec5;">${l.label}</td>
                         <td></td><td></td><td></td>
                     `;
-                    // Papar Jumlah Harian (sum) menggunakan l.dailyCount
                     for (let d = 0; d < 31; d++) {
                         let countOnDay = l.dailyCount[d] || 0;
                         const isOff = offDayIndices.includes(d);
@@ -966,7 +1021,7 @@
     }
 
     // ============================================================
-    //  SECTION 6: LOGIK FUNGSI & SYNC (Aktiviti & Kadar Sync Paksa)
+    //  SECTION 6: LOGIK FUNGSI & SYNC
     // ============================================================
     function toggleSync() { syncEnabled = document.getElementById('syncCheck').checked; }
 
@@ -990,52 +1045,58 @@
         renderTable();
     }
 
-    // FIX: Kadar Upah Sync Paksa ke semua pekerja
     function updateActKadar(wIdx, aIdx, value) {
         const rate = parseFloat(value) || 0;
         const group = groups[currentGroupIndex];
-        // Update terus ke semua pekerja dan rumusan
-        group.workers.forEach(w => {
-            if (w.aktiviti[aIdx]) {
-                w.aktiviti[aIdx].kadar = rate;
-            }
-        });
+        if (group.workers[0] && group.workers[0].aktiviti[aIdx]) {
+            group.workers[0].aktiviti[aIdx].kadar = rate;
+        }
+        syncActivitiesToAll();
         renderTable();
     }
 
-    // FIX: Nama/Kod Aktiviti Sync Paksa ke semua pekerja
     function updateActName(wIdx, aIdx, value) {
         const group = groups[currentGroupIndex];
-        const worker = group.workers[wIdx];
-        let newKod = '', newNama = '';
-        if (value.includes('0101')) { newKod = '0101'; newNama = 'Menuai Sawit - Buah (kg)'; }
-        else if (value.includes('0201')) { newKod = '0201'; newNama = 'Kerja Lebih Masa (jam)'; }
-        else { newKod = ''; newNama = value; }
-        
-        group.workers.forEach(w => {
-            if (w.aktiviti[aIdx]) {
-                w.aktiviti[aIdx].kod = newKod;
-                w.aktiviti[aIdx].nama = newNama;
+        let newKod = '';
+        let newNama = value;
+
+        const kodMatch = value.match(/^(\d{4})\s*-\s*(.*)/);
+        if (kodMatch) {
+            newKod = kodMatch[1];
+            newNama = kodMatch[2];
+        } else {
+            if (value.toLowerCase().includes('menuai')) { newKod = '0101'; newNama = 'Menuai Sawit - Buah (kg)'; }
+            else if (value.toLowerCase().includes('lebih masa')) { newKod = '0201'; newNama = 'Kerja Lebih Masa (jam)'; }
+            else if (value.toLowerCase().includes('merumput')) { newKod = '0301'; newNama = 'Merumput - Kimia (ha)'; }
+            else if (value.toLowerCase().includes('pengangkutan')) { newKod = '0401'; newNama = 'Pengangkutan Buah (tan)'; }
+            else {
+                newNama = value;
             }
-        });
+        }
+
+        if (group.workers[0] && group.workers[0].aktiviti[aIdx]) {
+            group.workers[0].aktiviti[aIdx].kod = newKod;
+            group.workers[0].aktiviti[aIdx].nama = newNama;
+        }
+        syncActivitiesToAll();
         renderTable();
     }
 
-    // FIX: PKT/Unit Sync Paksa ke semua pekerja
     function updateActUnit(wIdx, aIdx, value) {
         const group = groups[currentGroupIndex];
-        group.workers.forEach(w => {
-            if (w.aktiviti[aIdx]) w.aktiviti[aIdx].unit = value;
-        });
+        if (group.workers[0] && group.workers[0].aktiviti[aIdx]) {
+            group.workers[0].aktiviti[aIdx].unit = value;
+        }
+        syncActivitiesToAll();
         renderTable();
     }
 
-    // FIX: BLOK Sync Paksa ke semua pekerja
     function updateActBlok(wIdx, aIdx, value) {
         const group = groups[currentGroupIndex];
-        group.workers.forEach(w => {
-            if (w.aktiviti[aIdx]) w.aktiviti[aIdx].blok = value;
-        });
+        if (group.workers[0] && group.workers[0].aktiviti[aIdx]) {
+            group.workers[0].aktiviti[aIdx].blok = value;
+        }
+        syncActivitiesToAll();
         renderTable();
     }
 
@@ -1076,18 +1137,20 @@
 
     function tambahAktiviti(wIdx) {
         const group = groups[currentGroupIndex];
+        if (!group.workers[0]) return;
         const newAct = { kod: '', nama: '', unit: '', blok: '', kadar: 0, kuantitiHarian: Array(31).fill(0) };
-        group.workers.forEach(w => w.aktiviti.push(JSON.parse(JSON.stringify(newAct))));
+        group.workers[0].aktiviti.push(JSON.parse(JSON.stringify(newAct)));
+        syncActivitiesToAll();
         renderTable();
     }
 
     function padamAktiviti(wIdx, aIdx) {
         const group = groups[currentGroupIndex];
-        const worker = group.workers[wIdx];
-        if (worker.aktiviti.length <= 1) { alert('Tidak boleh padam aktiviti terakhir.'); return; }
+        if (!group.workers[0]) return;
+        if (group.workers[0].aktiviti.length <= 1) { alert('Tidak boleh padam aktiviti terakhir.'); return; }
         if (!confirm('Padam aktiviti ini?')) return;
-        worker.aktiviti.splice(aIdx, 1);
-        group.workers.forEach(w => { if (w.id !== worker.id && w.aktiviti.length > aIdx) w.aktiviti.splice(aIdx, 1); });
+        group.workers[0].aktiviti.splice(aIdx, 1);
+        syncActivitiesToAll();
         renderTable();
     }
 
