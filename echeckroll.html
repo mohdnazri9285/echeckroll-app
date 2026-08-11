@@ -152,9 +152,17 @@
             /* FIX 1: Skrol Seluruh Halaman (Rumusan tidak tersekat) */
             body { height: auto; overflow-y: auto; }
             .container { height: auto !important; overflow-y: auto !important; }
-            .table-wrapper { overflow: visible !important; height: auto !important; }
+            
+            /* FIX 2: Skrol Mendatar dalam jadual (untuk isi data ke kanan) */
+            .table-wrapper { 
+                overflow-x: auto !important; 
+                overflow-y: visible !important; 
+                height: auto !important; 
+                width: 100% !important;
+                -webkit-overflow-scrolling: touch;
+            }
 
-            /* FIX 2: Collapsible Header Button */
+            /* FIX 3: Collapsible Header Button */
             .header-toggle {
                 display: flex;
                 justify-content: space-between;
