@@ -13,7 +13,7 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* ===== KESELURUHAN & DESKTOP (TIDAK DIUBAH) ===== */
+        /* ===== KESELURUHAN & DESKTOP ===== */
         * { box-sizing: border-box; font-family: 'Calibri', 'Segoe UI', sans-serif; }
         body { background: #f0f4f8; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
         .container { 
@@ -41,7 +41,7 @@
         .btn-logout { background: #757575; color: white; margin-left: auto; }
         .btn-sm { padding: 3px 8px; font-size: 11px; }
 
-        /* ===== FIX MOBILE VIEW: TAB KUMPULAN BOLEH SCROLL ===== */
+        /* ===== TAB KUMPULAN (MOBILE SCROLL) ===== */
         .tabs-container { 
             display: flex; 
             border-bottom: 1px solid #b0bec5; 
@@ -49,21 +49,18 @@
             background: #f5f5f5; 
             padding-top: 2px; 
             flex-shrink: 0; 
-            
-            /* Tambahan untuk mobile scroll (tidak menjejaskan desktop) */
             overflow-x: auto;
             overflow-y: hidden;
             white-space: nowrap;
             -webkit-overflow-scrolling: touch;
             width: 100%;
-            flex-wrap: nowrap; /* Paksa satu baris */
+            flex-wrap: nowrap;
         }
-        /* Bar skrol nipis untuk Android & iOS */
         .tabs-container::-webkit-scrollbar { height: 4px; }
         .tabs-container::-webkit-scrollbar-thumb { background: #b0bec5; border-radius: 4px; }
 
         .tab-item { 
-            display: inline-flex; /* Kekal dalam satu baris */
+            display: inline-flex;
             padding: 4px 12px; 
             border: 1px solid #b0bec5; 
             border-bottom: none; 
@@ -75,7 +72,7 @@
             margin-right: 2px; 
             align-items: center; 
             gap: 5px; 
-            flex-shrink: 0; /* Jangan mampatkan tab */
+            flex-shrink: 0;
         }
         .tab-item.active { background: white; border-bottom: 2px solid white; }
         .tab-item .close-tab { color: #c62828; cursor: pointer; font-weight: bold; margin-left: 5px; font-size: 14px; }
@@ -142,7 +139,7 @@
             .table-wrapper { overflow: visible; }
         }
 
-        /* ===== MOBILE RESPONSIVE (TANPA MENGUBAH DESIGN ASAL) ===== */
+        /* ===== MOBILE RESPONSIVE (TANPA MENGUBAH DESKTOP) ===== */
         @media (max-width: 768px) {
             .header { grid-template-columns: 1fr; gap: 5px; }
             .main-layout { flex-direction: column; }
@@ -150,11 +147,31 @@
             .side-panel h5 { flex: 1; min-width: 60px; }
             .month-list { display: flex !important; flex-wrap: wrap; gap: 5px; padding: 0; }
             .month-item { padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.1); }
-            
-            /* Pastikan tab Kumpulan tidak pecah baris dan boleh scroll */
-            .tabs-container {
-                padding-bottom: 5px; /* Ruang untuk scrollbar */
+            .tabs-container { padding-bottom: 5px; }
+
+            /* FIX 1: Skrol Seluruh Halaman (Rumusan tidak tersekat) */
+            body { height: auto; overflow-y: auto; }
+            .container { height: auto !important; overflow-y: auto !important; }
+            .table-wrapper { overflow: visible !important; height: auto !important; }
+
+            /* FIX 2: Collapsible Header Button */
+            .header-toggle {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: #fff9c4;
+                border: 1px solid #fbc02d;
+                border-radius: 4px;
+                padding: 8px 12px;
+                margin-bottom: 4px;
+                cursor: pointer;
+                font-weight: bold;
+                font-size: 13px;
             }
+            .header-toggle i { transition: transform 0.3s ease; }
+            .header-area.collapsed .header { display: none !important; }
+            .header-area.collapsed .header-toggle { margin-bottom: 0; border-bottom: none; }
+            .header-toggle .toggle-text { flex: 1; text-align: center; }
         }
     </style>
 </head>
@@ -162,7 +179,14 @@
 
 <div id="appArea">
     <div class="container">
-        <div class="header-area">
+        <div class="header-area" id="headerArea">
+            
+            <!-- ===== TOGGLE UNTUK MOBILE SAHAJA ===== -->
+            <div class="header-toggle" onclick="toggleMobileHeader()" id="mobileToggle">
+                <span class="toggle-text"><i class="fas fa-chevron-up" id="toggleIcon"></i> Sembunyi / Tunjuk Menu</span>
+            </div>
+            <!-- =========================================== -->
+
             <div class="header">
                 <div>
                     <label>BULAN</label>
@@ -199,7 +223,7 @@
                 <button class="btn btn-outline btn-sm" onclick="simpanData()" style="background:#e3f2fd; border-color:#1976d2;">💾 Simpan Data</button>
                 
                 <label style="font-size:11px; display:flex; align-items:center; gap:4px; background:#f5f5f5; padding:2px 6px; border-radius:4px; cursor:pointer;">
-                    <input type="checkbox" id="syncCheck" onchange="toggleSync()"> Produktiviti Sama (Kuantiti harian)
+                    <input type="checkbox" id="syncCheck" onchange="toggleSync()"> Produktiviti Sama
                 </label>
                 
                 <div style="font-size:11px; font-weight:bold; color:#555; margin-left:10px;">
@@ -384,9 +408,7 @@
     function syncActivitiesToAll() {
         const group = groups[currentGroupIndex];
         if (!group || group.workers.length === 0) return;
-        // Ambil array aktiviti dari Pekerja Pertama (Master)
         const masterActivities = JSON.parse(JSON.stringify(group.workers[0].aktiviti));
-        // Salin ke semua pekerja lain
         group.workers.forEach((w, idx) => {
             if (idx > 0) {
                 w.aktiviti = masterActivities.map(a => JSON.parse(JSON.stringify(a)));
@@ -410,7 +432,6 @@
         }
         const isEditable = !isClosed;
 
-        // ==== 1. RENDER INDIVIDUAL WORKERS ====
         group.workers.forEach((worker, wIdx) => {
             if (!worker.hari || !Array.isArray(worker.hari)) worker.hari = Array(31).fill('');
             if (!worker.aktiviti) worker.aktiviti = [];
@@ -419,7 +440,6 @@
             let workerBlock = document.createElement('tbody');
             workerBlock.className = 'worker-block';
 
-            // --- Header Label Row ---
             let labelRow = document.createElement('tr');
             labelRow.className = 'worker-header-row';
             let labelHtml = `
@@ -445,7 +465,6 @@
             labelRow.innerHTML = labelHtml;
             workerBlock.appendChild(labelRow);
 
-            // --- Data Row ---
             let dataRow = document.createElement('tr');
             dataRow.className = 'worker-data-row';
             dataRow.innerHTML = `
@@ -492,7 +511,6 @@
             `;
             workerBlock.appendChild(dataRow);
 
-            // --- Elaun ---
             const elaunList = [
                 { label: 'ELAUN MOTORSIKAL', field: 'elaun_motorsikal' },
                 { label: 'ELAUN RUMAH', field: 'elaun_rumah' }
@@ -508,7 +526,6 @@
                 workerBlock.appendChild(row);
             });
 
-            // --- Aktiviti Header ---
             let headerActRow = document.createElement('tr');
             headerActRow.style.backgroundColor = '#fff9c4';
             headerActRow.style.borderTop = '2px solid #ddd';
@@ -526,7 +543,6 @@
             headerActRow.innerHTML += `<td></td><td></td><td></td><td></td>`;
             workerBlock.appendChild(headerActRow);
 
-            // --- Aktiviti Rows ---
             worker.aktiviti.forEach((act, aIdx) => {
                 let row = document.createElement('tr');
                 row.innerHTML = `
@@ -566,14 +582,12 @@
                 workerBlock.appendChild(row);
             });
 
-            // --- Tambah Aktiviti ---
             let addRow = document.createElement('tr');
             addRow.innerHTML = `<td></td><td class="row-label" style="padding-left:4px;"><button class="btn btn-outline btn-sm" onclick="tambahAktiviti(${wIdx})" ${isEditable ? '' : 'disabled'}>➕ Aktiviti</button></td><td></td><td></td><td></td>`;
             for (let d = 0; d < 31; d++) { addRow.innerHTML += `<td style="background:${d>=daysInMonth?'#e0e0e0':''};"></td>`; }
             addRow.innerHTML += `<td></td><td></td><td></td><td></td>`;
             workerBlock.appendChild(addRow);
 
-            // --- Leave Rows ---
             const presentLeaveCodes = [];
             const leaveCounts = {};
             for (let d = 0; d < 31; d++) {
@@ -618,7 +632,6 @@
                 });
             }
 
-            // --- Divider ---
             let dividerRow = document.createElement('tr');
             dividerRow.style.backgroundColor = '#ffffff';
             dividerRow.style.borderTop = '1px solid #b0bec5';
@@ -626,7 +639,6 @@
             dividerRow.innerHTML = `<td colspan="42" style="height:3px; padding:0;"></td>`;
             workerBlock.appendChild(dividerRow);
 
-            // --- Gaji Kasar ---
             let totalLeaveAmount = 0;
             presentLeaveCodes.forEach(code => {
                 if (PAID_LEAVE_CODES.includes(code)) totalLeaveAmount += (leaveCounts[code] || 0) * (worker.leaveRates[code] || 0);
@@ -639,7 +651,6 @@
             grossRow.innerHTML += `<td></td><td></td><td class="gross-row">${gajiKasarWithLeave.toFixed(2)}</td><td></td>`;
             workerBlock.appendChild(grossRow);
 
-            // --- Potongan Rows ---
             worker.potongan.forEach((p, pIdx) => {
                 let row = document.createElement('tr');
                 row.innerHTML = `
@@ -656,12 +667,10 @@
                 workerBlock.appendChild(row);
             });
 
-            // --- Tambah Potongan ---
             let addDedRow = document.createElement('tr');
             addDedRow.innerHTML = `<td></td><td class="row-label" style="padding-left:8px;"><button class="btn btn-outline btn-sm" onclick="tambahPotongan(${wIdx})" ${isEditable ? '' : 'disabled'}>➕ Tambah Potongan</button></td><td></td><td></td><td></td><td colspan="31" style="background:#f5f5f5; border-left:1px solid #b0bec5; border-right:1px solid #b0bec5;"></td><td></td><td></td><td></td><td></td>`;
             workerBlock.appendChild(addDedRow);
 
-            // --- Gaji Bersih ---
             const totalPotongan = worker.potongan.reduce((sum, p) => sum + (p.nilai || 0), 0);
             const gajiBersih = gajiKasarWithLeave - totalPotongan;
             let netRow = document.createElement('tr');
@@ -670,7 +679,6 @@
             netRow.innerHTML += `<td></td><td></td><td class="net-row">${gajiBersih.toFixed(2)}</td><td></td>`;
             workerBlock.appendChild(netRow);
 
-            // --- Spacer ---
             let spacer = document.createElement('tr');
             spacer.style.backgroundColor = '#ffffff';
             spacer.innerHTML = `<td colspan="42" style="height:15px; border:none; padding:0;"></td>`;
@@ -770,7 +778,6 @@
                 totalNetAll += (workerGross - totalPotongan);
             });
 
-            // --- 1. Summary Header Row ---
             let sumLabelRow = document.createElement('tr');
             sumLabelRow.className = 'worker-header-row';
             let sumLabelHtml = `
@@ -796,7 +803,6 @@
             sumLabelRow.innerHTML = sumLabelHtml;
             summaryBlock.appendChild(sumLabelRow);
 
-            // --- 2. Summary Data Row ---
             let sumDataRow = document.createElement('tr');
             sumDataRow.className = 'worker-data-row';
             sumDataRow.innerHTML = `
@@ -827,7 +833,6 @@
             `;
             summaryBlock.appendChild(sumDataRow);
 
-            // --- 3. Summary Elaun ---
             let sumElaun1 = document.createElement('tr');
             sumElaun1.innerHTML = `<td></td><td class="row-label" style="padding-left:10px;">ELAUN MOTORSIKAL (Jumlah)</td><td></td><td></td><td></td>`;
             for (let d = 0; d < 31; d++) { sumElaun1.innerHTML += `<td></td>`; }
@@ -840,7 +845,6 @@
             sumElaun2.innerHTML += `<td></td><td></td><td>${sumElaunRumah.toFixed(2)}</td><td></td>`;
             summaryBlock.appendChild(sumElaun2);
 
-            // --- 4. Summary Aktiviti Header ---
             let sumActHeader = document.createElement('tr');
             sumActHeader.style.backgroundColor = '#fff9c4';
             sumActHeader.innerHTML = `
@@ -854,7 +858,6 @@
             sumActHeader.innerHTML += `<td></td><td></td><td></td><td></td>`;
             summaryBlock.appendChild(sumActHeader);
 
-            // --- 5. Summary Aktiviti Rows ---
             Object.keys(allActivities).forEach(key => {
                 let act = allActivities[key];
                 let row = document.createElement('tr');
@@ -878,7 +881,6 @@
                 summaryBlock.appendChild(row);
             });
 
-            // --- 6. Summary Leave Rows ---
             if (Object.keys(allLeaves).length > 0) {
                 let sumLeaveHeader = document.createElement('tr');
                 sumLeaveHeader.style.backgroundColor = '#e3f2fd';
@@ -921,7 +923,6 @@
                 });
             }
 
-            // --- 7. Summary Divider ---
             let sumDivider = document.createElement('tr');
             sumDivider.style.backgroundColor = '#ffffff';
             sumDivider.style.borderTop = '1px solid #b0bec5';
@@ -929,14 +930,12 @@
             sumDivider.innerHTML = `<td colspan="42" style="height:3px; padding:0;"></td>`;
             summaryBlock.appendChild(sumDivider);
 
-            // --- 8. Summary Gaji Kasar ---
             let sumGrossRow = document.createElement('tr');
             sumGrossRow.innerHTML = `<td></td><td class="gross-row" style="text-align:left; padding-left:8px;">GAJI KASAR (Jumlah)</td><td></td><td></td><td></td>`;
             for (let d = 0; d < 31; d++) { sumGrossRow.innerHTML += `<td style="background:${d>=daysInMonth?'#e0e0e0':''};"></td>`; }
             sumGrossRow.innerHTML += `<td></td><td></td><td class="gross-row">${totalGrossAll.toFixed(2)}</td><td></td>`;
             summaryBlock.appendChild(sumGrossRow);
 
-            // --- 9. Summary AFC/FC Checks ---
             let sumAfcRow = document.createElement('tr');
             sumAfcRow.innerHTML = `
                 <td></td>
@@ -983,7 +982,6 @@
             sumFcRow.innerHTML += `<td></td><td></td><td></td><td></td>`;
             summaryBlock.appendChild(sumFcRow);
 
-            // --- 10. Summary Deductions ---
             let sumDedHeader = document.createElement('tr');
             sumDedHeader.style.backgroundColor = '#ffebee';
             sumDedHeader.innerHTML = `
@@ -1009,7 +1007,6 @@
                 summaryBlock.appendChild(row);
             });
 
-            // --- 11. Summary Net Salary ---
             let sumNetRow = document.createElement('tr');
             sumNetRow.innerHTML = `<td></td><td class="net-row" style="text-align:left; padding-left:8px;">GAJI BERSIH (Jumlah)</td><td></td><td></td><td></td>`;
             for (let d = 0; d < 31; d++) { sumNetRow.innerHTML += `<td style="background:${d>=daysInMonth?'#e0e0e0':''};"></td>`; }
@@ -1024,6 +1021,15 @@
     //  SECTION 6: LOGIK FUNGSI & SYNC
     // ============================================================
     function toggleSync() { syncEnabled = document.getElementById('syncCheck').checked; }
+
+    function toggleMobileHeader() {
+        document.getElementById('headerArea').classList.toggle('collapsed');
+        const icon = document.getElementById('toggleIcon');
+        if (icon) {
+            icon.classList.toggle('fa-chevron-up');
+            icon.classList.toggle('fa-chevron-down');
+        }
+    }
 
     function updateKehadiran(wIdx, day, value) {
         groups[currentGroupIndex].workers[wIdx].hari[day] = value;
