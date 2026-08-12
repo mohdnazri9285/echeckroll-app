@@ -1361,7 +1361,7 @@
     function kiraSemua() { renderTable(); }
 
     // ============================================================
-    //  FUNGSI CETAK
+    //  FUNGSI CETAK (FIX: Cari ID yang betul)
     // ============================================================
     function prepareAndPrint() {
         var bulanSelect = document.getElementById('bulan');
@@ -1369,8 +1369,11 @@
         var tahun = document.getElementById('tahun').value;
         var groupName = groups[currentGroupIndex] ? groups[currentGroupIndex].name : document.getElementById('kumpulan').value;
 
-        document.getElementById('printMonthYear').innerText = `BULAN ${bulanText} / TAHUN ${tahun}`;
-        document.getElementById('printGroup').innerText = `KUMPULAN ${groupName}`;
+        // FIX: Update id="printHeaderTd" (BUKAN printMonthYear)
+        var headerTd = document.getElementById('printHeaderTd');
+        if (headerTd) {
+            headerTd.innerText = `BULAN ${bulanText} / TAHUN ${tahun} | KUMPULAN ${groupName}`;
+        }
 
         window.print();
     }
