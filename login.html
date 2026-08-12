@@ -13,7 +13,7 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    <!-- Masukkan Supabase Client -->
+    <!-- Supabase Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
@@ -91,17 +91,17 @@
         
         <div class="login-group">
             <i class="fas fa-user"></i>
-            <input type="text" id="loginId" placeholder="No. Kakitangan / ID" value="1234">
+            <input type="text" id="loginId" placeholder="No. Kakitangan / ID">
         </div>
         <div class="login-group">
             <i class="fas fa-lock"></i>
-            <input type="password" id="loginPass" placeholder="Kata Laluan" value="init1234">
+            <input type="password" id="loginPass" placeholder="Kata Laluan">
         </div>
         
         <button class="login-btn" onclick="doLogin()">Log Masuk</button>
         <div id="loginError" class="login-error">ID atau Kata Laluan salah!</div>
         
-        <!-- Pautan Lupa Kata Laluan (Telah dikemaskini) -->
+        <!-- Pautan Lupa Kata Laluan -->
         <div style="margin-top: 12px;">
             <a href="reset-password.html" style="color: #ffffff; font-size: 13px; text-decoration: underline; opacity: 0.8;">Lupa Kata Laluan?</a>
         </div>
@@ -110,11 +110,10 @@
 
 <script>
     // ============================================================
-    //  FIX: Guna 'var' supaya tidak konflik dengan 'const' di fail lain
+    // SUPABASE CONFIGURATION
     // ============================================================
     var SUPABASE_URL = 'https://kakzoykzxkryegqybxzs.supabase.co';
     var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtha3pveWt6eGtyeWVncXlieHpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0OTg2ODEsImV4cCI6MjEwMjA3NDY4MX0.n3L8mQsm3CNAC0ahEumu0bQMEC_9H2uaKQ4Htt_ga9c';
-    
     var supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     async function doLogin() {
@@ -130,7 +129,6 @@
         }
 
         try {
-            // Panggil function login_user di Supabase
             var { data, error } = await supabase
                 .rpc('login_user', { 
                     p_id: id, 
@@ -144,24 +142,20 @@
                 return;
             }
 
-            // Jika tiada data dipulangkan, ID atau Password salah
             if (!data || data.length === 0) {
                 errorBox.innerText = 'ID atau Kata Laluan salah!';
                 errorBox.style.display = 'block';
                 return;
             }
 
-            // Login Berjaya!
             var user = data[0];
             
-            // Simpan sesi ke localStorage
             localStorage.setItem('echeckroll_user_id', user.id);
             localStorage.setItem('echeckroll_user_role', user.role);
             localStorage.setItem('echeckroll_user_name', user.name);
             localStorage.setItem('echeckroll_project_code', user.project_code || '');
             localStorage.setItem('echeckroll_region', user.region || '');
 
-            // LOGIK HALAMAN BERDASARKAN PERANAN
             if (user.role === 'HQ' || user.role === 'Wilayah') {
                 window.location.href = 'admin.html';
             } else if (user.role === 'DEV') {
@@ -177,7 +171,6 @@
         }
     }
 
-    // Enter key support
     document.getElementById('loginPass').addEventListener('keydown', function(event) {
         if (event.key === 'Enter') {
             doLogin();
