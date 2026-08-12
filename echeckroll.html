@@ -259,7 +259,7 @@
 
             <div class="table-wrapper">
                 <table class="echeckroll-table" id="mainTable">
-                    <!-- ===== HEADER & FOOTER CETAKAN (BARU) ===== -->
+                    <!-- ===== HEADER & FOOTER CETAKAN ===== -->
                     <thead id="printThead" class="print-only">
                         <tr class="print-only">
                             <td colspan="42" id="printHeaderTd" style="text-align:center; font-weight:bold; border:none; background:white;">BULAN - TAHUN | KUMPULAN - </td>
@@ -305,6 +305,8 @@
     var currentGroupIndex = 0;
     var nextGroupId = 1; 
 
+    var allRates = []; // Simpan data KUK dari Supabase
+
     // ============================================================
     //  LOGIN CHECK (SESSION DATA)
     // ============================================================
@@ -330,13 +332,10 @@
         document.getElementById('userLabel').innerText = storedName + ' (' + storedRole + ')';
         document.getElementById('kumpulan').value = storedProject || 'Tiada Projek';
 
-        // Hanya FC boleh tutup/buka
         updateButtons();
-
         renderSidePanel();
-        loadDataFromSupabase();
         renderTabs();
-        updateCalendar();
+        updateCalendar(); // updateCalendar akan panggil loadData & renderTable
     }
 
     function doLogout() {
@@ -393,12 +392,17 @@
         updateCalendar();
     }
 
-    function getProjectWeeklyOff() {
-        var offDataStr = localStorage.getItem('echeckroll_weekly_offs');
-        if (offDataStr) {
-            var offData = JSON.parse(offDataStr);
-            return offData[currentProjectCode] || 'Sunday';
-        }
+    // ============================================================
+    //  FIX 1: AMBIL DATA WEEKLY OFF TERUS DARI SUPABASE
+    // ============================================================
+    async function getProjectWeeklyOff() {
+        if (!currentProjectCode) return 'Sunday';
+        var { data, error } = await supabase
+            .from('weekly_offs')
+            .select('day_of_week')
+            .eq('project_id', currentProjectCode)
+            .maybeSingle();
+        if (data) return data.day_of_week;
         return 'Sunday';
     }
 
@@ -407,12 +411,13 @@
         return map[dayName] !== undefined ? map[dayName] : 0;
     }
 
-    function updateCalendar() {
+    async function updateCalendar() {
         var bulan = parseInt(document.getElementById('bulan').value);
         var tahun = parseInt(document.getElementById('tahun').value);
         daysInMonth = new Date(tahun, bulan + 1, 0).getDate();
 
-        var weeklyOffDayName = getProjectWeeklyOff();
+        // Tunggu data cuti mingguan dari Supabase
+        var weeklyOffDayName = await getProjectWeeklyOff();
         var offDayIndex = getDayIndex(weeklyOffDayName);
 
         offDayIndices = [];
@@ -421,14 +426,14 @@
             if (dayOfWeek === offDayIndex) offDayIndices.push(d - 1);
         }
 
-        // Reload data setiap kali bulan/tahun tukar
-        loadDataFromSupabase();
+        // Reload payroll data
+        await loadDataFromSupabase(); 
         renderTabs();
         renderTable();
     }
 
     // ============================================================
-    //  LOAD DATA FROM SUPABASE
+    //  LOAD DATA FROM SUPABASE & RATES
     // ============================================================
     async function loadDataFromSupabase() {
         if (!currentProjectCode) return;
@@ -464,6 +469,9 @@
             createEmptyMonth();
         }
         updateButtons();
+        
+        // FIX: Pastikan render semula selepas data selesai di-load
+        renderTable(); 
     }
 
     function createEmptyMonth() {
@@ -471,6 +479,21 @@
         currentGroupIndex = 0;
         nextGroupId = 1;
         isClosed = false;
+    }
+
+    // ============================================================
+    //  FIX 2: AMBIL DATA KUK (RATES) DARI SUPABASE
+    // ============================================================
+    async function loadRatesFromSupabase() {
+        if (!currentProjectCode) return;
+        // Ambil data rates untuk projek ini (atau semua)
+        var { data, error } = await supabase
+            .from('rates')
+            .select('code, description')
+            .eq('project_code', currentProjectCode); 
+        if (!error && data) {
+            allRates = data;
+        }
     }
 
     // ============================================================
@@ -680,10 +703,7 @@
                     <td class="row-label" style="padding-left:4px;">
                         <input list="kuk-list-${currentGroupIndex}" class="editable-input" style="text-align:left; width:100%;" value="${act.kod ? act.kod + ' - ' + act.nama : ''}" placeholder="Taip kod / nama kerja" ${isEditable ? '' : 'disabled'} onchange="updateActName(${wIdx}, ${aIdx}, this.value)">
                         <datalist id="kuk-list-${currentGroupIndex}">
-                            <option value="0101 - Menuai Sawit - Buah (kg)">
-                            <option value="0201 - Kerja Lebih Masa (jam)">
-                            <option value="0301 - Merumput - Kimia (ha)">
-                            <option value="0401 - Pengangkutan Buah (tan)">
+                            <!-- Populated by JS -->
                         </datalist>
                     </td>
                     <td><input type="text" class="editable-input" value="${act.kod || ''}" ${isEditable ? '' : 'disabled'}></td>
@@ -1197,22 +1217,39 @@
         renderTable();
     }
 
+    // ============================================================
+    //  FIX 3: UPDATE ACT NAME GUNA DATA KUK DARI SUPABASE
+    // ============================================================
     function updateActName(wIdx, aIdx, value) {
         var group = groups[currentGroupIndex];
         var newKod = '';
         var newNama = value;
 
+        // 1. Cuba match menggunakan regex (4 digit)
         var kodMatch = value.match(/^(\d{4})\s*-\s*(.*)/);
         if (kodMatch) {
             newKod = kodMatch[1];
             newNama = kodMatch[2];
         } else {
-            if (value.toLowerCase().includes('menuai')) { newKod = '0101'; newNama = 'Menuai Sawit - Buah (kg)'; }
-            else if (value.toLowerCase().includes('lebih masa')) { newKod = '0201'; newNama = 'Kerja Lebih Masa (jam)'; }
-            else if (value.toLowerCase().includes('merumput')) { newKod = '0301'; newNama = 'Merumput - Kimia (ha)'; }
-            else if (value.toLowerCase().includes('pengangkutan')) { newKod = '0401'; newNama = 'Pengangkutan Buah (tan)'; }
+            // 2. Cuba match dari senarai KUK Supabase
+            var foundRate = allRates.find(function(r) {
+                return value.toLowerCase().includes(r.description.toLowerCase()) || 
+                       value.toLowerCase().includes(r.code.toLowerCase());
+            });
+            
+            if (foundRate) {
+                newKod = foundRate.code;
+                newNama = foundRate.description;
+            } 
+            // 3. Fallback manual (jika tiada dalam KUK Supabase)
             else {
-                newNama = value;
+                if (value.toLowerCase().includes('menuai')) { newKod = '0101'; newNama = 'Menuai Sawit - Buah (kg)'; }
+                else if (value.toLowerCase().includes('lebih masa')) { newKod = '0201'; newNama = 'Kerja Lebih Masa (jam)'; }
+                else if (value.toLowerCase().includes('merumput')) { newKod = '0301'; newNama = 'Merumput - Kimia (ha)'; }
+                else if (value.toLowerCase().includes('pengangkutan')) { newKod = '0401'; newNama = 'Pengangkutan Buah (tan)'; }
+                else {
+                    newNama = value;
+                }
             }
         }
 
@@ -1352,7 +1389,6 @@
             if (!confirm('Buka semula urusniaga ini?')) return;
             isClosed = false;
         }
-        // Simpan perubahan status ke Supabase
         simpanData();
         updateButtons();
         renderTable();
@@ -1361,48 +1397,13 @@
     function kiraSemua() { renderTable(); }
 
     // ============================================================
-    //  FUNGSI CETAK (FIX: Cari ID yang betul)
+    //  RENDER TABS & LOAD RATES (FIX 4)
     // ============================================================
-    function prepareAndPrint() {
-        var bulanSelect = document.getElementById('bulan');
-        var bulanText = bulanSelect.options[bulanSelect.selectedIndex].text;
-        var tahun = document.getElementById('tahun').value;
-        var groupName = groups[currentGroupIndex] ? groups[currentGroupIndex].name : document.getElementById('kumpulan').value;
+    async function renderTabs() {
+        // 1. Load KUK (Rates) dari Supabase
+        await loadRatesFromSupabase();
 
-        // FIX: Update id="printHeaderTd" (BUKAN printMonthYear)
-        var headerTd = document.getElementById('printHeaderTd');
-        if (headerTd) {
-            headerTd.innerText = `BULAN ${bulanText} / TAHUN ${tahun} | KUMPULAN ${groupName}`;
-        }
-
-        window.print();
-    }
-
-    // ============================================================
-    //  TABS / KUMPULAN LOGIC
-    // ============================================================
-    function addNewGroup() {
-        var defaultPotongan = [ { label: 'KWSP', nilai: 0 }, { label: 'SOCSO', nilai: 0 }, { label: 'SIP', nilai: 0 } ];
-        var newGroup = {
-            id: nextGroupId++,
-            name: 'Kumpulan ' + (groups.length + 1),
-            workers: [{
-                id: Date.now(), nama: 'PEKERJA BARU', noKP: 'XXXXXXXXXXXX', umur: 30, jantina: 'L',
-                hari: Array(31).fill(''),
-                aktiviti: [{ kod: '0101', nama: 'Menuai Sawit - Buah (kg)', unit: '', blok: '', kadar: 0.50, kuantitiHarian: Array(31).fill(0) }],
-                elaun_motorsikal: 0, elaun_rumah: 0,
-                potongan: JSON.parse(JSON.stringify(defaultPotongan)),
-                leaveRates: {}, afcCheck: Array(31).fill(false), fcCheck: Array(31).fill(false)
-            }]
-        };
-        groups.push(newGroup);
-        renderTabs();
-        currentGroupIndex = groups.length - 1;
-        renderTable();
-        updateButtons();
-    }
-
-    function renderTabs() {
+        // 2. Render Tab
         var container = document.getElementById('tabsContainer');
         var html = '';
         var visibleGroups = groups.map(function(g, idx) { return idx; });
@@ -1422,6 +1423,49 @@
             html += `<button class="btn-add-tab" onclick="addNewGroup()">+</button>`;
         }
         container.innerHTML = html;
+
+        // 3. Kemaskini semua datalist kuk-list dengan data rates dari Supabase
+        setTimeout(function() {
+            var datalists = document.querySelectorAll('datalist[id^="kuk-list-"]');
+            var optionsHtml = '<option value="0101 - Menuai Sawit - Buah (kg)">';
+            optionsHtml += '<option value="0201 - Kerja Lebih Masa (jam)">';
+            optionsHtml += '<option value="0301 - Merumput - Kimia (ha)">';
+            optionsHtml += '<option value="0401 - Pengangkutan Buah (tan)">';
+            
+            // Tambah dari Supabase
+            if (allRates && allRates.length > 0) {
+                allRates.forEach(function(r) {
+                    if (r.code && r.description) {
+                        optionsHtml += `<option value="${r.code} - ${r.description}">`;
+                    }
+                });
+            }
+
+            datalists.forEach(function(dl) {
+                dl.innerHTML = optionsHtml;
+            });
+        }, 100);
+    }
+
+    function addNewGroup() {
+        var defaultPotongan = [ { label: 'KWSP', nilai: 0 }, { label: 'SOCSO', nilai: 0 }, { label: 'SIP', nilai: 0 } ];
+        var newGroup = {
+            id: nextGroupId++,
+            name: 'Kumpulan ' + (groups.length + 1),
+            workers: [{
+                id: Date.now(), nama: 'PEKERJA BARU', noKP: 'XXXXXXXXXXXX', umur: 30, jantina: 'L',
+                hari: Array(31).fill(''),
+                aktiviti: [{ kod: '0101', nama: 'Menuai Sawit - Buah (kg)', unit: '', blok: '', kadar: 0.50, kuantitiHarian: Array(31).fill(0) }],
+                elaun_motorsikal: 0, elaun_rumah: 0,
+                potongan: JSON.parse(JSON.stringify(defaultPotongan)),
+                leaveRates: {}, afcCheck: Array(31).fill(false), fcCheck: Array(31).fill(false)
+            }]
+        };
+        groups.push(newGroup);
+        renderTabs();
+        currentGroupIndex = groups.length - 1;
+        renderTable();
+        updateButtons();
     }
 
     function enableEdit(idx) {
@@ -1448,6 +1492,23 @@
         groups.splice(idx, 1);
         if (currentGroupIndex >= groups.length) currentGroupIndex = groups.length - 1;
         renderTabs(); renderTable();
+    }
+
+    // ============================================================
+    //  FUNGSI CETAK
+    // ============================================================
+    function prepareAndPrint() {
+        var bulanSelect = document.getElementById('bulan');
+        var bulanText = bulanSelect.options[bulanSelect.selectedIndex].text;
+        var tahun = document.getElementById('tahun').value;
+        var groupName = groups[currentGroupIndex] ? groups[currentGroupIndex].name : document.getElementById('kumpulan').value;
+
+        var headerTd = document.getElementById('printHeaderTd');
+        if (headerTd) {
+            headerTd.innerText = `BULAN ${bulanText} / TAHUN ${tahun} | KUMPULAN ${groupName}`;
+        }
+
+        window.print();
     }
 
     // ============================================================
