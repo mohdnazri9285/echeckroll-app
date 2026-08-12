@@ -259,9 +259,10 @@
 
             <div class="table-wrapper">
                 <table class="echeckroll-table" id="mainTable">
+                    <!-- ===== HEADER & FOOTER CETAKAN (BARU) ===== -->
                     <thead id="printThead" class="print-only">
                         <tr class="print-only">
-                            <td colspan="42" id="printHeaderTd" style="text-align:center; font-weight:bold; border:none;">BULAN - TAHUN | KUMPULAN - </td>
+                            <td colspan="42" id="printHeaderTd" style="text-align:center; font-weight:bold; border:none; background:white;">BULAN - TAHUN | KUMPULAN - </td>
                         </tr>
                     </thead>
                     <tbody id="tableBody">
@@ -275,6 +276,7 @@
                             </td>
                         </tr>
                     </tfoot>
+                    <!-- ================================================ -->
                 </table>
             </div>
         </div>
@@ -392,7 +394,6 @@
     }
 
     function getProjectWeeklyOff() {
-        // Ambil dari localStorage buat sementara, nanti akan diambil dari Supabase
         var offDataStr = localStorage.getItem('echeckroll_weekly_offs');
         if (offDataStr) {
             var offData = JSON.parse(offDataStr);
@@ -427,7 +428,7 @@
     }
 
     // ============================================================
-    //  LOAD DATA FROM SUPABASE (GANTI localStorage)
+    //  LOAD DATA FROM SUPABASE
     // ============================================================
     async function loadDataFromSupabase() {
         if (!currentProjectCode) return;
@@ -436,7 +437,6 @@
         var tahun = parseInt(document.getElementById('tahun').value);
 
         try {
-            // Query payrolls berdasarkan project_code, tahun, bulan
             var { data, error } = await supabase
                 .from('payrolls')
                 .select('*')
@@ -452,14 +452,11 @@
             }
 
             if (data) {
-                // Data wujud
                 groups = data.groups || [];
                 isClosed = data.is_closed || false;
                 currentGroupIndex = 0;
-                // nextGroupId perlu ditentukan dari groups yang ada (fallback)
                 nextGroupId = groups.length > 0 ? groups.length + 1 : 1;
             } else {
-                // Tiada data untuk bulan ini, create empty
                 createEmptyMonth();
             }
         } catch (err) {
@@ -477,7 +474,7 @@
     }
 
     // ============================================================
-    //  SAVE DATA TO SUPABASE (GANTI localStorage)
+    //  SAVE DATA TO SUPABASE
     // ============================================================
     async function simpanData() {
         if (!currentProjectCode) {
@@ -498,7 +495,6 @@
         };
 
         try {
-            // Upsert (Update jika wujud, Insert jika tiada) berdasarkan project_id, year, month
             var { error } = await supabase
                 .from('payrolls')
                 .upsert(dataToSave, { onConflict: 'project_id, year, month' });
@@ -512,7 +508,7 @@
     }
 
     // ============================================================
-    //  MAPS & CONSTANTS (SAMA SEPERTI SEBELUM)
+    //  MAPS & CONSTANTS
     // ============================================================
     var LEAVE_MAP = {
         'CA': 'CUTI AM', 'CT': 'CUTI TAHUNAN', 'MC': 'CUTI SAKIT', 'CB': 'CUTI BERSALIN',
@@ -526,7 +522,7 @@
     var PAID_LEAVE_CODES = ['CA', 'CT', 'MC', 'CB', 'HAJI', 'CM', 'OFF', 'WAD', 'CBN', 'CP', 'CE', 'CK'];
 
     // ============================================================
-    //  MASTER SYNC UTILITY (SAMA SEPERTI SEBELUM)
+    //  MASTER SYNC UTILITY
     // ============================================================
     function syncActivitiesToAll() {
         var group = groups[currentGroupIndex];
@@ -540,7 +536,7 @@
     }
 
     // ============================================================
-    //  RENDER TABLE (SAMA SEPERTI SEBELUM)
+    //  RENDER TABLE
     // ============================================================
     function renderTable() {
         var tbody = document.getElementById('tableBody');
@@ -1167,7 +1163,7 @@
     }
 
     // ============================================================
-    //  LOGIK FUNGSI & SYNC (SAMA SEPERTI SEBELUM)
+    //  LOGIK FUNGSI & SYNC
     // ============================================================
     function toggleSync() { syncEnabled = document.getElementById('syncCheck').checked; }
 
