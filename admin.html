@@ -271,7 +271,7 @@
                     </table>
                 </div>
 
-                <!-- CUTI MINGGUAN -->
+                <!-- CUTI MINGGUAN (KINI GUNA DATA SEBENAR DARI SUPABASE) -->
                 <div class="content-section" id="sec-weeklyoff">
                     <h2><i class="fas fa-calendar-alt"></i> Tetapan Hari Cuti Mingguan</h2>
                     <p style="color:#777; font-size:13px;">Tetapkan hari cuti mingguan bagi setiap Rancangan.</p>
@@ -310,7 +310,7 @@
 
 <script>
     // ============================================================
-    // SUPABASE CONFIGURATION (Guna 'var')
+    // SUPABASE CONFIGURATION
     // ============================================================
     var SUPABASE_URL = 'https://kakzoykzxkryegqybxzs.supabase.co';
     var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtha3pveWt6eGtyeWVncXlieHpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0OTg2ODEsImV4cCI6MjEwMjA3NDY4MX0.n3L8mQsm3CNAC0ahEumu0bQMEC_9H2uaKQ4Htt_ga9c';
@@ -409,9 +409,6 @@
         });
     }
 
-    // ============================================================
-    // UPLOAD RATES
-    // ============================================================
     async function uploadRates() {
         try {
             var data = await readExcelFile('ratesFile');
@@ -441,9 +438,6 @@
         }
     }
 
-    // ============================================================
-    // UPLOAD LEAVES
-    // ============================================================
     async function uploadLeaves() {
         try {
             var data = await readExcelFile('leavesFile');
@@ -470,9 +464,6 @@
         }
     }
 
-    // ============================================================
-    // UPLOAD USERS (FIX: Hantar ID UNIK sahaja)
-    // ============================================================
     async function uploadUsers() {
         try {
             var data = await readExcelFile('usersFile');
@@ -480,7 +471,6 @@
             
             var rows = data.slice(1).filter(function(r) { return r.length > 0 && r[0]; });
             
-            // --- FIX: Tapis ID yang berulang ---
             var uniqueMap = new Map();
             rows.forEach(function(r) {
                 var id = String(r[0]).trim();
@@ -489,7 +479,6 @@
                 }
             });
             var uniqueRows = Array.from(uniqueMap.values());
-            // --------------------------------------
 
             var formatted = uniqueRows.map(function(r) {
                 return {
@@ -498,7 +487,7 @@
                     role: String(r[2]).trim(),
                     project_code: String(r[3]).trim() || null,
                     region: String(r[4]).trim() || null,
-                    password_hash: null // Akan diisi oleh trigger
+                    password_hash: null
                 };
             });
 
@@ -513,9 +502,6 @@
         }
     }
 
-    // ============================================================
-    // UPLOAD PROJECTS
-    // ============================================================
     async function uploadProjects() {
         try {
             var data = await readExcelFile('projectsFile');
@@ -612,25 +598,50 @@
     // WEEKLY OFFS (Supabase)
     // ============================================================
     async function loadWeeklyOffs() {
-        var { data: projects } = await supabase.from('projects').select('id,name');
+        // 1. Ambil data projek sebenar dari Supabase
+        var { data: projects, error: projError } = await supabase.from('projects').select('id,name').order('id');
+        
+        if (projError) {
+            console.error('Gagal memuat projek:', projError);
+            return;
+        }
+
+        // 2. Populate dropdown dengan projek sebenar
         var select = document.getElementById('weeklyProject');
         select.innerHTML = '';
-        if (projects) {
+        if (projects && projects.length > 0) {
             projects.forEach(function(p) {
                 var opt = document.createElement('option');
                 opt.value = p.id;
                 opt.innerText = p.name + ' (' + p.id + ')';
                 select.appendChild(opt);
             });
+        } else {
+            var opt = document.createElement('option');
+            opt.value = '';
+            opt.innerText = 'Tiada rancangan dijumpai';
+            select.appendChild(opt);
         }
 
-        var { data: offs } = await supabase.from('weekly_offs').select('*');
+        // 3. Load tetapan cuti mingguan dari Supabase
+        var { data: offs, error: offError } = await supabase.from('weekly_offs').select('*');
+        if (offError) {
+            console.error('Gagal memuat cuti mingguan:', offError);
+            return;
+        }
+
+        // 4. Populate jadual
         var tbody = document.getElementById('weeklyOffTableBody');
         tbody.innerHTML = '';
         if (offs && offs.length > 0) {
+            // Gunakan data projek untuk mencari nama projek
             offs.forEach(function(o) {
+                var projectName = o.project_id;
+                var found = projects.find(function(p) { return p.id === o.project_id; });
+                if (found) projectName = found.name;
+
                 var tr = document.createElement('tr');
-                tr.innerHTML = '<td>' + o.project_id + '</td><td><strong>' + o.day_of_week + '</strong></td>';
+                tr.innerHTML = '<td>' + projectName + ' (' + o.project_id + ')</td><td><strong>' + o.day_of_week + '</strong></td>';
                 tbody.appendChild(tr);
             });
         } else {
