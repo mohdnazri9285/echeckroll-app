@@ -310,7 +310,7 @@
 
 <script>
     // ============================================================
-    // SUPABASE CONFIGURATION (Guna 'var' untuk elakkan ralat)
+    // SUPABASE CONFIGURATION (Guna 'var')
     // ============================================================
     var SUPABASE_URL = 'https://kakzoykzxkryegqybxzs.supabase.co';
     var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtha3pveWt6eGtyeWVncXlieHpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0OTg2ODEsImV4cCI6MjEwMjA3NDY4MX0.n3L8mQsm3CNAC0ahEumu0bQMEC_9H2uaKQ4Htt_ga9c';
@@ -383,7 +383,7 @@
     }
 
     // ============================================================
-    // EXCEL UPLOAD FUNCTIONS
+    // EXCEL UPLOAD FUNCTIONS (Dengan UPSERT)
     // ============================================================
     function readExcelFile(fileId) {
         return new Promise(function(resolve, reject) {
@@ -427,7 +427,8 @@
                 };
             });
 
-            var { error } = await supabase.from('rates').insert(formatted);
+            // Gunakan upsert untuk elakkan duplicate
+            var { error } = await supabase.from('rates').upsert(formatted, { onConflict: 'code, project_code' });
             if (error) throw error;
             
             alert('✅ Berjaya! ' + formatted.length + ' data kadar upah disimpan.');
@@ -453,7 +454,7 @@
                 };
             });
 
-            var { error } = await supabase.from('leaves').insert(formatted);
+            var { error } = await supabase.from('leaves').upsert(formatted, { onConflict: 'code' });
             if (error) throw error;
             
             alert('✅ Berjaya! ' + formatted.length + ' data cuti disimpan.');
@@ -477,11 +478,12 @@
                     role: String(r[2]).trim(),
                     project_code: String(r[3]).trim() || null,
                     region: String(r[4]).trim() || null,
-                    password_hash: null // Admin akan set password melalui fungsi reset nanti
+                    password_hash: null // Akan diisi oleh trigger
                 };
             });
 
-            var { error } = await supabase.from('users').insert(formatted);
+            // UPSERT untuk elakkan duplicate key
+            var { error } = await supabase.from('users').upsert(formatted, { onConflict: 'id' });
             if (error) throw error;
             
             alert('✅ Berjaya! ' + formatted.length + ' pengguna disimpan.');
@@ -507,7 +509,8 @@
                 };
             });
 
-            var { error } = await supabase.from('projects').insert(formatted);
+            // UPSERT untuk elakkan duplicate key
+            var { error } = await supabase.from('projects').upsert(formatted, { onConflict: 'id' });
             if (error) throw error;
             
             alert('✅ Berjaya! ' + formatted.length + ' rancangan disimpan.');
