@@ -100,26 +100,27 @@
         
         <button class="login-btn" onclick="doLogin()">Log Masuk</button>
         <div id="loginError" class="login-error">ID atau Kata Laluan salah!</div>
-        <!-- Tambah ini selepas butang login -->
+        
+        <!-- Pautan Lupa Kata Laluan (Telah dikemaskini) -->
         <div style="margin-top: 12px;">
-        <a href="reset-password.html" style="color: #ffffff; font-size: 13px; text-decoration: underline; opacity: 0.8;">Lupa Kata Laluan?</a>
+            <a href="reset-password.html" style="color: #ffffff; font-size: 13px; text-decoration: underline; opacity: 0.8;">Lupa Kata Laluan?</a>
         </div>
     </div>
 </div>
 
 <script>
     // ============================================================
-    //  SUPABASE CONFIGURATION (DARI DASHBOARD ANDA)
+    //  FIX: Guna 'var' supaya tidak konflik dengan 'const' di fail lain
     // ============================================================
-    const SUPABASE_URL = 'https://kakzoykzxkryegqybxzs.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtha3pveWt6eGtyeWVncXlieHpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0OTg2ODEsImV4cCI6MjEwMjA3NDY4MX0.n3L8mQsm3CNAC0ahEumu0bQMEC_9H2uaKQ4Htt_ga9c';
+    var SUPABASE_URL = 'https://kakzoykzxkryegqybxzs.supabase.co';
+    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtha3pveWt6eGtyeWVncXlieHpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0OTg2ODEsImV4cCI6MjEwMjA3NDY4MX0.n3L8mQsm3CNAC0ahEumu0bQMEC_9H2uaKQ4Htt_ga9c';
     
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    var supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     async function doLogin() {
-        const id = document.getElementById('loginId').value.trim();
-        const pass = document.getElementById('loginPass').value.trim();
-        const errorBox = document.getElementById('loginError');
+        var id = document.getElementById('loginId').value.trim();
+        var pass = document.getElementById('loginPass').value.trim();
+        var errorBox = document.getElementById('loginError');
         errorBox.style.display = 'none';
 
         if (!id || !pass) {
@@ -130,7 +131,7 @@
 
         try {
             // Panggil function login_user di Supabase
-            const { data, error } = await supabase
+            var { data, error } = await supabase
                 .rpc('login_user', { 
                     p_id: id, 
                     p_password: pass 
@@ -151,7 +152,7 @@
             }
 
             // Login Berjaya!
-            const user = data[0];
+            var user = data[0];
             
             // Simpan sesi ke localStorage
             localStorage.setItem('echeckroll_user_id', user.id);
