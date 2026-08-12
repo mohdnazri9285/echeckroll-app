@@ -155,6 +155,14 @@
         /* ===== CLOSE TRANSACTION BUTTON ===== */
         #closeTransactionArea { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
+        /* ===== MONTH/YEAR PICKER (NEW) ===== */
+        .filter-area {
+            background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd;
+            margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+        }
+        .filter-area label { font-weight: bold; font-size: 13px; color: #555; margin-right: 5px; }
+        .filter-area select { padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+
         @media (max-width: 768px) {
             .header { grid-template-columns: 1fr; gap: 5px; }
             .main-layout { flex-direction: column; }
@@ -231,6 +239,28 @@
                 <!-- ================= DASHBOARD (MUKTAMAD) ================= -->
                 <div class="content-section active" id="sec-dashboard">
                     <h2><i class="fas fa-chart-pie"></i> Ringkasan & Monitoring</h2>
+
+                    <!-- FILTER MONTH/YEAR (NEW) -->
+                    <div class="filter-area">
+                        <div>
+                            <label for="adminMonth">BULAN:</label>
+                            <select id="adminMonth" onchange="loadDashboard()">
+                                <option value="0">JANUARI</option><option value="1">FEBRUARI</option>
+                                <option value="2">MAC</option><option value="3">APRIL</option>
+                                <option value="4">MEI</option><option value="5">JUN</option>
+                                <option value="6" selected>JULAI</option><option value="7">OGOS</option>
+                                <option value="8">SEPTEMBER</option><option value="9">OKTOBER</option>
+                                <option value="10">NOVEMBER</option><option value="11">DISEMBER</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="adminYear">TAHUN:</label>
+                            <select id="adminYear" onchange="loadDashboard()">
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+                    </div>
+                    <!-- ============================================== -->
 
                     <!-- Meters & Close Transaction -->
                     <div id="closeTransactionArea">
@@ -376,11 +406,6 @@
     var supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     var currentUser = null;
-    var currentYear = new Date().getFullYear();
-    var currentMonth = new Date().getMonth(); // 0-11
-    var daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-
-    var payrollsCache = []; // To hold payrolls data for the current month
     var projectsCache = []; // To hold all projects
 
     // ============================================================
@@ -439,10 +464,24 @@
     // MAIN LOADER
     // ============================================================
     async function loadAllData() {
+        populateYearDropdown();
         await loadProjectsCache();
         await loadDashboard();
         loadTables();
         loadWeeklyOffs();
+    }
+
+    function populateYearDropdown() {
+        var select = document.getElementById('adminYear');
+        var currentYear = new Date().getFullYear();
+        select.innerHTML = '';
+        for (var y = currentYear - 2; y <= currentYear + 2; y++) {
+            var opt = document.createElement('option');
+            opt.value = y;
+            opt.innerText = y;
+            if (y === currentYear) opt.selected = true;
+            select.appendChild(opt);
+        }
     }
 
     async function loadProjectsCache() {
@@ -454,9 +493,9 @@
     // DASHBOARD LOADER
     // ============================================================
     async function loadDashboard() {
-        var month = currentMonth;
-        var year = currentYear;
-        daysInMonth = new Date(year, month + 1, 0).getDate();
+        var month = parseInt(document.getElementById('adminMonth').value);
+        var year = parseInt(document.getElementById('adminYear').value);
+        var daysInMonth = new Date(year, month + 1, 0).getDate();
 
         // Fetch all payrolls for this month
         var { data: payrolls, error } = await supabase
@@ -583,7 +622,7 @@
         renderMeters(gridData, isHQ);
 
         // Render Grid
-        renderGrid(gridData, entities, isHQ);
+        renderGrid(gridData, entities, isHQ, daysInMonth);
 
         // Render Alert
         renderAlert(gridData, isHQ);
@@ -658,7 +697,7 @@
     // ============================================================
     // RENDER GRID
     // ============================================================
-    function renderGrid(gridData, entities, isHQ) {
+    function renderGrid(gridData, entities, isHQ, daysInMonth) {
         var container = document.getElementById('statusGridContainer');
         var html = '<table><thead><tr><th>' + (isHQ ? 'Wilayah' : 'Rancangan') + '</th>';
         for (var d = 1; d <= daysInMonth; d++) {
@@ -767,6 +806,8 @@
 
         var isHQ = currentUser.role === 'HQ';
         var projectIds = [];
+        var month = parseInt(document.getElementById('adminMonth').value);
+        var year = parseInt(document.getElementById('adminYear').value);
 
         if (isHQ) {
             // For HQ, we need to close all projects in all regions
@@ -794,8 +835,8 @@
             var { error } = await supabase
                 .from('payrolls')
                 .update({ is_closed: isClosing })
-                .eq('year', currentYear)
-                .eq('month', currentMonth)
+                .eq('year', year)
+                .eq('month', month)
                 .in('project_id', projectIds);
 
             if (error) throw error;
@@ -816,7 +857,6 @@
 
         // Find entity data
         var isHQ = currentUser.role === 'HQ';
-        var entityData = null;
         var projects = [];
 
         if (isHQ) {
