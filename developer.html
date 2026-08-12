@@ -2,19 +2,21 @@
 <html lang="ms">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>Developer - eCheckroll</title>
 
-    <!-- Favicon -->
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="manifest" href="site.webmanifest">
 
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* ===== GLOBAL & FIT WINDOW ===== */
+        /* ===== GLOBAL & DESKTOP ===== */
         * { box-sizing: border-box; font-family: 'Calibri', 'Segoe UI', sans-serif; }
         body { background: #f0f4f8; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
         .container { 
@@ -39,19 +41,43 @@
         .btn-danger { background: #c62828; color: white; }
         .btn-warning { background: #ff9800; color: white; }
         .btn-outline { background: white; border: 1px solid #2e7d32; color: #2e7d32; }
+        .btn-success { background: #1976d2; color: white; }
         .btn-logout { background: #757575; color: white; margin-left: auto; }
+
+        .header-toggle {
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            background: #fff9c4;
+            border: 1px solid #fbc02d;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        .header-toggle i { transition: transform 0.3s ease; }
+        .header-area.collapsed .header { display: none !important; }
+        .header-area.collapsed .header-toggle { margin-bottom: 0; border-bottom: none; }
 
         .main-layout { display: flex; gap: 8px; flex-grow: 1; overflow: hidden; }
 
         .side-panel { 
-            width: 150px; 
+            width: 160px; 
             background: linear-gradient(135deg, #c62828, #b71c1c);
             border: 2px solid #8e0000; border-radius: 8px; 
             padding: 10px; overflow-y: auto; flex-shrink: 0; 
             box-shadow: inset 0 2px 5px rgba(255,255,255,0.2), 0 4px 8px rgba(0,0,0,0.3);
-            color: white; text-align: center;
+            color: white; display: flex; flex-direction: column; gap: 4px;
         }
-        .side-panel h5 { margin: 0 0 10px 0; font-size: 14px; color: #ffeb3b; }
+        .side-panel h5 { margin: 0 0 10px 0; font-size: 14px; color: #ffeb3b; text-align: center; }
+        .side-menu-item { 
+            padding: 8px 10px; cursor: pointer; font-size: 13px; color: #ffcdd2; 
+            border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 8px; border-radius: 4px;
+        }
+        .side-menu-item:hover { color: #ffffff; font-weight: bold; background: rgba(255,255,255,0.1); }
+        .side-menu-item.active { color: #ffeb3b; font-weight: bold; background: rgba(255,255,255,0.2); }
 
         .content-area { 
             flex-grow: 1; overflow-y: auto; position: relative; 
@@ -61,20 +87,54 @@
         .content-section.active { display: block; }
         
         .dev-card {
-            background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 15px; margin-bottom: 15px; max-width: 600px;
+            background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 15px; margin-bottom: 15px;
         }
         .dev-card h3 { margin-top: 0; }
         .dev-card code { background: #e9ecef; padding: 2px 4px; border-radius: 4px; font-size: 13px; }
-        
+
         .log-area {
             background: #212529; color: #fff; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; white-space: pre-wrap;
         }
+        .log-area .success { color: #4caf50; }
+        .log-area .error { color: #f44336; }
+        .log-area .info { color: #29b6f6; }
+
+        .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+        .admin-table th, .admin-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .admin-table th { background: #f5f5f5; }
+
+        .meters-container { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; }
+        .meter-card {
+            background: white; border-radius: 8px; padding: 15px; flex: 1; min-width: 160px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 6px solid #2e7d32;
+        }
+        .meter-card h3 { margin: 0 0 5px 0; font-size: 24px; color: #333; }
+        .meter-card span { font-size: 13px; color: #777; }
+
+        /* Role Badges */
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-weight: bold; font-size: 11px; }
+        .badge-hq { background: #c8e6c9; color: #1b5e20; }
+        .badge-wilayah { background: #b3e5fc; color: #01579b; }
+        .badge-fs { background: #fff9c4; color: #f57f17; }
+        .badge-afc { background: #ffe0b2; color: #e65100; }
+        .badge-fc { background: #f8bbd0; color: #880e4f; }
+        .badge-dev { background: #cfd8dc; color: #37474f; }
+
+        .integrity-pass { color: #2e7d32; font-weight: bold; }
+        .integrity-fail { color: #c62828; font-weight: bold; }
 
         @media (max-width: 768px) {
             .header { grid-template-columns: 1fr; gap: 5px; }
             .main-layout { flex-direction: column; }
-            .side-panel { width: 100%; display: flex; flex-wrap: wrap; padding: 5px; }
-            .side-panel h5 { width: 100%; }
+            .side-panel { width: 100%; display: flex; flex-wrap: wrap; padding: 5px; gap: 5px; flex-direction: row; justify-content: center; }
+            .side-panel h5 { width: 100%; text-align: center; margin-bottom: 5px; }
+            .side-menu-item { flex: 1; justify-content: center; padding: 5px; border-bottom: none; font-size: 12px; }
+            
+            .header-toggle { display: flex; }
+            body { height: auto; overflow-y: auto; }
+            .container { height: auto !important; overflow-y: auto !important; }
+            .content-area { overflow: visible !important; height: auto !important; }
+            .admin-table { display: block; overflow-x: auto; white-space: nowrap; }
         }
     </style>
 </head>
@@ -82,7 +142,12 @@
 
 <div id="appArea">
     <div class="container">
-        <div class="header-area">
+        <div class="header-area" id="headerArea">
+            
+            <div class="header-toggle" onclick="toggleMobileHeader()">
+                <span class="toggle-text"><i class="fas fa-chevron-up" id="toggleIcon"></i> Sembunyi / Tunjuk Menu Dev</span>
+            </div>
+
             <div class="header">
                 <div>
                     <label>PORTAL DEV</label>
@@ -90,13 +155,14 @@
                 </div>
                 <div>
                     <label>STATUS SISTEM</label>
-                    <input type="text" id="statusHeader" value="Prototype Mode (localStorage)" disabled>
+                    <input type="text" id="statusHeader" value="Checking Supabase..." disabled>
                 </div>
                 <div>
                     <label>PEMBANGUN</label>
                     <input type="text" id="devUser" value="Developer" disabled>
                 </div>
             </div>
+
             <div class="action-bar">
                 <div style="font-size:12px; font-weight:bold; color:#555; margin-right:auto;">⚠️ Alat Ujian & Debug</div>
                 <button class="btn btn-logout btn-sm" onclick="doLogout()">🚪 Log Keluar</button>
@@ -104,45 +170,107 @@
         </div>
 
         <div class="main-layout">
-            <div class="side-panel">
+            <div class="side-panel" id="sidePanel">
                 <h5><i class="fas fa-bug"></i> DEV</h5>
-                <div class="side-menu-item active" onclick="switchSection('tools')" style="color:#ffeb3b; font-weight:bold; cursor:pointer;">
-                    <i class="fas fa-tools"></i> Tools
+                <div class="side-menu-item active" onclick="switchSection('dashboard')">
+                    <i class="fas fa-chart-pie"></i> Ringkasan
                 </div>
-                <div class="side-menu-item" onclick="switchSection('logs')" style="color:#ffcdd2; cursor:pointer; padding:8px 0;">
-                    <i class="fas fa-terminal"></i> Logs
+                <div class="side-menu-item" onclick="switchSection('integrity')">
+                    <i class="fas fa-shield-alt"></i> Integriti Data
+                </div>
+                <div class="side-menu-item" onclick="switchSection('users')">
+                    <i class="fas fa-users"></i> Pengguna
+                </div>
+                <div class="side-menu-item" onclick="switchSection('projects')">
+                    <i class="fas fa-tree"></i> Rancangan
+                </div>
+                <div class="side-menu-item" onclick="switchSection('payrolls')">
+                    <i class="fas fa-file-invoice"></i> Data Bulanan
+                </div>
+                <div class="side-menu-item" onclick="switchSection('logs')">
+                    <i class="fas fa-terminal"></i> Log Debug
                 </div>
             </div>
 
             <div class="content-area" id="contentArea">
-                <div class="content-section active" id="sec-tools">
-                    <h2><i class="fas fa-tools"></i> Alat Debug & Reset</h2>
-                    
-                    <div class="dev-card">
-                        <h3><i class="fas fa-undo-alt"></i> Reset Data</h3>
-                        <p>Padam <strong>semua data</strong> yang disimpan dalam <code>localStorage</code>. Ini akan mengembalikan sistem ke keadaan asal (kosong).</p>
-                        <button class="btn btn-danger" onclick="resetAllData()">🗑️ Reset Semua Data</button>
+                
+                <!-- 1. RINGKASAN & DASHBOARD -->
+                <div class="content-section active" id="sec-dashboard">
+                    <h2><i class="fas fa-chart-pie"></i> Ringkasan Sistem & DB</h2>
+                    <div class="meters-container">
+                        <div class="meter-card"><h3 id="cProjects">0</h3><span>Jumlah Rancangan</span></div>
+                        <div class="meter-card"><h3 id="cUsers">0</h3><span>Jumlah Pengguna</span></div>
+                        <div class="meter-card"><h3 id="cRates">0</h3><span>Kadar Upah</span></div>
+                        <div class="meter-card"><h3 id="cLeaves">0</h3><span>Kod Cuti</span></div>
+                        <div class="meter-card"><h3 id="cPayrolls">0</h3><span>Rekod Gaji (Payrolls)</span></div>
                     </div>
-
                     <div class="dev-card">
-                        <h3><i class="fas fa-database"></i> Reload Mock Data</h3>
-                        <p>Jika anda telah padam data atau mahu memulakan ujian dari awal, klik butang ini untuk <strong>memuatkan semula Mock Data</strong> (10 kumpulan, 3 Rancangan, Pengguna Demo).</p>
-                        <button class="btn btn-warning" onclick="seedMockData()">📥 Muat Semula Mock Data</button>
-                    </div>
-
-                    <div class="dev-card">
-                        <h3><i class="fas fa-print"></i> Semak Struktur Data</h3>
-                        <p>Paparkan struktur data semasa yang tersimpan dalam <code>localStorage</code> untuk semakan.</p>
-                        <button class="btn btn-outline btn-sm" onclick="viewLocalStorage()">📋 Papar localStorage</button>
-                        <div id="dataDisplay" class="log-area" style="margin-top:10px;">Klik butang di atas untuk melihat data...</div>
+                        <h3><i class="fas fa-plug"></i> Sambungan Supabase</h3>
+                        <div id="connectionStatus" style="font-weight:bold;">Sedang menyemak...</div>
                     </div>
                 </div>
 
+                <!-- 2. INTEGRITI DATA -->
+                <div class="content-section" id="sec-integrity">
+                    <h2><i class="fas fa-shield-alt"></i> Semakan Integriti Data</h2>
+                    <div class="dev-card">
+                        <p>Alat ini akan mengimbas database untuk mencari data yatim (orphan), hubungan rosak, atau anomali.</p>
+                        <button class="btn btn-warning btn-sm" onclick="runIntegrityScan()">🔍 Jalankan Imbasan Integriti</button>
+                    </div>
+                    <div id="integrityResults">
+                        <div class="dev-card">
+                            <h3>Keputusan Imbasan</h3>
+                            <div id="integrityOutput" class="log-area">Klik butang di atas untuk memulakan imbasan.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. SENARAI PENGGUNA -->
+                <div class="content-section" id="sec-users">
+                    <h2><i class="fas fa-users"></i> Senarai Pengguna Berdaftar</h2>
+                    <div style="overflow-x:auto;">
+                        <table class="admin-table" id="devUsersTable">
+                            <thead><tr><th>ID</th><th>Nama</th><th>Role</th><th>Kod Projek</th><th>Wilayah</th></tr></thead>
+                            <tbody id="devUsersBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 4. SENARAI RANCANGAN -->
+                <div class="content-section" id="sec-projects">
+                    <h2><i class="fas fa-tree"></i> Senarai Rancangan & Wilayah</h2>
+                    <div style="overflow-x:auto;">
+                        <table class="admin-table" id="devProjectsTable">
+                            <thead><tr><th>Kod Projek</th><th>Nama Projek</th><th>Wilayah</th><th>Kod Wilayah</th><th>Email</th></tr></thead>
+                            <tbody id="devProjectsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 5. DATA BULANAN (PAYROLLS) -->
+                <div class="content-section" id="sec-payrolls">
+                    <h2><i class="fas fa-file-invoice"></i> Rekod Data Gaji (Payrolls)</h2>
+                    <p style="color:#777; font-size:13px;">Senarai 50 rekod terkini. Ini untuk mengesahkan FS/AFC/FC menyimpan data ke Supabase dengan betul.</p>
+                    <div style="overflow-x:auto;">
+                        <table class="admin-table" id="devPayrollsTable">
+                            <thead><tr><th>ID</th><th>User ID</th><th>Kod Projek</th><th>Tahun</th><th>Bulan</th><th>Kumpulan</th><th>Tutup</th></tr></thead>
+                            <tbody id="devPayrollsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 6. LOG DEBUG -->
                 <div class="content-section" id="sec-logs">
-                    <h2><i class="fas fa-terminal"></i> Log Sistem (Console)</h2>
-                    <p>Nota kepada Pembangun: Sila gunakan <strong>F12 -> Console</strong> untuk melihat log terperinci. Anda juga boleh klik butang di bawah untuk membersihkan log console.</p>
-                    <button class="btn btn-outline btn-sm" onclick="console.clear(); alert('Console telah dibersihkan!');">🧹 Clear Console</button>
+                    <h2><i class="fas fa-terminal"></i> Log Debug (Masa Nyata)</h2>
+                    <div class="dev-card">
+                        <button class="btn btn-outline btn-sm" onclick="console.clear(); addLog('info', 'Console dibersihkan.');">🧹 Clear Console</button>
+                        <button class="btn btn-outline btn-sm" onclick="addLog('info', 'Menjalankan imbasan sistem...'); runIntegrityScan();">🔄 Imbas Semula</button>
+                    </div>
+                    <div id="debugLog" class="log-area" style="max-height:400px;">
+                        > Sistem sedia untuk log...
+                    </div>
                 </div>
+
             </div>
         </div>
     </div>
@@ -150,22 +278,28 @@
 
 <script>
     // ============================================================
-    //  SECTION 1: AUTH & REDIRECT
+    // SUPABASE CONFIGURATION
     // ============================================================
-    const validUsers = {
-        '9999': { id: '9999', pass: 'dev1234', role: 'DEV', name: 'Developer' }
-    };
+    var SUPABASE_URL = 'https://kakzoykzxkryegqybxzs.supabase.co';
+    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtha3pveWt6eGtyeWVncXlieHpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0OTg2ODEsImV4cCI6MjEwMjA3NDY4MX0.n3L8mQsm3CNAC0ahEumu0bQMEC_9H2uaKQ4Htt_ga9c';
+    var supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // ============================================================
+    // AUTH CHECK
+    // ============================================================
     function checkUser() {
-        const storedId = localStorage.getItem('echeckroll_user_id');
-        const user = validUsers[storedId];
-
-        // If no valid user or not a developer, bounce back to login
-        if (!user || user.role !== 'DEV') {
+        var storedId = localStorage.getItem('echeckroll_user_id');
+        var storedRole = localStorage.getItem('echeckroll_user_role');
+        var storedName = localStorage.getItem('echeckroll_user_name');
+        
+        if (!storedId || storedRole !== 'DEV') {
             window.location.href = 'login.html';
             return;
         }
-        document.getElementById('devUser').value = user.name || 'Developer';
+        document.getElementById('devUser').value = storedName || 'Developer';
+        document.getElementById('statusHeader').value = 'Connected to Supabase';
+        updateConnectionStatus();
+        loadAllData();
     }
 
     function doLogout() {
@@ -175,99 +309,221 @@
         window.location.href = 'login.html';
     }
 
-    // ============================================================
-    //  SECTION 2: NAVIGATION
-    // ============================================================
-    function switchSection(sectionId) {
-        document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
-        document.getElementById(`sec-${sectionId}`).classList.add('active');
+    function toggleMobileHeader() {
+        document.getElementById('headerArea').classList.toggle('collapsed');
+        var icon = document.getElementById('toggleIcon');
+        if (icon) icon.classList.toggle('fa-chevron-up');
+    }
+
+    function switchSection(id) {
+        document.querySelectorAll('.side-menu-item').forEach(function(el) { el.classList.remove('active'); });
+        document.querySelector(`.side-menu-item[onclick="switchSection('${id}')"]`).classList.add('active');
+        document.querySelectorAll('.content-section').forEach(function(el) { el.classList.remove('active'); });
+        document.getElementById('sec-' + id).classList.add('active');
     }
 
     // ============================================================
-    //  SECTION 3: CORE DEBUG FUNCTIONS
+    // LOGGING UTILITY
     // ============================================================
-    function resetAllData() {
-        if (!confirm('⚠️ Anda pasti mahu PADAM SEMUA DATA? Tindakan ini TIDAK boleh dipulihkan!')) return;
-        
-        // Clear all eCheckroll related keys
-        const keysToRemove = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key.startsWith('echeckroll_')) {
-                keysToRemove.push(key);
-            }
+    function addLog(type, message) {
+        var logBox = document.getElementById('debugLog');
+        var timestamp = new Date().toLocaleTimeString();
+        var color = type === 'success' ? 'success' : (type === 'error' ? 'error' : 'info');
+        var entry = `<div class="${color}">[${timestamp}] ${message}</div>`;
+        logBox.innerHTML += entry;
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    // ============================================================
+    // CONNECTION STATUS
+    // ============================================================
+    async function updateConnectionStatus() {
+        var statusEl = document.getElementById('connectionStatus');
+        try {
+            var { data, error } = await supabase.from('projects').select('id', { count: 'exact', head: true });
+            if (error) throw error;
+            statusEl.innerHTML = '<span style="color:#2e7d32;">✅ Disambungkan ke Supabase</span>';
+            addLog('success', 'Sambungan Supabase disahkan.');
+        } catch (err) {
+            statusEl.innerHTML = '<span style="color:#c62828;">❌ Gagal menyambung: ' + err.message + '</span>';
+            addLog('error', 'Sambungan Supabase gagal: ' + err.message);
         }
-        keysToRemove.forEach(key => localStorage.removeItem(key));
-        
-        alert('✅ Semua data dalam localStorage telah dibersihkan! Sila refresh halaman.');
-        viewLocalStorage(); // Refresh the data view
     }
 
-    function seedMockData() {
-        // This resets the data structure used in echeckroll.html
-        const defaultData = {
-            groups: [],
-            isClosed: false,
-            currentGroupIndex: 0,
-            nextGroupId: 11
-        };
+    // ============================================================
+    // LOAD ALL DATA
+    // ============================================================
+    async function loadAllData() {
+        addLog('info', 'Memuatkan data sistem...');
+        var counts = await Promise.all([
+            supabase.from('projects').select('*', { count: 'exact', head: true }),
+            supabase.from('users').select('*', { count: 'exact', head: true }),
+            supabase.from('rates').select('*', { count: 'exact', head: true }),
+            supabase.from('leaves').select('*', { count: 'exact', head: true }),
+            supabase.from('payrolls').select('*', { count: 'exact', head: true })
+        ]);
+        
+        document.getElementById('cProjects').innerText = counts[0].count || 0;
+        document.getElementById('cUsers').innerText = counts[1].count || 0;
+        document.getElementById('cRates').innerText = counts[2].count || 0;
+        document.getElementById('cLeaves').innerText = counts[3].count || 0;
+        document.getElementById('cPayrolls').innerText = counts[4].count || 0;
 
-        // Re-init 10 groups (copying logic from echeckroll.html)
-        const defaultPotongan = [
-            { label: 'KWSP', nilai: 0 }, { label: 'SOCSO', nilai: 0 }, { label: 'SIP', nilai: 0 },
-            { label: 'ELEKTRIK', nilai: 0 }, { label: 'AIR', nilai: 0 }, { label: 'RAWATAN', nilai: 0 }
-        ];
-        for (let i = 0; i < 10; i++) {
-            defaultData.groups.push({
-                id: i,
-                name: 'Kumpulan ' + (i + 1),
-                workers: [{
-                    id: (i + 1) * 100 + 1,
-                    nama: i === 0 ? 'HALUDIN BIN ABD RAHMAN' : 'PEKERJA ' + (i + 1),
-                    noKP: i === 0 ? '660920015883' : 'XXXXXXXXXXXX',
-                    umur: i === 0 ? 60 : 30,
-                    jantina: 'L',
-                    hari: Array(31).fill(''),
-                    aktiviti: [{ kod: '0101', nama: 'Menuai Sawit - Buah (kg)', unit: '', kadar: 0.50, kuantitiHarian: Array(31).fill(0) }],
-                    elaun_motorsikal: 0,
-                    elaun_rumah: 0,
-                    potongan: JSON.parse(JSON.stringify(defaultPotongan)),
-                    leaveRates: {},
-                    afcCheck: Array(31).fill(false),
-                    fcCheck: Array(31).fill(false)
-                }]
+        loadUsersTable();
+        loadProjectsTable();
+        loadPayrollsTable();
+        addLog('success', 'Semua data utama berjaya dimuatkan.');
+    }
+
+    // ============================================================
+    // LOAD TABLES
+    // ============================================================
+    async function loadUsersTable() {
+        var { data } = await supabase.from('users').select('*').order('id');
+        var tbody = document.getElementById('devUsersBody');
+        var html = '';
+        if (data && data.length > 0) {
+            data.forEach(function(u) {
+                var badgeClass = 'badge badge-' + u.role.toLowerCase();
+                html += `<tr>
+                    <td><strong>${u.id}</strong></td>
+                    <td>${u.name}</td>
+                    <td><span class="${badgeClass}">${u.role}</span></td>
+                    <td>${u.project_code || '-'}</td>
+                    <td>${u.region || '-'}</td>
+                </tr>`;
             });
+        } else {
+            html = `<tr><td colspan="5" style="text-align:center; color:#999;">Tiada data pengguna.</td></tr>`;
         }
-
-        // Simpan ke localStorage untuk Bulan 6 (Julai 2026)
-        localStorage.setItem('echeckroll_data_2026_6', JSON.stringify(defaultData));
-        
-        // Reset Weekly Off settings to default
-        localStorage.setItem('echeckroll_weekly_offs', JSON.stringify({
-            'fpm305': 'Sunday', 'fpm306': 'Sunday', 'fpm307': 'Sunday'
-        }));
-
-        alert('✅ Mock Data telah dimuatkan semula! Anda boleh login semula.');
-        viewLocalStorage();
+        tbody.innerHTML = html;
+        addLog('info', 'Jadual Pengguna dikemaskini.');
     }
 
-    function viewLocalStorage() {
-        const display = document.getElementById('dataDisplay');
-        let html = '';
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key.startsWith('echeckroll_')) {
-                const val = localStorage.getItem(key);
-                // Truncate very long strings
-                const displayVal = val.length > 300 ? val.substring(0, 300) + '... (truncated)' : val;
-                html += `<strong>${key}</strong>\n${displayVal}\n\n`;
-            }
+    async function loadProjectsTable() {
+        var { data } = await supabase.from('projects').select('*').order('id');
+        var tbody = document.getElementById('devProjectsBody');
+        var html = '';
+        if (data && data.length > 0) {
+            data.forEach(function(p) {
+                html += `<tr>
+                    <td><strong>${p.id}</strong></td>
+                    <td>${p.name}</td>
+                    <td>${p.region}</td>
+                    <td>${p.region_code || '-'}</td>
+                    <td>${p.email || '-'}</td>
+                </tr>`;
+            });
+        } else {
+            html = `<tr><td colspan="5" style="text-align:center; color:#999;">Tiada data rancangan.</td></tr>`;
         }
-        display.innerText = html || 'Tiada data eCheckroll ditemui dalam localStorage.';
+        tbody.innerHTML = html;
+        addLog('info', 'Jadual Rancangan dikemaskini.');
+    }
+
+    async function loadPayrollsTable() {
+        var { data } = await supabase.from('payrolls').select('*').order('id', { ascending: false }).limit(50);
+        var tbody = document.getElementById('devPayrollsBody');
+        var html = '';
+        if (data && data.length > 0) {
+            data.forEach(function(p) {
+                var months = ['Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogos','Sep','Okt','Nov','Dis'];
+                var monthName = months[p.month] || p.month;
+                var groupCount = p.groups ? p.groups.length : 0;
+                html += `<tr>
+                    <td><code>${p.id}</code></td>
+                    <td>${p.user_id}</td>
+                    <td><strong>${p.project_id}</strong></td>
+                    <td>${p.year}</td>
+                    <td>${monthName}</td>
+                    <td>${groupCount} Kumpulan</td>
+                    <td>${p.is_closed ? '🔒 Tutup' : '✅ Buka'}</td>
+                </tr>`;
+            });
+        } else {
+            html = `<tr><td colspan="7" style="text-align:center; color:#999;">Tiada rekod gaji (payrolls). Sila pastikan FS/AFC/FC menyimpan data.</td></tr>`;
+        }
+        tbody.innerHTML = html;
+        addLog('info', 'Jadual Payrolls (50 terkini) dikemaskini.');
     }
 
     // ============================================================
-    //  SECTION 4: BOOT UP
+    // INTEGRITY SCAN (FUNGSI DEBUGGING UTAMA)
+    // ============================================================
+    async function runIntegrityScan() {
+        var output = document.getElementById('integrityOutput');
+        output.innerHTML = '<div class="info">Menjalankan imbasan integriti data...</div>';
+        addLog('info', 'Memulakan imbasan integriti data.');
+
+        var errors = [];
+        var warnings = [];
+
+        try {
+            // 1. Semak Pengguna FS/AFC/FC tanpa project_code
+            var { data: users, error } = await supabase.from('users').select('*');
+            if (error) throw error;
+            
+            users.forEach(function(u) {
+                if (u.role !== 'HQ' && u.role !== 'Wilayah' && u.role !== 'DEV' && (!u.project_code || u.project_code === '')) {
+                    errors.push(`⚠️ Pengguna ${u.id} (${u.name}) berperanan ${u.role} TIADA project_code.`);
+                }
+            });
+
+            // 2. Semak Payrolls dengan project_id yang tidak wujud
+            var { data: payrolls } = await supabase.from('payrolls').select('project_id');
+            var { data: projects } = await supabase.from('projects').select('id');
+            
+            var validProjectIds = projects.map(function(p) { return p.id; });
+            var orphanPayrolls = payrolls.filter(function(p) {
+                return !validProjectIds.includes(p.project_id);
+            });
+
+            if (orphanPayrolls.length > 0) {
+                errors.push(`⚠️ Terdapat ${orphanPayrolls.length} rekod Payroll yang project_id tidak wujud (Data Yatim).`);
+            } else {
+                warnings.push('✅ Semua Payrolls mempunyai project_id yang sah.');
+            }
+
+            // 3. Semak admin HQ/Wilayah yang tiada role betul
+            var malformedHQ = users.filter(function(u) { return u.id === '8000' && u.role !== 'HQ'; });
+            if (malformedHQ.length > 0) {
+                errors.push('⚠️ Akaun Admin HQ (8000) mungkin mempunyai role yang salah: ' + malformedHQ[0].role);
+            }
+
+            // 4. Semak cuti mingguan (Weekly Offs) yang project_id tidak wujud
+            var { data: offs } = await supabase.from('weekly_offs').select('project_id');
+            var orphanOffs = offs.filter(function(o) {
+                return !validProjectIds.includes(o.project_id);
+            });
+            if (orphanOffs.length > 0) {
+                warnings.push(`⚠️ Terdapat ${orphanOffs.length} tetapan Weekly Off yang project_id tidak wujud.`);
+            }
+
+            // Papar Keputusan
+            var resultHtml = '';
+            if (errors.length > 0) {
+                resultHtml += `<div class="error">🚨 Ralat Kritikal Ditemui (${errors.length})</div>`;
+                errors.forEach(function(e) { resultHtml += `<div class="error">- ${e}</div>`; });
+            } else {
+                resultHtml += `<div class="success">✅ Tiada ralat kritikal ditemui.</div>`;
+            }
+            
+            if (warnings.length > 0) {
+                resultHtml += `<div class="info">📌 Amaran / Nota (${warnings.length})</div>`;
+                warnings.forEach(function(w) { resultHtml += `<div class="info">- ${w}</div>`; });
+            }
+            
+            output.innerHTML = resultHtml;
+            addLog('success', 'Imbasan integriti data selesai.');
+
+        } catch (err) {
+            output.innerHTML = `<div class="error">❌ Ralat semasa imbasan: ${err.message}</div>`;
+            addLog('error', 'Imbasan integriti gagal: ' + err.message);
+        }
+    }
+
+    // ============================================================
+    // BOOT UP
     // ============================================================
     window.onload = function() {
         checkUser();
