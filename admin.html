@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Admin - eCheckroll</title>
+    <title>Admin - eCheckroll FPMSB</title>
 
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
@@ -18,6 +18,7 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        /* ===== GLOBAL & DESKTOP ===== */
         * { box-sizing: border-box; font-family: 'Calibri', 'Segoe UI', sans-serif; }
         body { background: #f0f4f8; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
         .container { 
@@ -45,6 +46,7 @@
         .btn-logout { background: #757575; color: white; margin-left: auto; }
         .btn-sm { padding: 3px 8px; font-size: 11px; }
 
+        /* ===== ADMIN TOGGLE (MOBILE) ===== */
         .header-toggle {
             display: none;
             justify-content: space-between;
@@ -98,6 +100,7 @@
         .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
         .form-group select, .form-group input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; max-width: 300px; }
 
+        /* ===== DASHBOARD METERS & GRID ===== */
         .meters-container { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; }
         .meter-card {
             background: white; border-radius: 8px; padding: 15px; flex: 1; min-width: 160px;
@@ -107,19 +110,50 @@
         .meter-card h3 { margin: 0 0 5px 0; font-size: 24px; color: #333; }
         .meter-card span { font-size: 13px; color: #777; }
 
+        /* Alert Box */
         #alertContainer {
             display: none; background: #ffebee; border: 1px solid #c62828; border-radius: 6px;
             padding: 12px 15px; margin-top: 15px; color: #b71c1c; font-weight: bold;
         }
         #alertContainer i { margin-right: 8px; }
 
+        /* Status Grid Container */
         #statusGridContainer { overflow-x: auto; margin-top: 15px; border: 1px solid #ddd; border-radius: 4px; }
         #statusGridContainer table { width: 100%; min-width: 600px; border-collapse: collapse; font-size: 12px; }
         #statusGridContainer th, #statusGridContainer td { border: 1px solid #dee2e6; padding: 4px 6px; text-align: center; }
         #statusGridContainer th { background: #e3f2fd; font-weight: bold; }
-        #statusGridContainer td { font-weight: bold; }
+        #statusGridContainer td { font-weight: bold; cursor: pointer; transition: 0.2s; }
+        #statusGridContainer td:hover { background: #e0e0e0; }
         .grid-cell-done { background: #c8e6c9; color: #1b5e20; }
         .grid-cell-pending { background: #ffcdd2; color: #b71c1c; }
+        .grid-cell-closed { background: #b0bec5; color: #37474f; font-style: italic; }
+        .grid-row-label { text-align: left; font-weight: bold; background: #f5f5f5; padding-left: 8px; cursor: pointer; }
+        .grid-row-label:hover { background: #e0e0e0; text-decoration: underline; }
+
+        /* ===== MODAL (Popup) ===== */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 999; justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: white; border-radius: 12px; padding: 25px; max-width: 700px; width: 90%;
+            max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+        .modal-header h2 { margin: 0; font-size: 22px; color: #333; }
+        .modal-close { font-size: 28px; cursor: pointer; color: #999; }
+        .modal-close:hover { color: #c62828; }
+        .modal-meters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
+        .modal-meter { background: #f8f9fa; padding: 10px 15px; border-radius: 6px; flex: 1; min-width: 120px; }
+        .modal-meter h4 { margin: 0; font-size: 14px; color: #666; }
+        .modal-meter span { font-size: 20px; font-weight: bold; color: #333; display: block; }
+        .modal-grid { overflow-x: auto; margin-top: 10px; }
+        .modal-grid table { width: 100%; font-size: 11px; border-collapse: collapse; }
+        .modal-grid th, .modal-grid td { border: 1px solid #ddd; padding: 3px 5px; text-align: center; }
+        .modal-grid th { background: #e3f2fd; }
+
+        /* ===== CLOSE TRANSACTION BUTTON ===== */
+        #closeTransactionArea { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
         @media (max-width: 768px) {
             .header { grid-template-columns: 1fr; gap: 5px; }
@@ -134,6 +168,7 @@
             .content-area { overflow: visible !important; height: auto !important; }
             .admin-table, #statusGridContainer { overflow-x: auto; }
             #statusGridContainer table { min-width: 500px; }
+            .modal-content { width: 95%; padding: 15px; }
         }
     </style>
 </head>
@@ -193,23 +228,33 @@
 
             <div class="content-area" id="contentArea">
                 
+                <!-- ================= DASHBOARD (MUKTAMAD) ================= -->
                 <div class="content-section active" id="sec-dashboard">
                     <h2><i class="fas fa-chart-pie"></i> Ringkasan & Monitoring</h2>
-                    <div class="meters-container">
-                        <div class="meter-card">
-                            <h3 id="totalProjectsVal">0</h3>
-                            <span>Jumlah Rancangan</span>
-                        </div>
-                        <div class="meter-card">
-                            <h3 id="totalUsersVal">0</h3>
-                            <span>Jumlah Pengguna</span>
-                        </div>
-                        <div class="meter-card">
-                            <h3 id="totalRatesVal">0</h3>
-                            <span>Jumlah Kadar Upah</span>
-                        </div>
+
+                    <!-- Meters & Close Transaction -->
+                    <div id="closeTransactionArea">
+                        <button id="btnCloseTransaction" class="btn btn-danger btn-sm" onclick="toggleTransactionClosed()" style="display:none;">🔒 Tutup Urusniaga</button>
+                        <button id="btnOpenTransaction" class="btn btn-outline btn-sm" onclick="toggleTransactionClosed()" style="display:none;">🔓 Buka Urusniaga</button>
+                        <span id="transactionStatus" style="font-size:13px; font-weight:bold; color:#555;"></span>
+                    </div>
+
+                    <div class="meters-container" id="metersContainer">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <!-- Alert Box -->
+                    <div id="alertContainer">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        <span id="alertText">Tiada amaran buat masa ini.</span>
+                    </div>
+
+                    <h3 style="margin-top:20px;">Grid Status Kemaskini Bulanan</h3>
+                    <div id="statusGridContainer">
+                        <!-- Populated by JS -->
                     </div>
                 </div>
+                <!-- ====================================================== -->
 
                 <!-- KADAR UPAH -->
                 <div class="content-section" id="sec-rates">
@@ -308,6 +353,20 @@
     </div>
 </div>
 
+<!-- ================= MODAL (POPUP) ================= -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation();">
+        <div class="modal-header">
+            <h2 id="modalTitle">Butiran</h2>
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+        </div>
+        <div id="modalBody">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+</div>
+<!-- ================================================= -->
+
 <script>
     // ============================================================
     // SUPABASE CONFIGURATION
@@ -317,6 +376,12 @@
     var supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     var currentUser = null;
+    var currentYear = new Date().getFullYear();
+    var currentMonth = new Date().getMonth(); // 0-11
+    var daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    var payrollsCache = []; // To hold payrolls data for the current month
+    var projectsCache = []; // To hold all projects
 
     // ============================================================
     // AUTH CHECK
@@ -325,6 +390,7 @@
         var storedId = localStorage.getItem('echeckroll_user_id');
         var storedRole = localStorage.getItem('echeckroll_user_role');
         var storedName = localStorage.getItem('echeckroll_user_name');
+        var storedRegion = localStorage.getItem('echeckroll_region');
         
         if (!storedId || !storedRole) {
             window.location.href = 'login.html';
@@ -334,21 +400,22 @@
         currentUser = {
             id: storedId,
             role: storedRole,
-            name: storedName
+            name: storedName,
+            region: storedRegion || null
         };
 
         document.getElementById('adminUser').value = storedName || 'Admin';
-        document.getElementById('roleLabel').innerText = 'Selamat Datang, ' + (storedRole === 'HQ' ? 'Admin HQ' : 'Admin Wilayah');
+        document.getElementById('roleLabel').innerText = 'Selamat Datang, ' + (storedRole === 'HQ' ? 'Admin HQ' : 'Admin Wilayah ('+storedRegion+')');
         
-        loadCounts();
-        loadTables();
-        loadWeeklyOffs();
+        loadAllData();
     }
 
     function doLogout() {
         localStorage.removeItem('echeckroll_user_id');
         localStorage.removeItem('echeckroll_user_role');
         localStorage.removeItem('echeckroll_user_name');
+        localStorage.removeItem('echeckroll_project_code');
+        localStorage.removeItem('echeckroll_region');
         window.location.href = 'login.html';
     }
 
@@ -364,26 +431,478 @@
         document.querySelectorAll('.content-section').forEach(function(el) { el.classList.remove('active'); });
         document.getElementById('sec-' + id).classList.add('active');
         
-        if (id === 'dashboard') loadCounts();
+        if (id === 'dashboard') loadDashboard();
         if (id === 'weeklyoff') loadWeeklyOffs();
     }
 
     // ============================================================
-    // DASHBOARD COUNTS
+    // MAIN LOADER
     // ============================================================
-    async function loadCounts() {
-        var { count: projects } = await supabase.from('projects').select('*', { count: 'exact', head: true });
-        document.getElementById('totalProjectsVal').innerText = projects || 0;
+    async function loadAllData() {
+        await loadProjectsCache();
+        await loadDashboard();
+        loadTables();
+        loadWeeklyOffs();
+    }
 
-        var { count: users } = await supabase.from('users').select('*', { count: 'exact', head: true });
-        document.getElementById('totalUsersVal').innerText = users || 0;
-
-        var { count: rates } = await supabase.from('rates').select('*', { count: 'exact', head: true });
-        document.getElementById('totalRatesVal').innerText = rates || 0;
+    async function loadProjectsCache() {
+        var { data, error } = await supabase.from('projects').select('*');
+        if (!error) projectsCache = data || [];
     }
 
     // ============================================================
-    // EXCEL UPLOAD FUNCTIONS
+    // DASHBOARD LOADER
+    // ============================================================
+    async function loadDashboard() {
+        var month = currentMonth;
+        var year = currentYear;
+        daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        // Fetch all payrolls for this month
+        var { data: payrolls, error } = await supabase
+            .from('payrolls')
+            .select('*')
+            .eq('year', year)
+            .eq('month', month);
+
+        if (error) {
+            console.error('Error fetching payrolls:', error);
+            payrollsCache = [];
+        } else {
+            payrollsCache = payrolls || [];
+        }
+
+        // Determine which entities to show (regions for HQ, projects for Wilayah)
+        var isHQ = currentUser.role === 'HQ';
+        var entities = [];
+        var entityMap = {}; // key: entity id (region name or project id)
+
+        if (isHQ) {
+            // Group projects by region
+            var regions = {};
+            projectsCache.forEach(function(p) {
+                if (!regions[p.region]) {
+                    regions[p.region] = { projects: [], region_code: p.region_code };
+                }
+                regions[p.region].projects.push(p.id);
+            });
+            Object.keys(regions).forEach(function(region) {
+                entities.push({
+                    id: region,
+                    type: 'region',
+                    projects: regions[region].projects,
+                    region_code: regions[region].region_code
+                });
+                entityMap[region] = { projects: regions[region].projects };
+            });
+        } else {
+            // Admin Wilayah: show only projects in their region
+            var userRegion = currentUser.region;
+            projectsCache.forEach(function(p) {
+                if (p.region === userRegion) {
+                    entities.push({
+                        id: p.id,
+                        type: 'project',
+                        name: p.name,
+                        region: p.region
+                    });
+                    entityMap[p.id] = { name: p.name };
+                }
+            });
+        }
+
+        // If no entities, show empty state
+        if (entities.length === 0) {
+            document.getElementById('statusGridContainer').innerHTML = '<div style="padding:10px; color:#999; text-align:center;">Tiada data untuk dipaparkan.</div>';
+            return;
+        }
+
+        // Build grid data structure
+        var gridData = {};
+        entities.forEach(function(e) {
+            var key = e.id;
+            gridData[key] = {
+                type: e.type,
+                name: e.type === 'region' ? e.id : e.name,
+                projects: e.projects || [e.id],
+                days: Array(daysInMonth).fill(false),
+                isClosed: false,
+                totalWorkers: 0,
+                totalGross: 0,
+                entries: 0
+            };
+        });
+
+        // Process payrolls
+        payrollsCache.forEach(function(pay) {
+            var projectId = pay.project_id;
+            var isClosed = pay.is_closed || false;
+            var groups = pay.groups || [];
+            var workers = [];
+            groups.forEach(function(g) {
+                if (g.workers) workers = workers.concat(g.workers);
+            });
+
+            // Find which entity this project belongs to
+            var entityKey = null;
+            if (isHQ) {
+                // Find region
+                var proj = projectsCache.find(function(p) { return p.id === projectId; });
+                if (proj) entityKey = proj.region;
+            } else {
+                if (projectId === entityKey) entityKey = projectId; // direct match
+                else {
+                    // check if project is in user's region
+                    var proj = projectsCache.find(function(p) { return p.id === projectId && p.region === currentUser.region; });
+                    if (proj) entityKey = projectId;
+                }
+            }
+
+            if (!entityKey || !gridData[entityKey]) return;
+
+            var entity = gridData[entityKey];
+            entity.isClosed = isClosed || entity.isClosed;
+
+            workers.forEach(function(w) {
+                // Count workers and gross
+                entity.totalWorkers += 1;
+                entity.totalGross += calculateWorkerGross(w);
+                // Count entries and mark days
+                if (w.hari) {
+                    w.hari.forEach(function(val, idx) {
+                        if (val && val !== '') {
+                            entity.entries++;
+                            if (idx < daysInMonth) entity.days[idx] = true;
+                        }
+                    });
+                }
+            });
+        });
+
+        // Render Meters
+        renderMeters(gridData, isHQ);
+
+        // Render Grid
+        renderGrid(gridData, entities, isHQ);
+
+        // Render Alert
+        renderAlert(gridData, isHQ);
+
+        // Render Close Transaction buttons
+        renderTransactionButtons(gridData, isHQ);
+    }
+
+    // ============================================================
+    // HELPER: CALCULATE WORKER GROSS
+    // ============================================================
+    function calculateWorkerGross(worker) {
+        if (!worker) return 0;
+        var totalGajiAktiviti = 0;
+        if (worker.aktiviti) {
+            worker.aktiviti.forEach(function(act) {
+                var sum = act.kuantitiHarian ? act.kuantitiHarian.reduce(function(a,b) { return a+b; }, 0) : 0;
+                totalGajiAktiviti += sum * (act.kadar || 0);
+            });
+        }
+        var totalElaun = (worker.elaun_motorsikal || 0) + (worker.elaun_rumah || 0);
+        var gross = totalGajiAktiviti + totalElaun;
+
+        if (worker.leaveRates && worker.hari) {
+            Object.keys(worker.leaveRates).forEach(function(code) {
+                var ucCode = code.toUpperCase();
+                if (PAID_LEAVE_CODES.indexOf(ucCode) !== -1) {
+                    var count = 0;
+                    worker.hari.forEach(function(val) {
+                        if (val.toUpperCase() === ucCode) count++;
+                    });
+                    gross += count * (worker.leaveRates[ucCode] || 0);
+                }
+            });
+        }
+        return gross;
+    }
+
+    // ============================================================
+    // RENDER METERS
+    // ============================================================
+    function renderMeters(gridData, isHQ) {
+        var container = document.getElementById('metersContainer');
+        var totalWorkers = 0, totalGross = 0, totalEntries = 0, activeEntities = 0;
+
+        Object.keys(gridData).forEach(function(key) {
+            var e = gridData[key];
+            totalWorkers += e.totalWorkers;
+            totalGross += e.totalGross;
+            totalEntries += e.entries;
+            if (e.entries > 0) activeEntities++;
+        });
+
+        var html = '';
+        if (isHQ) {
+            html += `
+                <div class="meter-card"><h3>${totalWorkers}</h3><span>Jumlah Pekerja (Bulan Ini)</span></div>
+                <div class="meter-card"><h3>RM ${totalGross.toFixed(2)}</h3><span>Jumlah Gaji Kasar (Bulan Ini)</span></div>
+                <div class="meter-card"><h3>${activeEntities}</h3><span>Wilayah Aktif</span></div>
+                <div class="meter-card"><h3>${totalEntries}</h3><span>Penggunaan Data (Bulan Ini)</span><span class="sub-text">Bilangan Entri Kehadiran/Cuti</span></div>
+            `;
+        } else {
+            html += `
+                <div class="meter-card"><h3>${totalWorkers}</h3><span>Jumlah Pekerja (Bulan Ini)</span></div>
+                <div class="meter-card"><h3>RM ${totalGross.toFixed(2)}</h3><span>Jumlah Gaji Kasar (Bulan Ini)</span></div>
+                <div class="meter-card"><h3>${activeEntities}</h3><span>Rancangan Aktif</span></div>
+            `;
+        }
+        container.innerHTML = html;
+    }
+
+    // ============================================================
+    // RENDER GRID
+    // ============================================================
+    function renderGrid(gridData, entities, isHQ) {
+        var container = document.getElementById('statusGridContainer');
+        var html = '<table><thead><tr><th>' + (isHQ ? 'Wilayah' : 'Rancangan') + '</th>';
+        for (var d = 1; d <= daysInMonth; d++) {
+            html += '<th style="min-width:25px;">' + d + '</th>';
+        }
+        html += '<th>Bil.Hr</th><th>Jml Gaji</th><th>Status</th></tr></thead><tbody>';
+
+        entities.forEach(function(e) {
+            var data = gridData[e.id];
+            if (!data) return;
+            var rowClass = data.entries > 0 ? '' : '';
+            html += '<tr>';
+            var label = e.type === 'region' ? e.id : (e.name || e.id);
+            // On click, open modal
+            html += '<td class="grid-row-label" onclick="openModal(\'' + e.id + '\', \'' + (isHQ ? 'region' : 'project') + '\')">' + label + '</td>';
+
+            for (var d = 0; d < daysInMonth; d++) {
+                var filled = data.days[d];
+                var cls = filled ? 'grid-cell-done' : 'grid-cell-pending';
+                var icon = filled ? '✔' : '✖';
+                html += '<td class="' + cls + '">' + icon + '</td>';
+            }
+
+            var statusText = data.isClosed ? '🔒 Tutup' : '✅ Buka';
+            var statusClass = data.isClosed ? 'grid-cell-closed' : '';
+            html += '<td>' + data.totalWorkers + '</td>';
+            html += '<td>' + data.totalGross.toFixed(2) + '</td>';
+            html += '<td class="' + statusClass + '">' + statusText + '</td>';
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    // ============================================================
+    // RENDER ALERT
+    // ============================================================
+    function renderAlert(gridData, isHQ) {
+        var alertBox = document.getElementById('alertContainer');
+        var alertText = document.getElementById('alertText');
+        var hasData = false;
+        var staleEntities = [];
+
+        Object.keys(gridData).forEach(function(key) {
+            var e = gridData[key];
+            if (e.entries > 0) hasData = true;
+            // Check last 3 days
+            var today = new Date().getDate();
+            var hasRecent = false;
+            for (var d = Math.max(0, today-3); d < today && d < daysInMonth; d++) {
+                if (e.days[d]) hasRecent = true;
+            }
+            if (!hasRecent && e.entries > 0) {
+                staleEntities.push(key);
+            }
+        });
+
+        if (!hasData) {
+            alertBox.style.display = 'block';
+            alertText.innerText = '⚠️ Tiada data kemaskini untuk bulan ini. Sila pastikan FS/AFC telah mengisi eCheckroll.';
+        } else if (staleEntities.length > 0) {
+            alertBox.style.display = 'block';
+            alertText.innerText = '⚠️ Tiada kemaskini data untuk 3 hari lepas di: ' + staleEntities.join(', ');
+        } else {
+            alertBox.style.display = 'none';
+        }
+    }
+
+    // ============================================================
+    // RENDER TRANSACTION BUTTONS
+    // ============================================================
+    function renderTransactionButtons(gridData, isHQ) {
+        var closeBtn = document.getElementById('btnCloseTransaction');
+        var openBtn = document.getElementById('btnOpenTransaction');
+        var statusSpan = document.getElementById('transactionStatus');
+
+        // Determine if any entity is closed
+        var anyClosed = false;
+        var anyOpen = false;
+        Object.keys(gridData).forEach(function(key) {
+            if (gridData[key].isClosed) anyClosed = true;
+            else anyOpen = true;
+        });
+
+        // Only show if user is FC or HQ? For dashboard, we allow HQ and Wilayah to toggle.
+        // We'll show if user is HQ or Wilayah.
+        if (currentUser.role === 'HQ' || currentUser.role === 'Wilayah') {
+            closeBtn.style.display = (anyOpen) ? 'inline-block' : 'none';
+            openBtn.style.display = (anyClosed) ? 'inline-block' : 'none';
+            statusSpan.innerText = anyClosed ? '🔒 Urusniaga Ditutup' : '✅ Urusniaga Dibuka';
+        } else {
+            closeBtn.style.display = 'none';
+            openBtn.style.display = 'none';
+            statusSpan.innerText = '';
+        }
+    }
+
+    // ============================================================
+    // TOGGLE TRANSACTION CLOSED
+    // ============================================================
+    async function toggleTransactionClosed() {
+        var isClosing = !document.getElementById('btnCloseTransaction').style.display.includes('none');
+        var confirmMsg = isClosing ? 'Tutup urusniaga untuk bulan ini? FS/AFC tidak boleh edit lagi.' : 'Buka semula urusniaga ini?';
+        if (!confirm(confirmMsg)) return;
+
+        var isHQ = currentUser.role === 'HQ';
+        var projectIds = [];
+
+        if (isHQ) {
+            // For HQ, we need to close all projects in all regions
+            var regions = {};
+            projectsCache.forEach(function(p) {
+                if (!regions[p.region]) regions[p.region] = [];
+                regions[p.region].push(p.id);
+            });
+            Object.keys(regions).forEach(function(region) {
+                regions[region].forEach(function(pid) {
+                    projectIds.push(pid);
+                });
+            });
+        } else {
+            // For Wilayah, close only projects in their region
+            projectsCache.forEach(function(p) {
+                if (p.region === currentUser.region) projectIds.push(p.id);
+            });
+        }
+
+        if (projectIds.length === 0) return;
+
+        try {
+            // Update all payrolls for this month for these projects
+            var { error } = await supabase
+                .from('payrolls')
+                .update({ is_closed: isClosing })
+                .eq('year', currentYear)
+                .eq('month', currentMonth)
+                .in('project_id', projectIds);
+
+            if (error) throw error;
+            alert('✅ Status urusniaga telah dikemaskini.');
+            loadDashboard();
+        } catch (err) {
+            alert('❌ Ralat: ' + err.message);
+        }
+    }
+
+    // ============================================================
+    // MODAL (POPUP) LOGIC
+    // ============================================================
+    function openModal(entityId, entityType) {
+        var overlay = document.getElementById('modalOverlay');
+        var title = document.getElementById('modalTitle');
+        var body = document.getElementById('modalBody');
+
+        // Find entity data
+        var isHQ = currentUser.role === 'HQ';
+        var entityData = null;
+        var projects = [];
+
+        if (isHQ) {
+            // entityId is region name
+            var regionProjects = projectsCache.filter(function(p) { return p.region === entityId; });
+            projects = regionProjects;
+            title.innerText = 'Wilayah: ' + entityId;
+        } else {
+            // entityId is project id
+            var proj = projectsCache.find(function(p) { return p.id === entityId; });
+            if (proj) {
+                projects = [proj];
+                title.innerText = 'Rancangan: ' + proj.name + ' (' + proj.id + ')';
+            }
+        }
+
+        // Calculate summary for these projects
+        var totalWorkers = 0, totalGross = 0, totalEntries = 0;
+        var projectData = {};
+
+        payrollsCache.forEach(function(pay) {
+            if (projects.some(function(p) { return p.id === pay.project_id; })) {
+                var groups = pay.groups || [];
+                groups.forEach(function(g) {
+                    if (g.workers) {
+                        g.workers.forEach(function(w) {
+                            totalWorkers++;
+                            totalGross += calculateWorkerGross(w);
+                            if (w.hari) {
+                                w.hari.forEach(function(val) {
+                                    if (val && val !== '') totalEntries++;
+                                });
+                            }
+                        });
+                    }
+                });
+                // Per-project breakdown
+                if (!projectData[pay.project_id]) {
+                    projectData[pay.project_id] = { workers: 0, gross: 0, entries: 0 };
+                }
+                groups.forEach(function(g) {
+                    if (g.workers) {
+                        g.workers.forEach(function(w) {
+                            projectData[pay.project_id].workers++;
+                            projectData[pay.project_id].gross += calculateWorkerGross(w);
+                            if (w.hari) {
+                                w.hari.forEach(function(val) {
+                                    if (val && val !== '') projectData[pay.project_id].entries++;
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        });
+
+        var html = `
+            <div class="modal-meters">
+                <div class="modal-meter"><h4>Jumlah Pekerja</h4><span>${totalWorkers}</span></div>
+                <div class="modal-meter"><h4>Jumlah Gaji</h4><span>RM ${totalGross.toFixed(2)}</span></div>
+                <div class="modal-meter"><h4>Entri Data</h4><span>${totalEntries}</span></div>
+            </div>
+            <h4 style="margin-bottom:5px;">Butiran Projek:</h4>
+            <div class="modal-grid">
+                <table>
+                    <thead><tr><th>Kod</th><th>Nama</th><th>Pekerja</th><th>Gaji</th><th>Entri</th></tr></thead>
+                    <tbody>
+        `;
+
+        projects.forEach(function(p) {
+            var d = projectData[p.id] || { workers: 0, gross: 0, entries: 0 };
+            html += `<tr><td>${p.id}</td><td>${p.name}</td><td>${d.workers}</td><td>${d.gross.toFixed(2)}</td><td>${d.entries}</td></tr>`;
+        });
+
+        html += `</tbody></table></div>`;
+        body.innerHTML = html;
+        overlay.style.display = 'flex';
+    }
+
+    function closeModal(event) {
+        if (event && event.target !== event.currentTarget) return;
+        document.getElementById('modalOverlay').style.display = 'none';
+    }
+
+    // ============================================================
+    // EXCEL UPLOAD FUNCTIONS (Sama seperti sebelumnya)
     // ============================================================
     function readExcelFile(fileId) {
         return new Promise(function(resolve, reject) {
@@ -423,7 +942,6 @@
         try {
             var data = await readExcelFile('ratesFile');
             if (data.length < 2) { alert('Fail kosong atau tiada data.'); return; }
-            
             var rows = data.slice(1).filter(function(r) { return r.length > 0 && r[0]; });
             var formatted = rows.map(function(r) {
                 return {
@@ -436,13 +954,10 @@
                     project_code: String(r[6]).trim() || null
                 };
             });
-
             var { error: delError } = await supabase.from('rates').delete().neq('id', 0);
             if (delError) throw delError;
-
             var { error } = await supabase.from('rates').insert(formatted);
             if (error) throw error;
-            
             alert('✅ Berjaya! ' + formatted.length + ' data kadar upah disimpan (Data lama diganti).');
             document.getElementById('ratesFile').value = '';
             loadRates();
@@ -455,7 +970,6 @@
         try {
             var data = await readExcelFile('leavesFile');
             if (data.length < 2) { alert('Fail kosong atau tiada data.'); return; }
-            
             var rows = data.slice(1).filter(function(r) { return r.length > 0 && r[0]; });
             var formatted = rows.map(function(r) {
                 return {
@@ -465,13 +979,10 @@
                     is_paid: ['CA','CT','MC','CB','HAJI','CM','OFF','WAD','CBN','CP','CE','CK'].indexOf(String(r[2]).trim().toUpperCase()) !== -1
                 };
             });
-
             var { error: delError } = await supabase.from('leaves').delete().neq('id', 0);
             if (delError) throw delError;
-
             var { error } = await supabase.from('leaves').insert(formatted);
             if (error) throw error;
-            
             alert('✅ Berjaya! ' + formatted.length + ' data cuti disimpan (Data lama diganti).');
             document.getElementById('leavesFile').value = '';
             loadLeaves();
@@ -480,25 +991,17 @@
         }
     }
 
-    // ============================================================
-    // UPLOAD USERS (FIX: JANGAN PADAMKAN DEV USER)
-    // ============================================================
     async function uploadUsers() {
         try {
             var data = await readExcelFile('usersFile');
             if (data.length < 2) { alert('Fail kosong atau tiada data.'); return; }
-            
             var rows = data.slice(1).filter(function(r) { return r.length > 0 && r[0]; });
-            
             var uniqueMap = new Map();
             rows.forEach(function(r) {
                 var id = String(r[0]).trim();
-                if (id && !uniqueMap.has(id)) {
-                    uniqueMap.set(id, r);
-                }
+                if (id && !uniqueMap.has(id)) uniqueMap.set(id, r);
             });
             var uniqueRows = Array.from(uniqueMap.values());
-
             var formatted = uniqueRows.map(function(r) {
                 return {
                     id: String(r[0]).trim(),
@@ -509,14 +1012,10 @@
                     password_hash: null
                 };
             });
-
-            // FIX: Padamkan SEMUA pengguna KECUALI peranan 'DEV'
             var { error: delError } = await supabase.from('users').delete().neq('role', 'DEV');
             if (delError) throw delError;
-
             var { error } = await supabase.from('users').insert(formatted);
             if (error) throw error;
-            
             alert('✅ Berjaya! ' + formatted.length + ' pengguna disimpan (Data lama diganti, Akaun DEV kekal).');
             document.getElementById('usersFile').value = '';
             loadUsers();
@@ -529,7 +1028,6 @@
         try {
             var data = await readExcelFile('projectsFile');
             if (data.length < 2) { alert('Fail kosong atau tiada data.'); return; }
-            
             var rows = data.slice(1).filter(function(r) { return r.length > 0 && r[0]; });
             var formatted = rows.map(function(r) {
                 return {
@@ -540,13 +1038,10 @@
                     email: String(r[4]).trim() || null
                 };
             });
-
             var { error: delError } = await supabase.from('projects').delete().neq('id', 0);
             if (delError) throw delError;
-
             var { error } = await supabase.from('projects').insert(formatted);
             if (error) throw error;
-            
             alert('✅ Berjaya! ' + formatted.length + ' rancangan disimpan (Data lama diganti).');
             document.getElementById('projectsFile').value = '';
             loadProjects();
@@ -556,13 +1051,10 @@
     }
 
     // ============================================================
-    // LOAD DATA TABLES
+    // LOAD TABLES
     // ============================================================
     async function loadTables() {
-        await loadRates();
-        await loadLeaves();
-        await loadUsers();
-        await loadProjects();
+        loadRates(); loadLeaves(); loadUsers(); loadProjects();
     }
 
     async function loadRates() {
@@ -622,7 +1114,7 @@
     }
 
     // ============================================================
-    // WEEKLY OFFS (Supabase)
+    // WEEKLY OFFS
     // ============================================================
     async function loadWeeklyOffs() {
         var { data: projects } = await supabase.from('projects').select('id,name');
@@ -636,7 +1128,6 @@
                 select.appendChild(opt);
             });
         }
-
         var { data: offs } = await supabase.from('weekly_offs').select('*');
         var tbody = document.getElementById('weeklyOffTableBody');
         tbody.innerHTML = '';
@@ -655,18 +1146,15 @@
         var projectId = document.getElementById('weeklyProject').value;
         var day = document.getElementById('weeklyDay').value;
         if (!projectId) return alert('Sila pilih Rancangan terlebih dahulu.');
-
-        var { error } = await supabase
-            .from('weekly_offs')
-            .upsert({ project_id: projectId, day_of_week: day }, { onConflict: 'project_id' });
-        
-        if (error) {
-            alert('❌ Ralat: ' + error.message);
-        } else {
-            alert('✅ Tetapan hari cuti untuk ' + projectId + ' telah dikemaskini.');
-            loadWeeklyOffs();
-        }
+        var { error } = await supabase.from('weekly_offs').upsert({ project_id: projectId, day_of_week: day }, { onConflict: 'project_id' });
+        if (error) alert('❌ Ralat: ' + error.message);
+        else { alert('✅ Tetapan hari cuti untuk ' + projectId + ' telah dikemaskini.'); loadWeeklyOffs(); }
     }
+
+    // ============================================================
+    // PAID LEAVE CODES (untuk pengiraan gaji)
+    // ============================================================
+    var PAID_LEAVE_CODES = ['CA', 'CT', 'MC', 'CB', 'HAJI', 'CM', 'OFF', 'WAD', 'CBN', 'CP', 'CE', 'CK'];
 
     // ============================================================
     // BOOT UP
