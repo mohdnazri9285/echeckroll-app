@@ -276,12 +276,16 @@
                             </td>
                         </tr>
                     </tfoot>
-                    <!-- ================================================ -->
                 </table>
             </div>
         </div>
     </div>
 </div>
+
+<!-- ================= DATALIST GLOBAL UNTUK KUK ================= -->
+<!-- Satu datalist untuk semua input aktiviti kerja -->
+<datalist id="kuk-list-global"></datalist>
+<!-- ============================================================= -->
 
 <script>
     // ============================================================
@@ -495,20 +499,44 @@
     }
 
     // ============================================================
-    //  AMBIL DATA KUK (RATES) DARI SUPABASE
+    //  AMBIL DATA KUK (RATES) DARI SUPABASE (TANPA FILTER PROJECT_CODE)
     // ============================================================
     async function loadRatesFromSupabase() {
-        if (!currentProjectCode) return;
-        var query = supabase.from('rates').select('code, description, price');
-        if (currentProjectCode) {
-            query = query.eq('project_code', currentProjectCode);
-        }
-        var { data, error } = await query;
+        // Ambil semua rates tanpa tapis project_code supaya termasuk '8000'
+        var { data, error } = await supabase
+            .from('rates')
+            .select('code, description, price');
+        
         if (!error && data) {
             allRates = data;
+            // Kemaskini datalist global
+            updateKukDatalist();
         } else {
             console.error('Error loading rates:', error);
         }
+    }
+
+    // ============================================================
+    //  KEMASKINI DATALIST GLOBAL
+    // ============================================================
+    function updateKukDatalist() {
+        var datalist = document.getElementById('kuk-list-global');
+        if (!datalist) return;
+
+        var optionsHtml = '';
+        if (allRates && allRates.length > 0) {
+            allRates.forEach(function(r) {
+                if (r.code && r.description) {
+                    optionsHtml += `<option value="${r.code} - ${r.description}">`;
+                }
+            });
+        } else {
+            optionsHtml += '<option value="0101 - Menuai Sawit - Buah (kg)">';
+            optionsHtml += '<option value="0201 - Kerja Lebih Masa (jam)">';
+            optionsHtml += '<option value="0301 - Merumput - Kimia (ha)">';
+            optionsHtml += '<option value="0401 - Pengangkutan Buah (tan)">';
+        }
+        datalist.innerHTML = optionsHtml;
     }
 
     // ============================================================
@@ -574,7 +602,7 @@
     }
 
     // ============================================================
-    //  RENDER TABLE (Dengan sokongan Datalist KUK)
+    //  RENDER TABLE (Dengan datalist global)
     // ============================================================
     function renderTable() {
         var tbody = document.getElementById('tableBody');
@@ -716,8 +744,7 @@
                 row.innerHTML = `
                     <td><span class="del-btn" onclick="padamAktiviti(${wIdx}, ${aIdx})">✕</span></td>
                     <td class="row-label" style="padding-left:4px;">
-                        <input list="kuk-list-${currentGroupIndex}" class="editable-input" style="text-align:left; width:100%;" value="${act.kod ? act.kod + ' - ' + act.nama : ''}" placeholder="Taip kod / nama kerja" ${isEditable ? '' : 'disabled'} onchange="updateActName(${wIdx}, ${aIdx}, this.value)">
-                        <!-- Datalist akan dihasilkan secara global di luar sini -->
+                        <input list="kuk-list-global" class="editable-input" style="text-align:left; width:100%;" value="${act.kod ? act.kod + ' - ' + act.nama : ''}" placeholder="Taip kod / nama kerja" ${isEditable ? '' : 'disabled'} onchange="updateActName(${wIdx}, ${aIdx}, this.value)">
                     </td>
                     <td><input type="text" class="editable-input" value="${act.kod || ''}" ${isEditable ? '' : 'disabled'}></td>
                     <td><input type="text" class="editable-input" value="${act.unit || ''}" placeholder="PKT" ${isEditable ? '' : 'disabled'} onchange="updateActUnit(${wIdx}, ${aIdx}, this.value);"></td>
@@ -1423,7 +1450,7 @@
     function kiraSemua() { renderTable(); }
 
     // ============================================================
-    //  RENDER TABS & LOAD KUK DROPDOWN (FIX UTAMA DI SINI)
+    //  RENDER TABS
     // ============================================================
     function renderTabs() {
         var container = document.getElementById('tabsContainer');
@@ -1445,34 +1472,6 @@
             html += `<button class="btn-add-tab" onclick="addNewGroup()">+</button>`;
         }
         container.innerHTML = html;
-
-        // FIX: Letakkan datalist di dalam badan dokumen, bukan dalam tabsContainer
-        updateKukDatalist();
-    }
-
-    function updateKukDatalist() {
-        var container = document.getElementById('kuk-data-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'kuk-data-container';
-            document.body.appendChild(container);
-        }
-
-        var optionsHtml = '';
-        if (allRates && allRates.length > 0) {
-            allRates.forEach(function(r) {
-                if (r.code && r.description) {
-                    optionsHtml += `<option value="${r.code} - ${r.description}">`;
-                }
-            });
-        } else {
-            optionsHtml += '<option value="0101 - Menuai Sawit - Buah (kg)">';
-            optionsHtml += '<option value="0201 - Kerja Lebih Masa (jam)">';
-            optionsHtml += '<option value="0301 - Merumput - Kimia (ha)">';
-            optionsHtml += '<option value="0401 - Pengangkutan Buah (tan)">';
-        }
-
-        container.innerHTML = `<datalist id="kuk-list-${currentGroupIndex}">${optionsHtml}</datalist>`;
     }
 
     function addNewGroup() {
