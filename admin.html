@@ -271,7 +271,7 @@
                     </table>
                 </div>
 
-                <!-- CUTI MINGGUAN (KINI GUNA DATA SEBENAR DARI SUPABASE) -->
+                <!-- CUTI MINGGUAN -->
                 <div class="content-section" id="sec-weeklyoff">
                     <h2><i class="fas fa-calendar-alt"></i> Tetapan Hari Cuti Mingguan</h2>
                     <p style="color:#777; font-size:13px;">Tetapkan hari cuti mingguan bagi setiap Rancangan.</p>
@@ -383,7 +383,7 @@
     }
 
     // ============================================================
-    // EXCEL UPLOAD FUNCTIONS
+    // EXCEL UPLOAD FUNCTIONS (DENGAN OVERWRITE)
     // ============================================================
     function readExcelFile(fileId) {
         return new Promise(function(resolve, reject) {
@@ -427,10 +427,14 @@
                 };
             });
 
-            var { error } = await supabase.from('rates').upsert(formatted, { onConflict: 'code, project_code' });
+            // OVERWRITE: Padam semua rates lama, kemudian insert baru
+            var { error: delError } = await supabase.from('rates').delete().neq('id', 0);
+            if (delError) throw delError;
+
+            var { error } = await supabase.from('rates').insert(formatted);
             if (error) throw error;
             
-            alert('✅ Berjaya! ' + formatted.length + ' data kadar upah disimpan.');
+            alert('✅ Berjaya! ' + formatted.length + ' data kadar upah disimpan (Data lama diganti).');
             document.getElementById('ratesFile').value = '';
             loadRates();
         } catch (err) {
@@ -453,10 +457,14 @@
                 };
             });
 
-            var { error } = await supabase.from('leaves').upsert(formatted, { onConflict: 'code' });
+            // OVERWRITE: Padam semua leaves lama, kemudian insert baru
+            var { error: delError } = await supabase.from('leaves').delete().neq('id', 0);
+            if (delError) throw delError;
+
+            var { error } = await supabase.from('leaves').insert(formatted);
             if (error) throw error;
             
-            alert('✅ Berjaya! ' + formatted.length + ' data cuti disimpan.');
+            alert('✅ Berjaya! ' + formatted.length + ' data cuti disimpan (Data lama diganti).');
             document.getElementById('leavesFile').value = '';
             loadLeaves();
         } catch (err) {
@@ -487,14 +495,18 @@
                     role: String(r[2]).trim(),
                     project_code: String(r[3]).trim() || null,
                     region: String(r[4]).trim() || null,
-                    password_hash: null
+                    password_hash: null // Akan diisi oleh trigger
                 };
             });
 
-            var { error } = await supabase.from('users').upsert(formatted, { onConflict: 'id' });
+            // OVERWRITE: Padam semua users lama, kemudian insert baru
+            var { error: delError } = await supabase.from('users').delete().neq('id', 0);
+            if (delError) throw delError;
+
+            var { error } = await supabase.from('users').insert(formatted);
             if (error) throw error;
             
-            alert('✅ Berjaya! ' + formatted.length + ' pengguna disimpan.');
+            alert('✅ Berjaya! ' + formatted.length + ' pengguna disimpan (Data lama diganti).');
             document.getElementById('usersFile').value = '';
             loadUsers();
         } catch (err) {
@@ -517,10 +529,14 @@
                 };
             });
 
-            var { error } = await supabase.from('projects').upsert(formatted, { onConflict: 'id' });
+            // OVERWRITE: Padam semua projects lama, kemudian insert baru
+            var { error: delError } = await supabase.from('projects').delete().neq('id', 0);
+            if (delError) throw delError;
+
+            var { error } = await supabase.from('projects').insert(formatted);
             if (error) throw error;
             
-            alert('✅ Berjaya! ' + formatted.length + ' rancangan disimpan.');
+            alert('✅ Berjaya! ' + formatted.length + ' rancangan disimpan (Data lama diganti).');
             document.getElementById('projectsFile').value = '';
             loadProjects();
         } catch (err) {
@@ -598,50 +614,25 @@
     // WEEKLY OFFS (Supabase)
     // ============================================================
     async function loadWeeklyOffs() {
-        // 1. Ambil data projek sebenar dari Supabase
-        var { data: projects, error: projError } = await supabase.from('projects').select('id,name').order('id');
-        
-        if (projError) {
-            console.error('Gagal memuat projek:', projError);
-            return;
-        }
-
-        // 2. Populate dropdown dengan projek sebenar
+        var { data: projects } = await supabase.from('projects').select('id,name');
         var select = document.getElementById('weeklyProject');
         select.innerHTML = '';
-        if (projects && projects.length > 0) {
+        if (projects) {
             projects.forEach(function(p) {
                 var opt = document.createElement('option');
                 opt.value = p.id;
                 opt.innerText = p.name + ' (' + p.id + ')';
                 select.appendChild(opt);
             });
-        } else {
-            var opt = document.createElement('option');
-            opt.value = '';
-            opt.innerText = 'Tiada rancangan dijumpai';
-            select.appendChild(opt);
         }
 
-        // 3. Load tetapan cuti mingguan dari Supabase
-        var { data: offs, error: offError } = await supabase.from('weekly_offs').select('*');
-        if (offError) {
-            console.error('Gagal memuat cuti mingguan:', offError);
-            return;
-        }
-
-        // 4. Populate jadual
+        var { data: offs } = await supabase.from('weekly_offs').select('*');
         var tbody = document.getElementById('weeklyOffTableBody');
         tbody.innerHTML = '';
         if (offs && offs.length > 0) {
-            // Gunakan data projek untuk mencari nama projek
             offs.forEach(function(o) {
-                var projectName = o.project_id;
-                var found = projects.find(function(p) { return p.id === o.project_id; });
-                if (found) projectName = found.name;
-
                 var tr = document.createElement('tr');
-                tr.innerHTML = '<td>' + projectName + ' (' + o.project_id + ')</td><td><strong>' + o.day_of_week + '</strong></td>';
+                tr.innerHTML = '<td>' + o.project_id + '</td><td><strong>' + o.day_of_week + '</strong></td>';
                 tbody.appendChild(tr);
             });
         } else {
