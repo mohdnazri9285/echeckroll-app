@@ -310,21 +310,21 @@
 
 <script>
     // ============================================================
-    // SUPABASE CONFIGURATION
+    // SUPABASE CONFIGURATION (Guna 'var' untuk elakkan ralat)
     // ============================================================
-    const SUPABASE_URL = 'https://kakzoykzxkryegqybxzs.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtha3pveWt6eGtyeWVncXlieHpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0OTg2ODEsImV4cCI6MjEwMjA3NDY4MX0.n3L8mQsm3CNAC0ahEumu0bQMEC_9H2uaKQ4Htt_ga9c';
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    var SUPABASE_URL = 'https://kakzoykzxkryegqybxzs.supabase.co';
+    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtha3pveWt6eGtyeWVncXlieHpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0OTg2ODEsImV4cCI6MjEwMjA3NDY4MX0.n3L8mQsm3CNAC0ahEumu0bQMEC_9H2uaKQ4Htt_ga9c';
+    var supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    let currentUser = null;
+    var currentUser = null;
 
     // ============================================================
     // AUTH CHECK
     // ============================================================
     function checkUser() {
-        const storedId = localStorage.getItem('echeckroll_user_id');
-        const storedRole = localStorage.getItem('echeckroll_user_role');
-        const storedName = localStorage.getItem('echeckroll_user_name');
+        var storedId = localStorage.getItem('echeckroll_user_id');
+        var storedRole = localStorage.getItem('echeckroll_user_role');
+        var storedName = localStorage.getItem('echeckroll_user_name');
         
         if (!storedId || !storedRole) {
             window.location.href = 'login.html';
@@ -338,7 +338,7 @@
         };
 
         document.getElementById('adminUser').value = storedName || 'Admin';
-        document.getElementById('roleLabel').innerText = `Selamat Datang, ${storedRole === 'HQ' ? 'Admin HQ' : 'Admin Wilayah'}`;
+        document.getElementById('roleLabel').innerText = 'Selamat Datang, ' + (storedRole === 'HQ' ? 'Admin HQ' : 'Admin Wilayah');
         
         loadCounts();
         loadTables();
@@ -354,15 +354,15 @@
 
     function toggleMobileHeader() {
         document.getElementById('headerArea').classList.toggle('collapsed');
-        const icon = document.getElementById('toggleIcon');
+        var icon = document.getElementById('toggleIcon');
         if (icon) icon.classList.toggle('fa-chevron-up');
     }
 
     function switchSection(id) {
-        document.querySelectorAll('.side-menu-item').forEach(el => el.classList.remove('active'));
-        document.querySelector(`.side-menu-item[onclick="switchSection('${id}')"]`).classList.add('active');
-        document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
-        document.getElementById(`sec-${id}`).classList.add('active');
+        document.querySelectorAll('.side-menu-item').forEach(function(el) { el.classList.remove('active'); });
+        document.querySelector('.side-menu-item[onclick="switchSection(\'' + id + '\')"]').classList.add('active');
+        document.querySelectorAll('.content-section').forEach(function(el) { el.classList.remove('active'); });
+        document.getElementById('sec-' + id).classList.add('active');
         
         if (id === 'dashboard') loadCounts();
         if (id === 'weeklyoff') loadWeeklyOffs();
@@ -372,16 +372,13 @@
     // DASHBOARD COUNTS
     // ============================================================
     async function loadCounts() {
-        // Kira jumlah projek
-        const { count: projects } = await supabase.from('projects').select('*', { count: 'exact', head: true });
+        var { count: projects } = await supabase.from('projects').select('*', { count: 'exact', head: true });
         document.getElementById('totalProjectsVal').innerText = projects || 0;
 
-        // Kira jumlah pengguna
-        const { count: users } = await supabase.from('users').select('*', { count: 'exact', head: true });
+        var { count: users } = await supabase.from('users').select('*', { count: 'exact', head: true });
         document.getElementById('totalUsersVal').innerText = users || 0;
 
-        // Kira jumlah kadar upah
-        const { count: rates } = await supabase.from('rates').select('*', { count: 'exact', head: true });
+        var { count: rates } = await supabase.from('rates').select('*', { count: 'exact', head: true });
         document.getElementById('totalRatesVal').innerText = rates || 0;
     }
 
@@ -389,20 +386,20 @@
     // EXCEL UPLOAD FUNCTIONS
     // ============================================================
     function readExcelFile(fileId) {
-        return new Promise((resolve, reject) => {
-            const fileInput = document.getElementById(fileId);
+        return new Promise(function(resolve, reject) {
+            var fileInput = document.getElementById(fileId);
             if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
                 reject('Sila pilih fail Excel terlebih dahulu.');
                 return;
             }
-            const file = fileInput.files[0];
-            const reader = new FileReader();
+            var file = fileInput.files[0];
+            var reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, {type: 'array'});
-                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const json = XLSX.utils.sheet_to_json(sheet, {header: 1});
+                    var data = new Uint8Array(e.target.result);
+                    var workbook = XLSX.read(data, {type: 'array'});
+                    var sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    var json = XLSX.utils.sheet_to_json(sheet, {header: 1});
                     resolve(json);
                 } catch (err) {
                     reject('Gagal membaca fail: ' + err.message);
@@ -414,25 +411,26 @@
 
     async function uploadRates() {
         try {
-            const data = await readExcelFile('ratesFile');
+            var data = await readExcelFile('ratesFile');
             if (data.length < 2) { alert('Fail kosong atau tiada data.'); return; }
             
-            // Headers: kod aktiviti | jenis kerja | perincian | unit | harga | produktiviti | kod rancangan
-            const rows = data.slice(1).filter(r => r.length > 0 && r[0]);
-            const formatted = rows.map(r => ({
-                code: String(r[0]).trim(),
-                work_type: String(r[1]).trim(),
-                description: String(r[2]).trim(),
-                unit: String(r[3]).trim() || null,
-                price: parseFloat(r[4]) || 0,
-                productivity: parseFloat(r[5]) || 0,
-                project_code: String(r[6]).trim() || null
-            }));
+            var rows = data.slice(1).filter(function(r) { return r.length > 0 && r[0]; });
+            var formatted = rows.map(function(r) {
+                return {
+                    code: String(r[0]).trim(),
+                    work_type: String(r[1]).trim(),
+                    description: String(r[2]).trim(),
+                    unit: String(r[3]).trim() || null,
+                    price: parseFloat(r[4]) || 0,
+                    productivity: parseFloat(r[5]) || 0,
+                    project_code: String(r[6]).trim() || null
+                };
+            });
 
-            const { error } = await supabase.from('rates').insert(formatted);
+            var { error } = await supabase.from('rates').insert(formatted);
             if (error) throw error;
             
-            alert(`✅ Berjaya! ${formatted.length} data kadar upah disimpan.`);
+            alert('✅ Berjaya! ' + formatted.length + ' data kadar upah disimpan.');
             document.getElementById('ratesFile').value = '';
             loadRates();
         } catch (err) {
@@ -442,22 +440,23 @@
 
     async function uploadLeaves() {
         try {
-            const data = await readExcelFile('leavesFile');
+            var data = await readExcelFile('leavesFile');
             if (data.length < 2) { alert('Fail kosong atau tiada data.'); return; }
             
-            // Headers: kod | keterangan | ringkasan
-            const rows = data.slice(1).filter(r => r.length > 0 && r[0]);
-            const formatted = rows.map(r => ({
-                code: String(r[0]).trim(),
-                description: String(r[1]).trim(),
-                short_code: String(r[2]).trim(),
-                is_paid: ['CA','CT','MC','CB','HAJI','CM','OFF','WAD','CBN','CP','CE','CK'].includes(String(r[2]).trim().toUpperCase())
-            }));
+            var rows = data.slice(1).filter(function(r) { return r.length > 0 && r[0]; });
+            var formatted = rows.map(function(r) {
+                return {
+                    code: String(r[0]).trim(),
+                    description: String(r[1]).trim(),
+                    short_code: String(r[2]).trim(),
+                    is_paid: ['CA','CT','MC','CB','HAJI','CM','OFF','WAD','CBN','CP','CE','CK'].indexOf(String(r[2]).trim().toUpperCase()) !== -1
+                };
+            });
 
-            const { error } = await supabase.from('leaves').insert(formatted);
+            var { error } = await supabase.from('leaves').insert(formatted);
             if (error) throw error;
             
-            alert(`✅ Berjaya! ${formatted.length} data cuti disimpan.`);
+            alert('✅ Berjaya! ' + formatted.length + ' data cuti disimpan.');
             document.getElementById('leavesFile').value = '';
             loadLeaves();
         } catch (err) {
@@ -467,24 +466,25 @@
 
     async function uploadUsers() {
         try {
-            const data = await readExcelFile('usersFile');
+            var data = await readExcelFile('usersFile');
             if (data.length < 2) { alert('Fail kosong atau tiada data.'); return; }
             
-            // Headers: id | nama | role | project_code | region
-            const rows = data.slice(1).filter(r => r.length > 0 && r[0]);
-            const formatted = rows.map(r => ({
-                id: String(r[0]).trim(),
-                name: String(r[1]).trim(),
-                role: String(r[2]).trim(),
-                project_code: String(r[3]).trim() || null,
-                region: String(r[4]).trim() || null,
-                password_hash: null // Admin akan set password melalui fungsi reset nanti
-            }));
+            var rows = data.slice(1).filter(function(r) { return r.length > 0 && r[0]; });
+            var formatted = rows.map(function(r) {
+                return {
+                    id: String(r[0]).trim(),
+                    name: String(r[1]).trim(),
+                    role: String(r[2]).trim(),
+                    project_code: String(r[3]).trim() || null,
+                    region: String(r[4]).trim() || null,
+                    password_hash: null // Admin akan set password melalui fungsi reset nanti
+                };
+            });
 
-            const { error } = await supabase.from('users').insert(formatted);
+            var { error } = await supabase.from('users').insert(formatted);
             if (error) throw error;
             
-            alert(`✅ Berjaya! ${formatted.length} pengguna disimpan.`);
+            alert('✅ Berjaya! ' + formatted.length + ' pengguna disimpan.');
             document.getElementById('usersFile').value = '';
             loadUsers();
         } catch (err) {
@@ -494,22 +494,23 @@
 
     async function uploadProjects() {
         try {
-            const data = await readExcelFile('projectsFile');
+            var data = await readExcelFile('projectsFile');
             if (data.length < 2) { alert('Fail kosong atau tiada data.'); return; }
             
-            // Headers: id | name | region | email
-            const rows = data.slice(1).filter(r => r.length > 0 && r[0]);
-            const formatted = rows.map(r => ({
-                id: String(r[0]).trim(),
-                name: String(r[1]).trim(),
-                region: String(r[2]).trim(),
-                email: String(r[3]).trim() || null
-            }));
+            var rows = data.slice(1).filter(function(r) { return r.length > 0 && r[0]; });
+            var formatted = rows.map(function(r) {
+                return {
+                    id: String(r[0]).trim(),
+                    name: String(r[1]).trim(),
+                    region: String(r[2]).trim(),
+                    email: String(r[3]).trim() || null
+                };
+            });
 
-            const { error } = await supabase.from('projects').insert(formatted);
+            var { error } = await supabase.from('projects').insert(formatted);
             if (error) throw error;
             
-            alert(`✅ Berjaya! ${formatted.length} rancangan disimpan.`);
+            alert('✅ Berjaya! ' + formatted.length + ' rancangan disimpan.');
             document.getElementById('projectsFile').value = '';
             loadProjects();
         } catch (err) {
@@ -528,57 +529,57 @@
     }
 
     async function loadRates() {
-        const { data } = await supabase.from('rates').select('*').order('id');
-        const tbody = document.getElementById('ratesTableBody');
+        var { data } = await supabase.from('rates').select('*').order('id');
+        var tbody = document.getElementById('ratesTableBody');
         if (!data || data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#999;">Tiada data. Sila upload fail Excel.</td></tr>`;
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999;">Tiada data. Sila upload fail Excel.</td></tr>';
             return;
         }
-        let html = '';
-        data.forEach(r => {
-            html += `<tr><td>${r.code}</td><td>${r.work_type}</td><td>${r.description}</td><td>${r.unit || ''}</td><td>${r.price}</td><td>${r.productivity || ''}</td><td>${r.project_code || ''}</td></tr>`;
+        var html = '';
+        data.forEach(function(r) {
+            html += '<tr><td>' + r.code + '</td><td>' + r.work_type + '</td><td>' + r.description + '</td><td>' + (r.unit || '') + '</td><td>' + r.price + '</td><td>' + (r.productivity || '') + '</td><td>' + (r.project_code || '') + '</td></tr>';
         });
         tbody.innerHTML = html;
     }
 
     async function loadLeaves() {
-        const { data } = await supabase.from('leaves').select('*').order('id');
-        const tbody = document.getElementById('leavesTableBody');
+        var { data } = await supabase.from('leaves').select('*').order('id');
+        var tbody = document.getElementById('leavesTableBody');
         if (!data || data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#999;">Tiada data. Sila upload fail Excel.</td></tr>`;
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#999;">Tiada data. Sila upload fail Excel.</td></tr>';
             return;
         }
-        let html = '';
-        data.forEach(r => {
-            html += `<tr><td>${r.code}</td><td>${r.description}</td><td>${r.short_code}</td></tr>`;
+        var html = '';
+        data.forEach(function(r) {
+            html += '<tr><td>' + r.code + '</td><td>' + r.description + '</td><td>' + r.short_code + '</td></tr>';
         });
         tbody.innerHTML = html;
     }
 
     async function loadUsers() {
-        const { data } = await supabase.from('users').select('*').order('id');
-        const tbody = document.getElementById('usersTableBody');
+        var { data } = await supabase.from('users').select('*').order('id');
+        var tbody = document.getElementById('usersTableBody');
         if (!data || data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#999;">Tiada data. Sila upload fail Excel.</td></tr>`;
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#999;">Tiada data. Sila upload fail Excel.</td></tr>';
             return;
         }
-        let html = '';
-        data.forEach(r => {
-            html += `<tr><td>${r.id}</td><td>${r.name}</td><td>${r.role}</td><td>${r.project_code || '-'}</td><td>${r.region || '-'}</td></tr>`;
+        var html = '';
+        data.forEach(function(r) {
+            html += '<tr><td>' + r.id + '</td><td>' + r.name + '</td><td>' + r.role + '</td><td>' + (r.project_code || '-') + '</td><td>' + (r.region || '-') + '</td></tr>';
         });
         tbody.innerHTML = html;
     }
 
     async function loadProjects() {
-        const { data } = await supabase.from('projects').select('*').order('id');
-        const tbody = document.getElementById('projectsTableBody');
+        var { data } = await supabase.from('projects').select('*').order('id');
+        var tbody = document.getElementById('projectsTableBody');
         if (!data || data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#999;">Tiada data. Sila upload fail Excel.</td></tr>`;
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#999;">Tiada data. Sila upload fail Excel.</td></tr>';
             return;
         }
-        let html = '';
-        data.forEach(r => {
-            html += `<tr><td>${r.id}</td><td>${r.name}</td><td>${r.region}</td><td>${r.email || ''}</td></tr>`;
+        var html = '';
+        data.forEach(function(r) {
+            html += '<tr><td>' + r.id + '</td><td>' + r.name + '</td><td>' + r.region + '</td><td>' + (r.email || '') + '</td></tr>';
         });
         tbody.innerHTML = html;
     }
@@ -587,48 +588,45 @@
     // WEEKLY OFFS (Supabase)
     // ============================================================
     async function loadWeeklyOffs() {
-        // Populate dropdown
-        const { data: projects } = await supabase.from('projects').select('id,name');
-        const select = document.getElementById('weeklyProject');
+        var { data: projects } = await supabase.from('projects').select('id,name');
+        var select = document.getElementById('weeklyProject');
         select.innerHTML = '';
         if (projects) {
-            projects.forEach(p => {
-                const opt = document.createElement('option');
+            projects.forEach(function(p) {
+                var opt = document.createElement('option');
                 opt.value = p.id;
-                opt.innerText = `${p.name} (${p.id})`;
+                opt.innerText = p.name + ' (' + p.id + ')';
                 select.appendChild(opt);
             });
         }
 
-        // Load table
-        const { data: offs } = await supabase.from('weekly_offs').select('*');
-        const tbody = document.getElementById('weeklyOffTableBody');
+        var { data: offs } = await supabase.from('weekly_offs').select('*');
+        var tbody = document.getElementById('weeklyOffTableBody');
         tbody.innerHTML = '';
         if (offs && offs.length > 0) {
-            offs.forEach(o => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${o.project_id}</td><td><strong>${o.day_of_week}</strong></td>`;
+            offs.forEach(function(o) {
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td>' + o.project_id + '</td><td><strong>' + o.day_of_week + '</strong></td>';
                 tbody.appendChild(tr);
             });
         } else {
-            tbody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:#999;">Tiada tetapan. Sila tetapkan di atas.</td></tr>`;
+            tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:#999;">Tiada tetapan. Sila tetapkan di atas.</td></tr>';
         }
     }
 
     async function updateWeeklyOff() {
-        const projectId = document.getElementById('weeklyProject').value;
-        const day = document.getElementById('weeklyDay').value;
+        var projectId = document.getElementById('weeklyProject').value;
+        var day = document.getElementById('weeklyDay').value;
         if (!projectId) return alert('Sila pilih Rancangan terlebih dahulu.');
 
-        // Upsert weekly off
-        const { error } = await supabase
+        var { error } = await supabase
             .from('weekly_offs')
             .upsert({ project_id: projectId, day_of_week: day }, { onConflict: 'project_id' });
         
         if (error) {
             alert('❌ Ralat: ' + error.message);
         } else {
-            alert(`✅ Tetapan hari cuti untuk ${projectId} telah dikemaskini.`);
+            alert('✅ Tetapan hari cuti untuk ' + projectId + ' telah dikemaskini.');
             loadWeeklyOffs();
         }
     }
