@@ -261,12 +261,12 @@
                     <h2><i class="fas fa-tree"></i> Kemaskini Rancangan</h2>
                     <div class="upload-box">
                         <p><i class="fas fa-file-excel" style="color:#2e7d32; font-size:24px;"></i> <br>Muat naik fail Excel Senarai Rancangan</p>
-                        <p style="font-size:12px; color:#777;">Format: id | name | region | email</p>
+                        <p style="font-size:12px; color:#777;">Format: kod rancangan | nama rancangan | wilayah | kod wilayah | email</p>
                         <input type="file" id="projectsFile" accept=".xlsx, .xls">
                         <button class="btn btn-primary btn-sm" onclick="uploadProjects()">📤 Upload & Simpan</button>
                     </div>
                     <table class="admin-table" id="projectsTable">
-                        <thead><tr><th>ID</th><th>Nama</th><th>Wilayah</th><th>Email</th></tr></thead>
+                        <thead><tr><th>Kod Rancangan</th><th>Nama Rancangan</th><th>Wilayah</th><th>Kod Wilayah</th><th>Email</th></tr></thead>
                         <tbody id="projectsTableBody"></tbody>
                     </table>
                 </div>
@@ -383,7 +383,7 @@
     }
 
     // ============================================================
-    // EXCEL UPLOAD FUNCTIONS (DENGAN OVERWRITE)
+    // EXCEL UPLOAD FUNCTIONS
     // ============================================================
     function readExcelFile(fileId) {
         return new Promise(function(resolve, reject) {
@@ -427,7 +427,6 @@
                 };
             });
 
-            // OVERWRITE: Padam semua rates lama, kemudian insert baru
             var { error: delError } = await supabase.from('rates').delete().neq('id', 0);
             if (delError) throw delError;
 
@@ -457,7 +456,6 @@
                 };
             });
 
-            // OVERWRITE: Padam semua leaves lama, kemudian insert baru
             var { error: delError } = await supabase.from('leaves').delete().neq('id', 0);
             if (delError) throw delError;
 
@@ -495,11 +493,10 @@
                     role: String(r[2]).trim(),
                     project_code: String(r[3]).trim() || null,
                     region: String(r[4]).trim() || null,
-                    password_hash: null // Akan diisi oleh trigger
+                    password_hash: null
                 };
             });
 
-            // OVERWRITE: Padam semua users lama, kemudian insert baru
             var { error: delError } = await supabase.from('users').delete().neq('id', 0);
             if (delError) throw delError;
 
@@ -525,11 +522,11 @@
                     id: String(r[0]).trim(),
                     name: String(r[1]).trim(),
                     region: String(r[2]).trim(),
-                    email: String(r[3]).trim() || null
+                    region_code: String(r[3]).trim() || null,
+                    email: String(r[4]).trim() || null
                 };
             });
 
-            // OVERWRITE: Padam semua projects lama, kemudian insert baru
             var { error: delError } = await supabase.from('projects').delete().neq('id', 0);
             if (delError) throw delError;
 
@@ -600,12 +597,12 @@
         var { data } = await supabase.from('projects').select('*').order('id');
         var tbody = document.getElementById('projectsTableBody');
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#999;">Tiada data. Sila upload fail Excel.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#999;">Tiada data. Sila upload fail Excel.</td></tr>';
             return;
         }
         var html = '';
         data.forEach(function(r) {
-            html += '<tr><td>' + r.id + '</td><td>' + r.name + '</td><td>' + r.region + '</td><td>' + (r.email || '') + '</td></tr>';
+            html += '<tr><td>' + r.id + '</td><td>' + r.name + '</td><td>' + r.region + '</td><td>' + (r.region_code || '') + '</td><td>' + (r.email || '') + '</td></tr>';
         });
         tbody.innerHTML = html;
     }
