@@ -13,6 +13,9 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
+    <!-- Masukkan Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body { margin: 0; padding: 0; height: 100vh; overflow: hidden; }
@@ -73,6 +76,10 @@
             color: #ffebee; margin-top: 15px; display: none;
             font-size: 14px; text-shadow: 0 1px 3px rgba(0,0,0,0.8);
         }
+        
+        @media (max-width: 480px) {
+            .login-box { width: 90%; padding: 30px 20px; }
+        }
     </style>
 </head>
 <body>
@@ -84,7 +91,7 @@
         
         <div class="login-group">
             <i class="fas fa-user"></i>
-            <input type="text" id="loginId" placeholder="Nama Pengguna" value="1234">
+            <input type="text" id="loginId" placeholder="No. Kakitangan / ID" value="1234">
         </div>
         <div class="login-group">
             <i class="fas fa-lock"></i>
@@ -97,48 +104,80 @@
 </div>
 
 <script>
-    const users = {
-        '8888': { id: '8888', pass: 'admin123', role: 'ADMIN', name: 'Admin HQ' },
-        '9999': { id: '9999', pass: 'dev1234', role: 'DEV', name: 'Developer' },
-        '1234': { id: '1234', pass: 'init1234', role: 'FS', name: 'FS 1 Lurah Bilut' },
-        '1235': { id: '1235', pass: 'init1234', role: 'FS', name: 'FS 2 Lurah Bilut' },
-        '1236': { id: '1236', pass: 'init1234', role: 'FS', name: 'FS 3 Lurah Bilut' },
-        '1237': { id: '1237', pass: 'init1234', role: 'AFC', name: 'AFC Lurah Bilut' },
-        '1238': { id: '1238', pass: 'init1234', role: 'FC', name: 'FC Lurah Bilut' }
-    };
+    // ============================================================
+    //  SUPABASE CONFIGURATION (DARI DASHBOARD ANDA)
+    // ============================================================
+    const SUPABASE_URL = 'https://kakzoykzxkryegqybxzs.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtha3pveWt6eGtyeWVncXlieHpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0OTg2ODEsImV4cCI6MjEwMjA3NDY4MX0.n3L8mQsm3CNAC0ahEumu0bQMEC_9H2uaKQ4Htt_ga9c';
+    
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    function doLogin() {
+    async function doLogin() {
         const id = document.getElementById('loginId').value.trim();
         const pass = document.getElementById('loginPass').value.trim();
-        const user = users[id];
         const errorBox = document.getElementById('loginError');
+        errorBox.style.display = 'none';
 
-        if (user && user.pass === pass) {
-            errorBox.style.display = 'none';
+        if (!id || !pass) {
+            errorBox.innerText = 'Sila masukkan ID dan Kata Laluan.';
+            errorBox.style.display = 'block';
+            return;
+        }
+
+        try {
+            // Panggil function login_user di Supabase
+            const { data, error } = await supabase
+                .rpc('login_user', { 
+                    p_id: id, 
+                    p_password: pass 
+                });
+
+            if (error) {
+                console.error('Supabase Error:', error);
+                errorBox.innerText = 'Ralat sistem. Sila cuba lagi.';
+                errorBox.style.display = 'block';
+                return;
+            }
+
+            // Jika tiada data dipulangkan, ID atau Password salah
+            if (!data || data.length === 0) {
+                errorBox.innerText = 'ID atau Kata Laluan salah!';
+                errorBox.style.display = 'block';
+                return;
+            }
+
+            // Login Berjaya!
+            const user = data[0];
             
-            localStorage.setItem('echeckroll_user_id', id);
+            // Simpan sesi ke localStorage
+            localStorage.setItem('echeckroll_user_id', user.id);
             localStorage.setItem('echeckroll_user_role', user.role);
             localStorage.setItem('echeckroll_user_name', user.name);
-            
-            // LOGIK PILIH HALAMAN BERDASARKAN PERANAN (ROLE)
-            if (user.role === 'ADMIN') {
+            localStorage.setItem('echeckroll_project_code', user.project_code || '');
+            localStorage.setItem('echeckroll_region', user.region || '');
+
+            // LOGIK HALAMAN BERDASARKAN PERANAN
+            if (user.role === 'HQ' || user.role === 'Wilayah') {
                 window.location.href = 'admin.html';
             } else if (user.role === 'DEV') {
                 window.location.href = 'developer.html';
             } else {
                 window.location.href = 'echeckroll.html';
             }
-        } else {
+
+        } catch (err) {
+            console.error('Unexpected Error:', err);
+            errorBox.innerText = 'Ralat tidak dijangka. Sila semak konsol.';
             errorBox.style.display = 'block';
         }
     }
 
+    // Enter key support
     document.getElementById('loginPass').addEventListener('keydown', function(event) {
         if (event.key === 'Enter') {
             doLogin();
         }
     });
 </script>
-
 </body>
 </html>
