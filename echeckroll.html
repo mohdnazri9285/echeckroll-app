@@ -331,7 +331,7 @@
 
         document.getElementById('userLabel').innerText = storedName + ' (' + storedRole + ')';
 
-        // FIX: Paparkan nama Projek sebenar, bukan kod sahaja
+        // Paparkan nama Projek sebenar
         var projectDisplayName = storedProject || 'Tiada Projek';
         if (storedProject) {
             var { data: projData, error } = await supabase
@@ -409,7 +409,7 @@
     }
 
     // ============================================================
-    //  FIX 1: AMBIL DATA CUTI MINGGUAN TERUS DARI SUPABASE
+    //  AMBIL DATA CUTI MINGGUAN DARI SUPABASE
     // ============================================================
     async function getProjectWeeklyOff() {
         if (!currentProjectCode) return 'Sunday';
@@ -448,7 +448,7 @@
     }
 
     // ============================================================
-    //  LOAD DATA FROM SUPABASE
+    //  LOAD DATA DARI SUPABASE (PAYROLLS)
     // ============================================================
     async function loadDataFromSupabase() {
         if (!currentProjectCode) return;
@@ -495,7 +495,7 @@
     }
 
     // ============================================================
-    //  FIX 2: AMBIL DATA KUK (RATES) DARI SUPABASE
+    //  AMBIL DATA KUK (RATES) DARI SUPABASE
     // ============================================================
     async function loadRatesFromSupabase() {
         if (!currentProjectCode) return;
@@ -512,7 +512,7 @@
     }
 
     // ============================================================
-    //  SAVE DATA TO SUPABASE
+    //  SIMPAN DATA KE SUPABASE
     // ============================================================
     async function simpanData() {
         if (!currentProjectCode) {
@@ -574,7 +574,7 @@
     }
 
     // ============================================================
-    //  RENDER TABLE
+    //  RENDER TABLE (Dengan sokongan Datalist KUK)
     // ============================================================
     function renderTable() {
         var tbody = document.getElementById('tableBody');
@@ -717,9 +717,7 @@
                     <td><span class="del-btn" onclick="padamAktiviti(${wIdx}, ${aIdx})">✕</span></td>
                     <td class="row-label" style="padding-left:4px;">
                         <input list="kuk-list-${currentGroupIndex}" class="editable-input" style="text-align:left; width:100%;" value="${act.kod ? act.kod + ' - ' + act.nama : ''}" placeholder="Taip kod / nama kerja" ${isEditable ? '' : 'disabled'} onchange="updateActName(${wIdx}, ${aIdx}, this.value)">
-                        <datalist id="kuk-list-${currentGroupIndex}">
-                            <!-- Populated by JS -->
-                        </datalist>
+                        <!-- Datalist akan dihasilkan secara global di luar sini -->
                     </td>
                     <td><input type="text" class="editable-input" value="${act.kod || ''}" ${isEditable ? '' : 'disabled'}></td>
                     <td><input type="text" class="editable-input" value="${act.unit || ''}" placeholder="PKT" ${isEditable ? '' : 'disabled'} onchange="updateActUnit(${wIdx}, ${aIdx}, this.value);"></td>
@@ -1233,7 +1231,7 @@
     }
 
     // ============================================================
-    //  FIX 3: UPDATE NAMA & KOD KERJA GUNA DATA KUK DARI SUPABASE
+    //  UPDATE NAMA & KOD KERJA GUNA DATA KUK DARI SUPABASE
     // ============================================================
     function updateActName(wIdx, aIdx, value) {
         var group = groups[currentGroupIndex];
@@ -1425,7 +1423,7 @@
     function kiraSemua() { renderTable(); }
 
     // ============================================================
-    //  RENDER TABS & LOAD RATES
+    //  RENDER TABS & LOAD KUK DROPDOWN (FIX UTAMA DI SINI)
     // ============================================================
     function renderTabs() {
         var container = document.getElementById('tabsContainer');
@@ -1448,29 +1446,33 @@
         }
         container.innerHTML = html;
 
-        // Kemaskini datalist kuk-list dengan data rates dari Supabase
-        var datalists = document.querySelectorAll('datalist[id^="kuk-list-"]');
+        // FIX: Letakkan datalist di dalam badan dokumen, bukan dalam tabsContainer
+        updateKukDatalist();
+    }
+
+    function updateKukDatalist() {
+        var container = document.getElementById('kuk-data-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'kuk-data-container';
+            document.body.appendChild(container);
+        }
+
         var optionsHtml = '';
-        
-        // Masukkan data dari Supabase terlebih dahulu
         if (allRates && allRates.length > 0) {
             allRates.forEach(function(r) {
                 if (r.code && r.description) {
                     optionsHtml += `<option value="${r.code} - ${r.description}">`;
                 }
             });
-        } 
-        // Fallback jika rates kosong
-        else {
+        } else {
             optionsHtml += '<option value="0101 - Menuai Sawit - Buah (kg)">';
             optionsHtml += '<option value="0201 - Kerja Lebih Masa (jam)">';
             optionsHtml += '<option value="0301 - Merumput - Kimia (ha)">';
             optionsHtml += '<option value="0401 - Pengangkutan Buah (tan)">';
         }
 
-        datalists.forEach(function(dl) {
-            dl.innerHTML = optionsHtml;
-        });
+        container.innerHTML = `<datalist id="kuk-list-${currentGroupIndex}">${optionsHtml}</datalist>`;
     }
 
     function addNewGroup() {
