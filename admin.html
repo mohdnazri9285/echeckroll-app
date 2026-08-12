@@ -409,6 +409,17 @@
         });
     }
 
+    // Normalize role function
+    function normalizeRole(role) {
+        var r = String(role).trim().toLowerCase();
+        if (r === 'admin hq' || r === 'hq') return 'HQ';
+        if (r === 'admin wilayah' || r === 'wilayah') return 'Wilayah';
+        if (r === 'fs') return 'FS';
+        if (r === 'afc') return 'AFC';
+        if (r === 'fc') return 'FC';
+        return role; // Return original if unknown
+    }
+
     async function uploadRates() {
         try {
             var data = await readExcelFile('ratesFile');
@@ -490,7 +501,7 @@
                 return {
                     id: String(r[0]).trim(),
                     name: String(r[1]).trim(),
-                    role: String(r[2]).trim(),
+                    role: normalizeRole(String(r[2]).trim()),
                     project_code: String(r[3]).trim() || null,
                     region: String(r[4]).trim() || null,
                     password_hash: null
