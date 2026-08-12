@@ -383,7 +383,7 @@
     }
 
     // ============================================================
-    // EXCEL UPLOAD FUNCTIONS (Dengan UPSERT)
+    // EXCEL UPLOAD FUNCTIONS
     // ============================================================
     function readExcelFile(fileId) {
         return new Promise(function(resolve, reject) {
@@ -409,6 +409,9 @@
         });
     }
 
+    // ============================================================
+    // UPLOAD RATES
+    // ============================================================
     async function uploadRates() {
         try {
             var data = await readExcelFile('ratesFile');
@@ -427,7 +430,6 @@
                 };
             });
 
-            // Gunakan upsert untuk elakkan duplicate
             var { error } = await supabase.from('rates').upsert(formatted, { onConflict: 'code, project_code' });
             if (error) throw error;
             
@@ -439,6 +441,9 @@
         }
     }
 
+    // ============================================================
+    // UPLOAD LEAVES
+    // ============================================================
     async function uploadLeaves() {
         try {
             var data = await readExcelFile('leavesFile');
@@ -465,13 +470,28 @@
         }
     }
 
+    // ============================================================
+    // UPLOAD USERS (FIX: Hantar ID UNIK sahaja)
+    // ============================================================
     async function uploadUsers() {
         try {
             var data = await readExcelFile('usersFile');
             if (data.length < 2) { alert('Fail kosong atau tiada data.'); return; }
             
             var rows = data.slice(1).filter(function(r) { return r.length > 0 && r[0]; });
-            var formatted = rows.map(function(r) {
+            
+            // --- FIX: Tapis ID yang berulang ---
+            var uniqueMap = new Map();
+            rows.forEach(function(r) {
+                var id = String(r[0]).trim();
+                if (id && !uniqueMap.has(id)) {
+                    uniqueMap.set(id, r);
+                }
+            });
+            var uniqueRows = Array.from(uniqueMap.values());
+            // --------------------------------------
+
+            var formatted = uniqueRows.map(function(r) {
                 return {
                     id: String(r[0]).trim(),
                     name: String(r[1]).trim(),
@@ -482,7 +502,6 @@
                 };
             });
 
-            // UPSERT untuk elakkan duplicate key
             var { error } = await supabase.from('users').upsert(formatted, { onConflict: 'id' });
             if (error) throw error;
             
@@ -494,6 +513,9 @@
         }
     }
 
+    // ============================================================
+    // UPLOAD PROJECTS
+    // ============================================================
     async function uploadProjects() {
         try {
             var data = await readExcelFile('projectsFile');
@@ -509,7 +531,6 @@
                 };
             });
 
-            // UPSERT untuk elakkan duplicate key
             var { error } = await supabase.from('projects').upsert(formatted, { onConflict: 'id' });
             if (error) throw error;
             
