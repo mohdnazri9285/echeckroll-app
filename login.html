@@ -47,7 +47,7 @@
         .login-box h1 { margin: 0 0 5px 0; font-size: 32px; font-weight: 700; letter-spacing: 1px; }
         .login-box p { margin: 0 0 10px 0; font-size: 15px; opacity: 0.9; }
 
-        /* Teks Berjalan (Marquee) dengan Warna Oren & Bold + Shadow Putih */
+        /* Teks Berjalan (Marquee) dengan Warna Oren & Bold */
         .marquee-wrapper {
             width: 100%;
             overflow: hidden;
@@ -59,11 +59,14 @@
         .marquee-text {
             display: inline-block;
             padding-left: 100%;
-            animation: marquee 12s linear infinite; /* 12s = Kelajuan asal (lebih santai) */
+            animation: marquee 12s linear infinite; /* 12s = Kelajuan asal */
             color: #ff9800; /* Warna Oren */
-            font-weight: bold; /* Bold */
+            font-weight: bold;
             font-size: 14px;
-            text-shadow: 0 1px 4px rgba(255,255,255,0.8); /* Shadow Putih */
+            /* FIX: Tukar shadow putih kepada shadow hitam untuk kontras yang sangat tajam */
+            text-shadow: 
+                0 1px 3px rgba(0,0,0,0.9),
+                0 0 6px rgba(0,0,0,0.6);
         }
         @keyframes marquee {
             0% { transform: translateX(0); }
