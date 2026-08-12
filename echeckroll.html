@@ -224,7 +224,7 @@
                 </div>
                 <div>
                     <label>RANCANGAN</label>
-                    <input type="text" id="kumpulan" value="Lurah Bilut" placeholder="Nama Rancangan">
+                    <input type="text" id="kumpulan" value="Lurah Bilut" placeholder="Nama Rancangan" readonly>
                 </div>
             </div>
 
@@ -308,9 +308,9 @@
     var allRates = []; // Simpan data KUK dari Supabase
 
     // ============================================================
-    //  LOGIN CHECK (SESSION DATA)
+    //  LOGIN CHECK & LOAD PROJECT NAME
     // ============================================================
-    function checkUser() {
+    async function checkUser() {
         var storedId = localStorage.getItem('echeckroll_user_id');
         var storedRole = localStorage.getItem('echeckroll_user_role');
         var storedName = localStorage.getItem('echeckroll_user_name');
@@ -330,12 +330,28 @@
         currentProjectCode = storedProject || null;
 
         document.getElementById('userLabel').innerText = storedName + ' (' + storedRole + ')';
-        document.getElementById('kumpulan').value = storedProject || 'Tiada Projek';
+
+        // FIX: Paparkan nama Projek sebenar, bukan kod sahaja
+        var projectDisplayName = storedProject || 'Tiada Projek';
+        if (storedProject) {
+            var { data: projData, error } = await supabase
+                .from('projects')
+                .select('name')
+                .eq('id', storedProject)
+                .single();
+            if (!error && projData) {
+                projectDisplayName = projData.name + ' (' + storedProject + ')';
+            }
+        }
+        document.getElementById('kumpulan').value = projectDisplayName;
 
         updateButtons();
         renderSidePanel();
+        
+        // Muat KUK dahulu sebelum render apa-apa
+        await loadRatesFromSupabase();
         renderTabs();
-        updateCalendar(); // updateCalendar akan panggil loadData & renderTable
+        updateCalendar();
     }
 
     function doLogout() {
@@ -393,7 +409,7 @@
     }
 
     // ============================================================
-    //  FIX 1: AMBIL DATA WEEKLY OFF TERUS DARI SUPABASE
+    //  FIX 1: AMBIL DATA CUTI MINGGUAN TERUS DARI SUPABASE
     // ============================================================
     async function getProjectWeeklyOff() {
         if (!currentProjectCode) return 'Sunday';
@@ -402,8 +418,9 @@
             .select('day_of_week')
             .eq('project_id', currentProjectCode)
             .maybeSingle();
-        if (data) return data.day_of_week;
-        return 'Sunday';
+        if (error) console.error('Error loading weekly off:', error);
+        if (data && data.day_of_week) return data.day_of_week;
+        return 'Sunday'; // Default
     }
 
     function getDayIndex(dayName) {
@@ -416,7 +433,6 @@
         var tahun = parseInt(document.getElementById('tahun').value);
         daysInMonth = new Date(tahun, bulan + 1, 0).getDate();
 
-        // Tunggu data cuti mingguan dari Supabase
         var weeklyOffDayName = await getProjectWeeklyOff();
         var offDayIndex = getDayIndex(weeklyOffDayName);
 
@@ -426,14 +442,13 @@
             if (dayOfWeek === offDayIndex) offDayIndices.push(d - 1);
         }
 
-        // Reload payroll data
         await loadDataFromSupabase(); 
         renderTabs();
         renderTable();
     }
 
     // ============================================================
-    //  LOAD DATA FROM SUPABASE & RATES
+    //  LOAD DATA FROM SUPABASE
     // ============================================================
     async function loadDataFromSupabase() {
         if (!currentProjectCode) return;
@@ -469,8 +484,6 @@
             createEmptyMonth();
         }
         updateButtons();
-        
-        // FIX: Pastikan render semula selepas data selesai di-load
         renderTable(); 
     }
 
@@ -486,13 +499,15 @@
     // ============================================================
     async function loadRatesFromSupabase() {
         if (!currentProjectCode) return;
-        // Ambil data rates untuk projek ini (atau semua)
-        var { data, error } = await supabase
-            .from('rates')
-            .select('code, description')
-            .eq('project_code', currentProjectCode); 
+        var query = supabase.from('rates').select('code, description, price');
+        if (currentProjectCode) {
+            query = query.eq('project_code', currentProjectCode);
+        }
+        var { data, error } = await query;
         if (!error && data) {
             allRates = data;
+        } else {
+            console.error('Error loading rates:', error);
         }
     }
 
@@ -1218,20 +1233,27 @@
     }
 
     // ============================================================
-    //  FIX 3: UPDATE ACT NAME GUNA DATA KUK DARI SUPABASE
+    //  FIX 3: UPDATE NAMA & KOD KERJA GUNA DATA KUK DARI SUPABASE
     // ============================================================
     function updateActName(wIdx, aIdx, value) {
         var group = groups[currentGroupIndex];
         var newKod = '';
         var newNama = value;
+        var newKadar = 0;
 
         // 1. Cuba match menggunakan regex (4 digit)
         var kodMatch = value.match(/^(\d{4})\s*-\s*(.*)/);
         if (kodMatch) {
             newKod = kodMatch[1];
             newNama = kodMatch[2];
+            
+            // Cari kadar harga dari database berdasarkan kod
+            var foundRate = allRates.find(function(r) { return r.code === newKod; });
+            if (foundRate) {
+                newKadar = foundRate.price;
+            }
         } else {
-            // 2. Cuba match dari senarai KUK Supabase
+            // 2. Cuba match dari description database
             var foundRate = allRates.find(function(r) {
                 return value.toLowerCase().includes(r.description.toLowerCase()) || 
                        value.toLowerCase().includes(r.code.toLowerCase());
@@ -1240,8 +1262,9 @@
             if (foundRate) {
                 newKod = foundRate.code;
                 newNama = foundRate.description;
+                newKadar = foundRate.price;
             } 
-            // 3. Fallback manual (jika tiada dalam KUK Supabase)
+            // 3. Fallback manual
             else {
                 if (value.toLowerCase().includes('menuai')) { newKod = '0101'; newNama = 'Menuai Sawit - Buah (kg)'; }
                 else if (value.toLowerCase().includes('lebih masa')) { newKod = '0201'; newNama = 'Kerja Lebih Masa (jam)'; }
@@ -1253,9 +1276,14 @@
             }
         }
 
+        // Kemaskini Pekerja 1 (Master)
         if (group.workers[0] && group.workers[0].aktiviti[aIdx]) {
             group.workers[0].aktiviti[aIdx].kod = newKod;
             group.workers[0].aktiviti[aIdx].nama = newNama;
+            // Jika kadar baru dijumpai di database, set automatik
+            if (newKadar > 0) {
+                group.workers[0].aktiviti[aIdx].kadar = newKadar;
+            }
         }
         syncActivitiesToAll();
         renderTable();
@@ -1397,13 +1425,9 @@
     function kiraSemua() { renderTable(); }
 
     // ============================================================
-    //  RENDER TABS & LOAD RATES (FIX 4)
+    //  RENDER TABS & LOAD RATES
     // ============================================================
-    async function renderTabs() {
-        // 1. Load KUK (Rates) dari Supabase
-        await loadRatesFromSupabase();
-
-        // 2. Render Tab
+    function renderTabs() {
         var container = document.getElementById('tabsContainer');
         var html = '';
         var visibleGroups = groups.map(function(g, idx) { return idx; });
@@ -1424,27 +1448,29 @@
         }
         container.innerHTML = html;
 
-        // 3. Kemaskini semua datalist kuk-list dengan data rates dari Supabase
-        setTimeout(function() {
-            var datalists = document.querySelectorAll('datalist[id^="kuk-list-"]');
-            var optionsHtml = '<option value="0101 - Menuai Sawit - Buah (kg)">';
+        // Kemaskini datalist kuk-list dengan data rates dari Supabase
+        var datalists = document.querySelectorAll('datalist[id^="kuk-list-"]');
+        var optionsHtml = '';
+        
+        // Masukkan data dari Supabase terlebih dahulu
+        if (allRates && allRates.length > 0) {
+            allRates.forEach(function(r) {
+                if (r.code && r.description) {
+                    optionsHtml += `<option value="${r.code} - ${r.description}">`;
+                }
+            });
+        } 
+        // Fallback jika rates kosong
+        else {
+            optionsHtml += '<option value="0101 - Menuai Sawit - Buah (kg)">';
             optionsHtml += '<option value="0201 - Kerja Lebih Masa (jam)">';
             optionsHtml += '<option value="0301 - Merumput - Kimia (ha)">';
             optionsHtml += '<option value="0401 - Pengangkutan Buah (tan)">';
-            
-            // Tambah dari Supabase
-            if (allRates && allRates.length > 0) {
-                allRates.forEach(function(r) {
-                    if (r.code && r.description) {
-                        optionsHtml += `<option value="${r.code} - ${r.description}">`;
-                    }
-                });
-            }
+        }
 
-            datalists.forEach(function(dl) {
-                dl.innerHTML = optionsHtml;
-            });
-        }, 100);
+        datalists.forEach(function(dl) {
+            dl.innerHTML = optionsHtml;
+        });
     }
 
     function addNewGroup() {
@@ -1514,8 +1540,8 @@
     // ============================================================
     //  BOOT UP
     // ============================================================
-    window.onload = function() {
-        checkUser();
+    window.onload = async function() {
+        await checkUser();
     };
 </script>
 </body>
