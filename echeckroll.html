@@ -550,12 +550,13 @@
 
                 if (gError) throw gError;
 
-                // 3. Bina semula array groups
+                // 3. Bina semula array groups (TAMBAH _order_index)
                 groups = groupsData.map(g => ({
                     name: g.group_name,
                     workers: g.workers,
                     _updated_at: g.updated_at,
-                    _last_updated_by: g.last_updated_by
+                    _last_updated_by: g.last_updated_by,
+                    _order_index: g.order_index // <--- TAMBAH INI
                 }));
 
                 currentGroupIndex = 0;
@@ -643,7 +644,7 @@
     }
 
     // ============================================================
-    //  SIMPAN DATA KE SUPABASE (FIX: UPSERT BY GROUP, INDIVIDUAL last_updated_by)
+    //  SIMPAN DATA KE SUPABASE (FIX: UPSERT BY GROUP, ONLY IF CHANGED)
     // ============================================================
     async function simpanData() {
         if (!currentProjectCode) {
@@ -677,11 +678,12 @@
             if (pError) throw pError;
             payrollUUID = payroll.id;
 
-            // 2. UPSERT setiap kumpulan dari local (TIADA LAGI LOGIK DELETE GLOBAL)
+            // 2. UPSERT setiap kumpulan dari local (HANYA jika benar-benar berubah)
             for (var i = 0; i < groups.length; i++) {
                 var g = groups[i];
-                
-                // Semak konflik pada kumpulan ini (jika ada)
+                var isGroupChanged = false;
+
+                // Semak konflik pada kumpulan ini
                 if (g._updated_at) {
                     var { data: checkRow } = await supabase
                         .from('payroll_groups')
@@ -692,51 +694,46 @@
 
                     if (checkRow && checkRow.updated_at !== g._updated_at) {
                         var confirmReload = confirm(
-                            `⚠️ Kumpulan "${g.name}" telah diubah oleh pengguna lain!\n` +
-                            `Sila muat semula untuk melihat perubahan terkini.`
+                            `⚠️ Kumpulan "${g.name}" telah diubah oleh pengguna lain!\nSila muat semula.`
                         );
                         if (confirmReload) { location.reload(); return; } 
-                        else {
-                            isSaving = false; // Reset jika batal
-                            return;
-                        }
+                        else { isSaving = false; return; }
                     }
-                }
 
-                // Semak sama ada kumpulan ini benar-benar berubah (bandingkan workers JSON)
-                var isGroupChanged = false;
-                if (g._updated_at) {
-                    // Ambil data sedia ada dari database untuk banding
+                    // Semak sama ada data benar-benar berubah (pekerja ATAU order_index)
                     var { data: existingGroup } = await supabase
                         .from('payroll_groups')
-                        .select('workers')
+                        .select('workers, order_index')
                         .eq('payroll_id', payroll.id)
                         .eq('group_name', g.name)
                         .single();
 
                     if (existingGroup) {
-                        // Bandingkan JSON workers
                         var oldWorkers = JSON.stringify(existingGroup.workers);
                         var newWorkers = JSON.stringify(g.workers);
-                        if (oldWorkers !== newWorkers) {
+                        if (oldWorkers !== newWorkers) isGroupChanged = true;
+
+                        // Semak jika susunan kumpulan berubah
+                        if (g._order_index !== undefined && g._order_index !== i) {
                             isGroupChanged = true;
                         }
                     }
                 } else {
-                    // Kumpulan baru (tiada _updated_at) -> dianggap berubah
+                    // Kumpulan baru -> dianggap berubah
                     isGroupChanged = true;
                 }
 
-                // Hanya kemaskini last_updated_by jika kumpulan benar-benar berubah
+                // Bina objek data untuk disimpan (tanpa updated_at jika tiada perubahan)
                 var updateData = {
                     payroll_id: payroll.id,
                     group_name: g.name,
                     workers: g.workers,
-                    order_index: i,
-                    updated_at: now
+                    order_index: i
                 };
 
+                // HANYA hantar timestamp & last_updated_by jika benar-benar berubah
                 if (isGroupChanged) {
+                    updateData.updated_at = now;
                     updateData.last_updated_by = currentUser.id;
                 }
 
@@ -1461,6 +1458,10 @@ function setupRealtimeSubscription() {
 function handleRealtimeGroupUpdate(payload) {
     // Abaikan perubahan jika kita sendiri yang sedang menyimpan data
     if (isSaving) return;
+
+    // FIX: Jangan proses jika perubahan datang dari diri sendiri
+    if (payload.new && payload.new.last_updated_by === currentUser.id) return;
+    if (payload.old && payload.old.last_updated_by === currentUser.id) return;
 
     var groupName = null;
     var newWorkers = null;
