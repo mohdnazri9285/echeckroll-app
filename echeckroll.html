@@ -136,6 +136,38 @@
         .check-sm:disabled { cursor: not-allowed; }
         .del-btn { color: #c62828; cursor: pointer; font-weight: bold; font-size: 13px; padding: 0 4px; }
 
+        /* ===== REALTIME NOTIFICATION BANNER ===== */
+        #realtimeBanner {
+            display: none;
+            position: sticky;
+            top: 0;
+            width: 100%;
+            z-index: 999;
+            background: #fff3cd;
+            border: 1px solid #ffecb5;
+            border-radius: 4px;
+            padding: 8px 15px;
+            margin-bottom: 4px;
+            font-weight: bold;
+            font-size: 13px;
+            color: #856404;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #realtimeBanner .btn-reload {
+            background: #856404;
+            color: white;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        #realtimeBanner .btn-reload:hover { background: #6b5200; }
+
         /* ===== PRINT LAYOUT ===== */
         .print-only { display: none !important; }
 
@@ -193,6 +225,15 @@
 
 <div id="appArea">
     <div class="container">
+        <!-- REALTIME BANNER -->
+        <div id="realtimeBanner">
+            <span><i class="fas fa-sync-alt"></i> Data telah dikemaskini oleh pengguna lain.</span>
+            <div>
+                <button class="btn-reload" onclick="refreshData()">Muat Semula</button>
+                <span style="cursor:pointer; margin-left:10px; color:#856404; font-size:14px;" onclick="hideBanner()">&times;</span>
+            </div>
+        </div>
+
         <div class="header-area" id="headerArea">
             
             <div class="header-toggle" onclick="toggleMobileHeader()" id="mobileToggle">
@@ -310,6 +351,9 @@
     var allRates = []; // Simpan data KUK dari Supabase
     var paidLeaveCodes = []; // Simpan senarai cuti berbayar dari Supabase
     var payrollUUID = null;
+
+    // Realtime channel reference
+    var realtimeChannel = null;
 
     // ============================================================
     //  LOGIN CHECK & LOAD PROJECT NAME
@@ -448,7 +492,14 @@
             if (dayOfWeek === offDayIndex) offDayIndices.push(d - 1);
         }
 
-        await loadDataFromSupabase(); 
+        // Bersihkan subscription lama jika ada
+        if (realtimeChannel) {
+            supabase.removeChannel(realtimeChannel);
+            realtimeChannel = null;
+        }
+
+        await loadDataFromSupabase();
+        setupRealtimeSubscription(); // Langgan selepas data dimuat
         renderTabs();
         renderTable();
     }
@@ -610,7 +661,7 @@
             if (pError) throw pError;
             payrollUUID = payroll.id;
 
-            // 2. Hapuskan SEMUA kumpulan untuk payroll ini (untuk elakkan isu not.in)
+            // 2. Hapuskan SEMUA kumpulan untuk payroll ini
             var { error: delError } = await supabase
                 .from('payroll_groups')
                 .delete()
@@ -1295,6 +1346,65 @@
     }
 
     // ============================================================
+    //  REALTIME SUBSCRIPTION (BARU)
+    // ============================================================
+    function setupRealtimeSubscription() {
+        if (!currentProjectCode || !payrollUUID) {
+            // Jika belum ada payroll, kita masih boleh langgan berdasarkan project_id
+            var bulan = parseInt(document.getElementById('bulan').value);
+            var tahun = parseInt(document.getElementById('tahun').value);
+            // Kita langgan perubahan pada payrolls dan payroll_groups untuk projek ini
+            var channel = supabase.channel('payroll-changes-' + currentProjectCode + '-' + bulan + '-' + tahun);
+
+            channel
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'payrolls', filter: 'project_id=eq.' + currentProjectCode },
+                    function(payload) {
+                        showBanner();
+                    }
+                )
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'payroll_groups' },
+                    function(payload) {
+                        // Semak jika perubahan melibatkan payroll_id yang kita sedang lihat
+                        if (payload.new && payload.new.payroll_id === payrollUUID) {
+                            showBanner();
+                        } else if (payload.old && payload.old.payroll_id === payrollUUID) {
+                            showBanner();
+                        }
+                    }
+                )
+                .subscribe();
+
+            realtimeChannel = channel;
+        }
+    }
+
+    function showBanner() {
+        var banner = document.getElementById('realtimeBanner');
+        banner.style.display = 'flex';
+    }
+
+    function hideBanner() {
+        document.getElementById('realtimeBanner').style.display = 'none';
+    }
+
+    function refreshData() {
+        hideBanner();
+        loadDataFromSupabase();
+        // Re-subscribe dengan UUID baru
+        if (realtimeChannel) {
+            supabase.removeChannel(realtimeChannel);
+            realtimeChannel = null;
+        }
+        setupRealtimeSubscription();
+        renderTabs();
+        renderTable();
+    }
+
+    // ============================================================
     //  LOGIK FUNGSI & SYNC
     // ============================================================
     function toggleSync() { syncEnabled = document.getElementById('syncCheck').checked; }
@@ -1470,7 +1580,7 @@
         var newWorker = {
             id: Date.now(), nama: 'PEKERJA BARU', noKP: 'XXXXXXXXXXXX', umur: 30, jantina: 'L',
             hari: Array(31).fill(''),
-            aktiviti: [], // <--- KOSONG
+            aktiviti: [],
             elaun_motorsikal: 0, elaun_rumah: 0,
             potongan: group.workers.length > 0 ? JSON.parse(JSON.stringify(group.workers[0].potongan)) : [ { label: 'KWSP', nilai: 0 } ],
             leaveRates: group.workers.length > 0 ? JSON.parse(JSON.stringify(group.workers[0].leaveRates)) : {},
@@ -1547,7 +1657,7 @@
             workers: [{
                 id: Date.now(), nama: 'PEKERJA BARU', noKP: 'XXXXXXXXXXXX', umur: 30, jantina: 'L',
                 hari: Array(31).fill(''),
-                aktiviti: [], // <--- KOSONG
+                aktiviti: [],
                 elaun_motorsikal: 0, elaun_rumah: 0,
                 potongan: JSON.parse(JSON.stringify(defaultPotongan)),
                 leaveRates: {}, afcCheck: Array(31).fill(false), fcCheck: Array(31).fill(false)
