@@ -499,7 +499,7 @@
         }
 
         await loadDataFromSupabase();
-        setupRealtimeSubscription(); // Langgan selepas data dimuat
+        setupRealtimeSubscription();
         renderTabs();
         renderTable();
     }
@@ -630,7 +630,7 @@
     }
 
     // ============================================================
-    //  SIMPAN DATA KE SUPABASE (UPDATED: UPSERT + DELETE INDIVIDUAL)
+    //  SIMPAN DATA KE SUPABASE (Dengan muat semula automatik)
     // ============================================================
     async function simpanData() {
         if (!currentProjectCode) {
@@ -723,6 +723,9 @@
             alert('✅ Data untuk ' + document.getElementById('bulan').options[bulan].text + ' ' + tahun + ' telah disimpan!');
             groups.forEach(g => g._updated_at = now);
 
+            // Muat semula data selepas simpan supaya data tidak hilang
+            await loadDataFromSupabase();
+
         } catch (err) {
             alert('❌ Ralat menyimpan data: ' + err.message);
         }
@@ -756,7 +759,7 @@
     }
 
     // ============================================================
-    //  RENDER TABLE
+    //  RENDER TABLE (Dengan peluasan dropdown aktiviti)
     // ============================================================
     function renderTable() {
         var tbody = document.getElementById('tableBody');
@@ -878,9 +881,10 @@
             var headerActRow = document.createElement('tr');
             headerActRow.style.backgroundColor = '#fff9c4';
             headerActRow.style.borderTop = '2px solid #ddd';
+            // FIX: Lebarkan lajur AKTIVITI KERJA untuk dropdown penuh
             headerActRow.innerHTML = `
                 <td></td>
-                <td class="row-label" style="text-align:center; font-weight:bold; padding-left:5px; min-width:180px; border-right:1px solid #b0bec5;">AKTIVITI KERJA</td>
+                <td class="row-label" style="text-align:center; font-weight:bold; padding-left:5px; min-width:300px; border-right:1px solid #b0bec5;">AKTIVITI KERJA</td>
                 <td style="border-right:1px solid #b0bec5; font-weight:bold;">KOD</td>
                 <td style="border-right:1px solid #b0bec5; font-weight:bold;">PKT</td>
                 <td style="font-weight:bold;">BLOK</td>
@@ -900,7 +904,7 @@
                 row.innerHTML = `
                     <td><span class="del-btn" onclick="padamAktiviti(${wIdx}, ${aIdx})">✕</span></td>
                     <td class="row-label" style="padding-left:4px;">
-                        <input list="kuk-list-global" class="editable-input" style="text-align:left; width:100%;" value="${displayValue}" placeholder="Taip kod / nama kerja" title="${displayValue}" ${isEditable ? '' : 'disabled'} onchange="updateActName(${wIdx}, ${aIdx}, this.value)">
+                        <input list="kuk-list-global" class="editable-input" style="text-align:left; width:100%; max-width:none;" value="${displayValue}" placeholder="Taip kod / nama kerja" title="${displayValue}" ${isEditable ? '' : 'disabled'} onchange="updateActName(${wIdx}, ${aIdx}, this.value)">
                     </td>
                     <td><input type="text" class="editable-input" value="${act.kod || ''}" ${isEditable ? '' : 'disabled'}></td>
                     <td><input type="text" class="editable-input" value="${act.unit || ''}" placeholder="PKT" ${isEditable ? '' : 'disabled'} onchange="updateActUnit(${wIdx}, ${aIdx}, this.value);"></td>
@@ -1381,7 +1385,7 @@
     }
 
     // ============================================================
-    //  REALTIME SUBSCRIPTION
+    //  REALTIME SUBSCRIPTION (Tapis perubahan sendiri)
     // ============================================================
     function setupRealtimeSubscription() {
         if (!currentProjectCode || !payrollUUID) {
@@ -1400,6 +1404,9 @@
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'payrolls', filter: 'project_id=eq.' + currentProjectCode },
                 function(payload) {
+                    // Jangan tunjukkan banner jika perubahan dilakukan oleh pengguna sendiri
+                    if (payload.new && payload.new.user_id === currentUser.id) return;
+                    if (payload.old && payload.old.user_id === currentUser.id) return;
                     showBanner();
                 }
             )
@@ -1407,6 +1414,9 @@
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'payroll_groups', filter: 'payroll_id=eq.' + payrollUUID },
                 function(payload) {
+                    // Untuk payroll_groups, kita hanya papar banner. 
+                    // Namun, pengguna sendiri tidak akan trigger banner ini selepas simpan
+                    // kerana kita telah memuat semula data di akhir simpanData()
                     showBanner();
                 }
             )
