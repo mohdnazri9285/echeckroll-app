@@ -1513,7 +1513,7 @@
     }
 
     // ============================================================
-    //  UPDATE ACT NAME (FIX: Tiada fallback yang salah, simpan custom)
+    //  UPDATE ACT NAME (FIXED: Kod 5 digit dan pilihan tepat)
     // ============================================================
     function updateActName(wIdx, aIdx, value) {
         var group = groups[currentGroupIndex];
@@ -1521,25 +1521,35 @@
         var newNama = value;
         var newKadar = 0;
 
-        // 1. Cuba ekstrak 4 digit kod
-        var kodMatch = value.match(/^(\d{4})\s*-\s*(.*)/);
-        if (kodMatch) {
-            newKod = kodMatch[1];
-            newNama = kodMatch[2];
-            var foundRate = allRates.find(function(r) { return r.code === newKod; });
-            if (foundRate) newKadar = foundRate.price;
+        // 1. Semak padanan tepat dahulu (mengelakkan fallback salah untuk pilihan dropdown)
+        var exactMatch = allRates.find(function(r) {
+            return (r.code + ' - ' + r.description) === value;
+        });
+        if (exactMatch) {
+            newKod = exactMatch.code;
+            newNama = exactMatch.description;
+            newKadar = exactMatch.price;
         } else {
-            // 2. Cuba padankan dengan description/kod dari database
-            var foundRate = allRates.find(function(r) {
-                return value.toLowerCase().includes(r.description.toLowerCase()) || 
-                       value.toLowerCase().includes(r.code.toLowerCase());
-            });
-            if (foundRate) {
-                newKod = foundRate.code;
-                newNama = foundRate.description;
-                newKadar = foundRate.price;
-            } 
-            // 3. Jika tiada padanan, simpan sebagai input custom (newKod kekal '')
+            // 2. Jika tiada padanan tepat, cuba ekstrak kod menggunakan regex (sokong 4 digit atau lebih - \d{4,})
+            var kodMatch = value.match(/^(\d{4,})\s*-\s*(.*)/);
+            if (kodMatch) {
+                newKod = kodMatch[1];
+                newNama = kodMatch[2];
+                var foundRate = allRates.find(function(r) { return r.code === newKod; });
+                if (foundRate) newKadar = foundRate.price;
+            } else {
+                // 3. Fallback padanan description (untuk custom input)
+                var foundRate = allRates.find(function(r) {
+                    return value.toLowerCase().includes(r.description.toLowerCase()) || 
+                           value.toLowerCase().includes(r.code.toLowerCase());
+                });
+                if (foundRate) {
+                    newKod = foundRate.code;
+                    newNama = foundRate.description;
+                    newKadar = foundRate.price;
+                }
+                // 4. Jika tiada padanan, simpan sebagai input custom (newKod kekal '')
+            }
         }
 
         // Kemaskini Pekerja 1 (Master)
