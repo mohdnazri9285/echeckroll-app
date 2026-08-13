@@ -8,6 +8,7 @@
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="manifest" href="site.webmanifest">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -562,10 +563,23 @@
 
                 if (gError) throw gError;
 
-                // 3. Bina semula array groups (TAMBAH _order_index)
+                // 3. Bina semula array groups & SANITASI DATA (FIX: Null hari issue)
                 groups = groupsData.map(g => ({
                     name: g.group_name,
-                    workers: g.workers,
+                    workers: (g.workers || []).map(w => {
+                        // Pastikan hari sentiasa array 31 elemen
+                        if (!w.hari || !Array.isArray(w.hari) || w.hari.length !== 31) {
+                            w.hari = Array(31).fill('');
+                        }
+                        // Pastikan aktiviti dan lain-lain wujud
+                        if (!w.aktiviti || !Array.isArray(w.aktiviti)) w.aktiviti = [];
+                        if (!w.leaveRates || typeof w.leaveRates !== 'object') w.leaveRates = {};
+                        if (!w.potongan || !Array.isArray(w.potongan)) w.potongan = [];
+                        if (!w.afcCheck || !Array.isArray(w.afcCheck) || w.afcCheck.length !== 31) w.afcCheck = Array(31).fill(false);
+                        if (!w.fcCheck || !Array.isArray(w.fcCheck) || w.fcCheck.length !== 31) w.fcCheck = Array(31).fill(false);
+                        if (w.potongan.length === 0) w.potongan = [{ label: 'KWSP', nilai: 0 }];
+                        return w;
+                    }),
                     _updated_at: g.updated_at,
                     _last_updated_by: g.last_updated_by,
                     _order_index: g.order_index
