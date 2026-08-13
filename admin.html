@@ -407,6 +407,7 @@
 
     var currentUser = null;
     var projectsCache = []; // To hold all projects
+    var payrollsCache = []; // Cache for current month's payrolls
 
     // ============================================================
     // AUTH CHECK
@@ -490,14 +491,14 @@
     }
 
     // ============================================================
-    // DASHBOARD LOADER
+    // DASHBOARD LOADER (UPDATED TO USE payroll_groups)
     // ============================================================
     async function loadDashboard() {
         var month = parseInt(document.getElementById('adminMonth').value);
         var year = parseInt(document.getElementById('adminYear').value);
         var daysInMonth = new Date(year, month + 1, 0).getDate();
 
-        // Fetch all payrolls for this month
+        // 1. Fetch payrolls for this month
         var { data: payrolls, error } = await supabase
             .from('payrolls')
             .select('*')
@@ -511,13 +512,34 @@
             payrollsCache = payrolls || [];
         }
 
-        // Determine which entities to show (regions for HQ, projects for Wilayah)
+        // 2. Fetch all payroll_groups for the fetched payrolls
+        var payrollIds = payrollsCache.map(function(p) { return p.id; });
+        var workersByPayroll = {};
+        if (payrollIds.length > 0) {
+            var { data: groupsData, error: gError } = await supabase
+                .from('payroll_groups')
+                .select('payroll_id, workers')
+                .in('payroll_id', payrollIds);
+
+            if (!gError && groupsData) {
+                groupsData.forEach(function(g) {
+                    if (!workersByPayroll[g.payroll_id]) {
+                        workersByPayroll[g.payroll_id] = [];
+                    }
+                    // concatenate workers from each group
+                    if (g.workers && Array.isArray(g.workers)) {
+                        workersByPayroll[g.payroll_id].push(...g.workers);
+                    }
+                });
+            }
+        }
+
+        // 3. Determine which entities to show (regions for HQ, projects for Wilayah)
         var isHQ = currentUser.role === 'HQ';
         var entities = [];
-        var entityMap = {}; // key: entity id (region name or project id)
+        var entityMap = {}; 
 
         if (isHQ) {
-            // Group projects by region
             var regions = {};
             projectsCache.forEach(function(p) {
                 if (!regions[p.region]) {
@@ -535,7 +557,6 @@
                 entityMap[region] = { projects: regions[region].projects };
             });
         } else {
-            // Admin Wilayah: show only projects in their region
             var userRegion = currentUser.region;
             projectsCache.forEach(function(p) {
                 if (p.region === userRegion) {
@@ -550,13 +571,12 @@
             });
         }
 
-        // If no entities, show empty state
         if (entities.length === 0) {
             document.getElementById('statusGridContainer').innerHTML = '<div style="padding:10px; color:#999; text-align:center;">Tiada data untuk dipaparkan.</div>';
             return;
         }
 
-        // Build grid data structure
+        // 4. Build grid data structure
         var gridData = {};
         entities.forEach(function(e) {
             var key = e.id;
@@ -572,26 +592,20 @@
             };
         });
 
-        // Process payrolls
+        // 5. Process payrolls using workersByPayroll map
         payrollsCache.forEach(function(pay) {
             var projectId = pay.project_id;
             var isClosed = pay.is_closed || false;
-            var groups = pay.groups || [];
-            var workers = [];
-            groups.forEach(function(g) {
-                if (g.workers) workers = workers.concat(g.workers);
-            });
+            var workers = workersByPayroll[pay.id] || [];
 
             // Find which entity this project belongs to
             var entityKey = null;
             if (isHQ) {
-                // Find region
                 var proj = projectsCache.find(function(p) { return p.id === projectId; });
                 if (proj) entityKey = proj.region;
             } else {
-                if (projectId === entityKey) entityKey = projectId; // direct match
+                if (projectId === entityKey) entityKey = projectId;
                 else {
-                    // check if project is in user's region
                     var proj = projectsCache.find(function(p) { return p.id === projectId && p.region === currentUser.region; });
                     if (proj) entityKey = projectId;
                 }
@@ -603,10 +617,8 @@
             entity.isClosed = isClosed || entity.isClosed;
 
             workers.forEach(function(w) {
-                // Count workers and gross
                 entity.totalWorkers += 1;
                 entity.totalGross += calculateWorkerGross(w);
-                // Count entries and mark days
                 if (w.hari) {
                     w.hari.forEach(function(val, idx) {
                         if (val && val !== '') {
@@ -618,16 +630,10 @@
             });
         });
 
-        // Render Meters
+        // Render Meters, Grid, Alert, and Buttons
         renderMeters(gridData, isHQ);
-
-        // Render Grid
         renderGrid(gridData, entities, isHQ, daysInMonth);
-
-        // Render Alert
         renderAlert(gridData, isHQ);
-
-        // Render Close Transaction buttons
         renderTransactionButtons(gridData, isHQ);
     }
 
@@ -711,7 +717,7 @@
             var rowClass = data.entries > 0 ? '' : '';
             html += '<tr>';
             var label = e.type === 'region' ? e.id : (e.name || e.id);
-            // On click, open modal
+            // On click, open modal (now async)
             html += '<td class="grid-row-label" onclick="openModal(\'' + e.id + '\', \'' + (isHQ ? 'region' : 'project') + '\')">' + label + '</td>';
 
             for (var d = 0; d < daysInMonth; d++) {
@@ -745,7 +751,6 @@
         Object.keys(gridData).forEach(function(key) {
             var e = gridData[key];
             if (e.entries > 0) hasData = true;
-            // Check last 3 days
             var today = new Date().getDate();
             var hasRecent = false;
             for (var d = Math.max(0, today-3); d < today && d < daysInMonth; d++) {
@@ -775,7 +780,6 @@
         var openBtn = document.getElementById('btnOpenTransaction');
         var statusSpan = document.getElementById('transactionStatus');
 
-        // Determine if any entity is closed
         var anyClosed = false;
         var anyOpen = false;
         Object.keys(gridData).forEach(function(key) {
@@ -783,8 +787,6 @@
             else anyOpen = true;
         });
 
-        // Only show if user is FC or HQ? For dashboard, we allow HQ and Wilayah to toggle.
-        // We'll show if user is HQ or Wilayah.
         if (currentUser.role === 'HQ' || currentUser.role === 'Wilayah') {
             closeBtn.style.display = (anyOpen) ? 'inline-block' : 'none';
             openBtn.style.display = (anyClosed) ? 'inline-block' : 'none';
@@ -810,7 +812,6 @@
         var year = parseInt(document.getElementById('adminYear').value);
 
         if (isHQ) {
-            // For HQ, we need to close all projects in all regions
             var regions = {};
             projectsCache.forEach(function(p) {
                 if (!regions[p.region]) regions[p.region] = [];
@@ -822,7 +823,6 @@
                 });
             });
         } else {
-            // For Wilayah, close only projects in their region
             projectsCache.forEach(function(p) {
                 if (p.region === currentUser.region) projectIds.push(p.id);
             });
@@ -831,7 +831,6 @@
         if (projectIds.length === 0) return;
 
         try {
-            // Update all payrolls for this month for these projects
             var { error } = await supabase
                 .from('payrolls')
                 .update({ is_closed: isClosing })
@@ -848,24 +847,21 @@
     }
 
     // ============================================================
-    // MODAL (POPUP) LOGIC
+    // MODAL (POPUP) LOGIC - UPDATED TO USE payroll_groups
     // ============================================================
-    function openModal(entityId, entityType) {
+    async function openModal(entityId, entityType) {
         var overlay = document.getElementById('modalOverlay');
         var title = document.getElementById('modalTitle');
         var body = document.getElementById('modalBody');
 
-        // Find entity data
         var isHQ = currentUser.role === 'HQ';
         var projects = [];
 
         if (isHQ) {
-            // entityId is region name
             var regionProjects = projectsCache.filter(function(p) { return p.region === entityId; });
             projects = regionProjects;
             title.innerText = 'Wilayah: ' + entityId;
         } else {
-            // entityId is project id
             var proj = projectsCache.find(function(p) { return p.id === entityId; });
             if (proj) {
                 projects = [proj];
@@ -873,44 +869,55 @@
             }
         }
 
-        // Calculate summary for these projects
+        // Collect relevant payrolls & groups
         var totalWorkers = 0, totalGross = 0, totalEntries = 0;
         var projectData = {};
 
-        payrollsCache.forEach(function(pay) {
-            if (projects.some(function(p) { return p.id === pay.project_id; })) {
-                var groups = pay.groups || [];
-                groups.forEach(function(g) {
-                    if (g.workers) {
-                        g.workers.forEach(function(w) {
-                            totalWorkers++;
-                            totalGross += calculateWorkerGross(w);
-                            if (w.hari) {
-                                w.hari.forEach(function(val) {
-                                    if (val && val !== '') totalEntries++;
-                                });
-                            }
-                        });
-                    }
-                });
-                // Per-project breakdown
-                if (!projectData[pay.project_id]) {
-                    projectData[pay.project_id] = { workers: 0, gross: 0, entries: 0 };
-                }
-                groups.forEach(function(g) {
-                    if (g.workers) {
-                        g.workers.forEach(function(w) {
-                            projectData[pay.project_id].workers++;
-                            projectData[pay.project_id].gross += calculateWorkerGross(w);
-                            if (w.hari) {
-                                w.hari.forEach(function(val) {
-                                    if (val && val !== '') projectData[pay.project_id].entries++;
-                                });
-                            }
-                        });
-                    }
+        var selectedProjectIds = projects.map(function(p) { return p.id; });
+        var relevantPayrolls = payrollsCache.filter(function(pay) {
+            return selectedProjectIds.includes(pay.project_id);
+        });
+        var relevantPayrollIds = relevantPayrolls.map(function(p) { return p.id; });
+
+        var workersByPayroll = {};
+        if (relevantPayrollIds.length > 0) {
+            var { data: groupsData, error: gError } = await supabase
+                .from('payroll_groups')
+                .select('payroll_id, workers')
+                .in('payroll_id', relevantPayrollIds);
+
+            if (!gError && groupsData) {
+                groupsData.forEach(function(g) {
+                    if (!workersByPayroll[g.payroll_id]) workersByPayroll[g.payroll_id] = [];
+                    if (g.workers) workersByPayroll[g.payroll_id].push(...g.workers);
                 });
             }
+        }
+
+        relevantPayrolls.forEach(function(pay) {
+            var workers = workersByPayroll[pay.id] || [];
+            workers.forEach(function(w) {
+                totalWorkers++;
+                totalGross += calculateWorkerGross(w);
+                if (w.hari) {
+                    w.hari.forEach(function(val) {
+                        if (val && val !== '') totalEntries++;
+                    });
+                }
+            });
+
+            if (!projectData[pay.project_id]) {
+                projectData[pay.project_id] = { workers: 0, gross: 0, entries: 0 };
+            }
+            workers.forEach(function(w) {
+                projectData[pay.project_id].workers++;
+                projectData[pay.project_id].gross += calculateWorkerGross(w);
+                if (w.hari) {
+                    w.hari.forEach(function(val) {
+                        if (val && val !== '') projectData[pay.project_id].entries++;
+                    });
+                }
+            });
         });
 
         var html = `
