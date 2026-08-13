@@ -579,7 +579,7 @@
     }
 
     // ============================================================
-    //  SIMPAN DATA KE SUPABASE (DIBETULKAN - TAMBAH groups: [])
+    //  SIMPAN DATA KE SUPABASE (FIX: DELETE ALL + INSERT ALL)
     // ============================================================
     async function simpanData() {
         if (!currentProjectCode) {
@@ -592,7 +592,7 @@
         var now = new Date().toISOString();
 
         try {
-            // 1. Upsert payroll (metadata) - Tambah groups: [] untuk elakkan NULL
+            // 1. Upsert payroll (metadata)
             var { data: payroll, error: pError } = await supabase
                 .from('payrolls')
                 .upsert({
@@ -601,7 +601,7 @@
                     year: tahun,
                     month: bulan,
                     is_closed: isClosed,
-                    groups: [], // <--- FIX: Hantar array kosong untuk memenuhi NOT NULL
+                    groups: [],
                     updated_at: now
                 }, { onConflict: 'project_id, year, month' })
                 .select('id')
@@ -610,50 +610,29 @@
             if (pError) throw pError;
             payrollUUID = payroll.id;
 
-            // 2. Simpan setiap kumpulan secara individu
+            // 2. Hapuskan SEMUA kumpulan untuk payroll ini (untuk elakkan isu not.in)
+            var { error: delError } = await supabase
+                .from('payroll_groups')
+                .delete()
+                .eq('payroll_id', payroll.id);
+
+            if (delError) throw delError;
+
+            // 3. Sisipkan semula semua kumpulan dari array tempatan
             for (var i = 0; i < groups.length; i++) {
                 var g = groups[i];
-                // Semak konflik pada kumpulan ini
-                if (g._updated_at) {
-                    var { data: checkRow } = await supabase
-                        .from('payroll_groups')
-                        .select('updated_at')
-                        .eq('payroll_id', payroll.id)
-                        .eq('group_name', g.name)
-                        .single();
-
-                    if (checkRow && checkRow.updated_at !== g._updated_at) {
-                        var confirmReload = confirm(
-                            `⚠️ Kumpulan "${g.name}" telah diubah oleh pengguna lain!\n` +
-                            `Sila muat semula untuk melihat perubahan terkini.`
-                        );
-                        if (confirmReload) { location.reload(); return; } 
-                        else return;
-                    }
-                }
-
                 var { error: gError } = await supabase
                     .from('payroll_groups')
-                    .upsert({
+                    .insert({
                         payroll_id: payroll.id,
                         group_name: g.name,
                         workers: g.workers,
                         order_index: i,
                         updated_at: now
-                    }, { onConflict: 'payroll_id, group_name' });
+                    });
 
                 if (gError) throw gError;
             }
-
-            // 3. Padam kumpulan yang ada di database tetapi tiada di local
-            var localNames = groups.map(g => g.name);
-            var { error: delError } = await supabase
-                .from('payroll_groups')
-                .delete()
-                .eq('payroll_id', payroll.id)
-                .not('group_name', 'in', localNames);
-
-            if (delError) throw delError;
 
             alert('✅ Data untuk ' + document.getElementById('bulan').options[bulan].text + ' ' + tahun + ' telah disimpan!');
             groups.forEach(g => g._updated_at = now);
