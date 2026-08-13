@@ -8,6 +8,7 @@
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="manifest" href="site.webmanifest">
 
     <!-- Supabase Client -->
@@ -628,7 +629,7 @@
         // Render Meters, Grid, Alert, and Buttons
         renderMeters(gridData, isHQ);
         renderGrid(gridData, entities, isHQ, daysInMonth);
-        renderAlert(gridData, isHQ);
+        renderAlert(gridData, isHQ, daysInMonth); // <-- PASS daysInMonth
         renderTransactionButtons(gridData, isHQ);
     }
 
@@ -735,9 +736,9 @@
     }
 
     // ============================================================
-    // RENDER ALERT
+    // RENDER ALERT (FIX: Tambah parameter daysInMonth)
     // ============================================================
-    function renderAlert(gridData, isHQ) {
+    function renderAlert(gridData, isHQ, daysInMonth) {
         var alertBox = document.getElementById('alertContainer');
         var alertText = document.getElementById('alertText');
         var hasData = false;
