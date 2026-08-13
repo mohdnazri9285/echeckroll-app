@@ -630,7 +630,7 @@
     }
 
     // ============================================================
-    //  SIMPAN DATA KE SUPABASE (FIX: DELETE ALL + INSERT ALL)
+    //  SIMPAN DATA KE SUPABASE (UPDATED: UPSERT + DELETE INDIVIDUAL)
     // ============================================================
     async function simpanData() {
         if (!currentProjectCode) {
@@ -661,26 +661,61 @@
             if (pError) throw pError;
             payrollUUID = payroll.id;
 
-            // 2. Hapuskan SEMUA kumpulan untuk payroll ini
-            var { error: delError } = await supabase
+            // 2. Dapatkan senarai nama kumpulan yang sedia ada di database
+            var { data: existingGroups, error: eError } = await supabase
                 .from('payroll_groups')
-                .delete()
+                .select('group_name')
                 .eq('payroll_id', payroll.id);
 
-            if (delError) throw delError;
+            if (eError) throw eError;
 
-            // 3. Sisipkan semula semua kumpulan dari array tempatan
+            var existingNames = (existingGroups || []).map(g => g.group_name);
+            var localNames = groups.map(g => g.name);
+
+            // 3. Padam kumpulan yang ada di database tetapi tiada di local
+            for (var i = 0; i < existingNames.length; i++) {
+                var name = existingNames[i];
+                if (localNames.indexOf(name) === -1) {
+                    var { error: delError } = await supabase
+                        .from('payroll_groups')
+                        .delete()
+                        .eq('payroll_id', payroll.id)
+                        .eq('group_name', name);
+                    if (delError) throw delError;
+                }
+            }
+
+            // 4. Upsert semua kumpulan dari local (insert atau update)
             for (var i = 0; i < groups.length; i++) {
                 var g = groups[i];
+                // Semak konflik pada kumpulan ini (jika ada)
+                if (g._updated_at) {
+                    var { data: checkRow } = await supabase
+                        .from('payroll_groups')
+                        .select('updated_at')
+                        .eq('payroll_id', payroll.id)
+                        .eq('group_name', g.name)
+                        .single();
+
+                    if (checkRow && checkRow.updated_at !== g._updated_at) {
+                        var confirmReload = confirm(
+                            `⚠️ Kumpulan "${g.name}" telah diubah oleh pengguna lain!\n` +
+                            `Sila muat semula untuk melihat perubahan terkini.`
+                        );
+                        if (confirmReload) { location.reload(); return; } 
+                        else return;
+                    }
+                }
+
                 var { error: gError } = await supabase
                     .from('payroll_groups')
-                    .insert({
+                    .upsert({
                         payroll_id: payroll.id,
                         group_name: g.name,
                         workers: g.workers,
                         order_index: i,
                         updated_at: now
-                    });
+                    }, { onConflict: 'payroll_id, group_name' });
 
                 if (gError) throw gError;
             }
@@ -860,12 +895,12 @@
             // --- Aktiviti Rows ---
             worker.aktiviti.forEach(function(act, aIdx) {
                 var row = document.createElement('tr');
-                // FIX: Paparkan nama walaupun kod kosong
+                // FIX: Paparkan nama walaupun kod kosong, tambah title untuk teks penuh
                 var displayValue = act.kod ? act.kod + ' - ' + act.nama : act.nama;
                 row.innerHTML = `
                     <td><span class="del-btn" onclick="padamAktiviti(${wIdx}, ${aIdx})">✕</span></td>
                     <td class="row-label" style="padding-left:4px;">
-                        <input list="kuk-list-global" class="editable-input" style="text-align:left; width:100%;" value="${displayValue}" placeholder="Taip kod / nama kerja" ${isEditable ? '' : 'disabled'} onchange="updateActName(${wIdx}, ${aIdx}, this.value)">
+                        <input list="kuk-list-global" class="editable-input" style="text-align:left; width:100%;" value="${displayValue}" placeholder="Taip kod / nama kerja" title="${displayValue}" ${isEditable ? '' : 'disabled'} onchange="updateActName(${wIdx}, ${aIdx}, this.value)">
                     </td>
                     <td><input type="text" class="editable-input" value="${act.kod || ''}" ${isEditable ? '' : 'disabled'}></td>
                     <td><input type="text" class="editable-input" value="${act.unit || ''}" placeholder="PKT" ${isEditable ? '' : 'disabled'} onchange="updateActUnit(${wIdx}, ${aIdx}, this.value);"></td>
@@ -1346,40 +1381,39 @@
     }
 
     // ============================================================
-    //  REALTIME SUBSCRIPTION (BARU)
+    //  REALTIME SUBSCRIPTION
     // ============================================================
     function setupRealtimeSubscription() {
         if (!currentProjectCode || !payrollUUID) {
-            // Jika belum ada payroll, kita masih boleh langgan berdasarkan project_id
-            var bulan = parseInt(document.getElementById('bulan').value);
-            var tahun = parseInt(document.getElementById('tahun').value);
-            // Kita langgan perubahan pada payrolls dan payroll_groups untuk projek ini
-            var channel = supabase.channel('payroll-changes-' + currentProjectCode + '-' + bulan + '-' + tahun);
-
-            channel
-                .on(
-                    'postgres_changes',
-                    { event: '*', schema: 'public', table: 'payrolls', filter: 'project_id=eq.' + currentProjectCode },
-                    function(payload) {
-                        showBanner();
-                    }
-                )
-                .on(
-                    'postgres_changes',
-                    { event: '*', schema: 'public', table: 'payroll_groups' },
-                    function(payload) {
-                        // Semak jika perubahan melibatkan payroll_id yang kita sedang lihat
-                        if (payload.new && payload.new.payroll_id === payrollUUID) {
-                            showBanner();
-                        } else if (payload.old && payload.old.payroll_id === payrollUUID) {
-                            showBanner();
-                        }
-                    }
-                )
-                .subscribe();
-
-            realtimeChannel = channel;
+            return;
         }
+
+        if (realtimeChannel) {
+            supabase.removeChannel(realtimeChannel);
+            realtimeChannel = null;
+        }
+
+        var channel = supabase.channel('payroll-changes-' + currentProjectCode + '-' + payrollUUID);
+
+        channel
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'payrolls', filter: 'project_id=eq.' + currentProjectCode },
+                function(payload) {
+                    showBanner();
+                }
+            )
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'payroll_groups', filter: 'payroll_id=eq.' + payrollUUID },
+                function(payload) {
+                    showBanner();
+                }
+            )
+            .subscribe();
+
+        realtimeChannel = channel;
+        console.log('Realtime subscribed for payroll:', payrollUUID);
     }
 
     function showBanner() {
@@ -1394,7 +1428,6 @@
     function refreshData() {
         hideBanner();
         loadDataFromSupabase();
-        // Re-subscribe dengan UUID baru
         if (realtimeChannel) {
             supabase.removeChannel(realtimeChannel);
             realtimeChannel = null;
@@ -1440,7 +1473,7 @@
     }
 
     // ============================================================
-    //  UPDATE ACT NAME (TANPA DUMMY FALLBACK, SOKONG CUSTOM)
+    //  UPDATE ACT NAME (TIADA FALLBACK MANUAL, SOKONG CUSTOM)
     // ============================================================
     function updateActName(wIdx, aIdx, value) {
         var group = groups[currentGroupIndex];
@@ -1448,7 +1481,7 @@
         var newNama = value;
         var newKadar = 0;
 
-        // 1. Cuba ekstrak 4 digit kod (contoh: "0101 - Menuai Sawit")
+        // 1. Cuba ekstrak 4 digit kod (contoh: "0301 - Merumput – Kimia (ha)")
         var kodMatch = value.match(/^(\d{4})\s*-\s*(.*)/);
         if (kodMatch) {
             newKod = kodMatch[1];
