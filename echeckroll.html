@@ -1456,24 +1456,17 @@ function setupRealtimeSubscription() {
 }
 
 // ============================================================
-//  HANDLE REALTIME GROUP UPDATES (Live Update logic)
+//  HANDLE REALTIME GROUP UPDATES (Professional Conflict Logic)
 // ============================================================
 function handleRealtimeGroupUpdate(payload) {
-    // Abaikan jika kita sendiri yang sedang simpan
+    // Abaikan perubahan jika kita sendiri yang sedang menyimpan data
     if (isSaving) return;
 
     var groupName = null;
     var newWorkers = null;
+    var eventType = payload.eventType;
 
-    // Tentukan jenis event (INSERT, UPDATE, DELETE)
-    if (payload.eventType === 'DELETE') {
-        // Jika kumpulan dipadam, kita perlu muat semula semula atau papar banner
-        // Kita papar banner sahaja untuk keselamatan
-        showBanner();
-        return;
-    }
-
-    // Ambil data dari payload (INSERT atau UPDATE)
+    // Ambil nama kumpulan dari payload
     if (payload.new) {
         groupName = payload.new.group_name;
         newWorkers = payload.new.workers;
@@ -1484,7 +1477,7 @@ function handleRealtimeGroupUpdate(payload) {
 
     if (!groupName) return;
 
-    // Cari kumpulan dalam array tempatan
+    // Cari kedudukan kumpulan dalam senarai tempatan
     var foundIndex = -1;
     for (var i = 0; i < groups.length; i++) {
         if (groups[i].name === groupName) {
@@ -1493,25 +1486,48 @@ function handleRealtimeGroupUpdate(payload) {
         }
     }
 
-    // Jika kumpulan TIADA dalam senarai tempatan (mungkin kumpulan baru),
-    // kita perlu reload untuk pastikan senarai lengkap.
+    // ===================== SENARIO 1: KUMPULAN DIPADAM (DELETE) =====================
+    if (eventType === 'DELETE') {
+        // Jika kumpulan yang dipadam adalah kumpulan yang sedang anda buka
+        if (foundIndex === currentGroupIndex) {
+            showBanner(); // Amaran: Kumpulan aktif anda telah dipadam oleh orang lain!
+            return;
+        } 
+        // Jika kumpulan yang dipadam adalah kumpulan lain (bukan aktif)
+        else if (foundIndex !== -1) {
+            groups.splice(foundIndex, 1); // Padam kumpulan dari array tempatan
+            // Laraskan indeks aktif jika perlu
+            if (currentGroupIndex >= groups.length) {
+                currentGroupIndex = groups.length - 1;
+            }
+            renderTabs(); // Kemaskini tab
+            renderTable(); // Kemaskini jadual
+            // TIADA BANNER, live update berjalan lancar.
+        }
+        return;
+    }
+
+    // ===================== SENARIO 2: KUMPULAN BARU (INSERT) =====================
     if (foundIndex === -1) {
+        // Kumpulan baru tidak wujud dalam sistem anda. Anda perlu reload untuk melihat tab baru.
         showBanner();
         return;
     }
 
-    // Jika kumpulan yang diubah sedang DIBUKA oleh pengguna (currentGroupIndex),
-    // jangan kemaskini automatik, tunjukkan banner sahaja.
+    // ===================== SENARIO 3: KUMPULAN DIKEMASKINI (UPDATE) =====================
+    // 3a. Jika kumpulan yang dikemaskini adalah kumpulan AKTIF (sedang anda buka)
     if (foundIndex === currentGroupIndex) {
+        // Jangan kemaskini automatik kerana anda mungkin sedang menaip data. Tunjukkan banner untuk elakkan konflik.
         showBanner();
         return;
     }
 
-    // Jika kumpulan lain (bukan kumpulan aktif), KEMASKINI SECARA LANGSUNG!
+    // 3b. Jika kumpulan yang dikemaskini adalah kumpulan LAIN (tidak aktif)
+    // KEMASKINI SECARA LANGSUNG DI LATAR BELAKANG – TIADA BANNER!
     groups[foundIndex].workers = newWorkers;
     groups[foundIndex]._updated_at = payload.new ? payload.new.updated_at : groups[foundIndex]._updated_at;
     
-    // Render semula jadual untuk paparkan perubahan
+    // Render semula jadual untuk paparkan perubahan terkini tanpa mengganggu pengguna
     renderTable();
 }
 
