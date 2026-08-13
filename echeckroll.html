@@ -613,7 +613,7 @@
     }
 
     // ============================================================
-    //  SIMPAN DATA KE SUPABASE (FIX: UPSERT BY GROUP, NO GLOBAL DELETE)
+    //  SIMPAN DATA KE SUPABASE (FIX: UPSERT BY GROUP, INDIVIDUAL last_updated_by)
     // ============================================================
     async function simpanData() {
         if (!currentProjectCode) {
@@ -628,7 +628,7 @@
         var now = new Date().toISOString();
 
         try {
-            // 1. Upsert payroll (metadata) - Tambah last_updated_by
+            // 1. Upsert payroll (metadata)
             var { data: payroll, error: pError } = await supabase
                 .from('payrolls')
                 .upsert({
@@ -650,6 +650,7 @@
             // 2. UPSERT setiap kumpulan dari local (TIADA LAGI LOGIK DELETE GLOBAL)
             for (var i = 0; i < groups.length; i++) {
                 var g = groups[i];
+                
                 // Semak konflik pada kumpulan ini (jika ada)
                 if (g._updated_at) {
                     var { data: checkRow } = await supabase
@@ -672,21 +673,53 @@
                     }
                 }
 
+                // Semak sama ada kumpulan ini benar-benar berubah (bandingkan workers JSON)
+                var isGroupChanged = false;
+                if (g._updated_at) {
+                    // Ambil data sedia ada dari database untuk banding
+                    var { data: existingGroup } = await supabase
+                        .from('payroll_groups')
+                        .select('workers')
+                        .eq('payroll_id', payroll.id)
+                        .eq('group_name', g.name)
+                        .single();
+
+                    if (existingGroup) {
+                        // Bandingkan JSON workers
+                        var oldWorkers = JSON.stringify(existingGroup.workers);
+                        var newWorkers = JSON.stringify(g.workers);
+                        if (oldWorkers !== newWorkers) {
+                            isGroupChanged = true;
+                        }
+                    }
+                } else {
+                    // Kumpulan baru (tiada _updated_at) -> dianggap berubah
+                    isGroupChanged = true;
+                }
+
+                // Hanya kemaskini last_updated_by jika kumpulan benar-benar berubah
+                var updateData = {
+                    payroll_id: payroll.id,
+                    group_name: g.name,
+                    workers: g.workers,
+                    order_index: i,
+                    updated_at: now
+                };
+
+                if (isGroupChanged) {
+                    updateData.last_updated_by = currentUser.id;
+                }
+
                 var { error: gError } = await supabase
                     .from('payroll_groups')
-                    .upsert({
-                        payroll_id: payroll.id,
-                        group_name: g.name,
-                        workers: g.workers,
-                        order_index: i,
-                        updated_at: now,
-                        last_updated_by: currentUser.id
-                    }, { onConflict: 'payroll_id, group_name' });
+                    .upsert(updateData, { onConflict: 'payroll_id, group_name' });
 
                 if (gError) throw gError;
             }
 
             alert('✅ Data untuk ' + document.getElementById('bulan').options[bulan].text + ' ' + tahun + ' telah disimpan!');
+            
+            // Kemaskini timestamp tempatan untuk semua kumpulan
             groups.forEach(g => g._updated_at = now);
 
             // JANGAN panggil loadDataFromSupabase() atau refreshData() di sini.
@@ -1732,6 +1765,8 @@
     // ============================================================
     window.onload = async function() {
         await checkUser();
+        // Pastikan banner tidak muncul selepas login
+        hideBanner();
     };
 </script>
 </body>
