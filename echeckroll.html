@@ -1413,69 +1413,104 @@
         }
     }
 
-    // ============================================================
-    //  REALTIME SUBSCRIPTION (Dengan isSaving)
-    // ============================================================
-    function setupRealtimeSubscription() {
-        if (!currentProjectCode || !payrollUUID) {
-            return;
-        }
-
-        if (realtimeChannel) {
-            supabase.removeChannel(realtimeChannel);
-            realtimeChannel = null;
-        }
-
-        var channel = supabase.channel('payroll-changes-' + currentProjectCode + '-' + payrollUUID);
-
-        channel
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'payrolls', filter: 'project_id=eq.' + currentProjectCode },
-                function(payload) {
-                    // Jangan tunjukkan banner jika perubahan dilakukan oleh pengguna sendiri
-                    if (payload.new && payload.new.user_id === currentUser.id) return;
-                    if (payload.old && payload.old.user_id === currentUser.id) return;
-                    showBanner();
-                }
-            )
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'payroll_groups', filter: 'payroll_id=eq.' + payrollUUID },
-                function(payload) {
-                    showBanner();
-                }
-            )
-            .subscribe();
-
-        realtimeChannel = channel;
-        console.log('Realtime subscribed for payroll:', payrollUUID);
+// ============================================================
+//  REALTIME SUBSCRIPTION (Dengan Live Updates)
+// ============================================================
+function setupRealtimeSubscription() {
+    if (!currentProjectCode || !payrollUUID) {
+        return;
     }
 
-    function showBanner() {
-        // JANGAN tunjukkan banner jika kita sendiri yang sedang menyimpan data
-        if (isSaving) {
-            return;
-        }
-        var banner = document.getElementById('realtimeBanner');
-        banner.style.display = 'flex';
+    if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+        realtimeChannel = null;
     }
 
-    function hideBanner() {
-        document.getElementById('realtimeBanner').style.display = 'none';
+    var channel = supabase.channel('payroll-changes-' + currentProjectCode + '-' + payrollUUID);
+
+    channel
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'payrolls', filter: 'project_id=eq.' + currentProjectCode },
+            function(payload) {
+                // Jangan tunjukkan banner jika perubahan dilakukan oleh pengguna sendiri
+                if (payload.new && payload.new.user_id === currentUser.id) return;
+                if (payload.old && payload.old.user_id === currentUser.id) return;
+                showBanner();
+            }
+        )
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'payroll_groups', filter: 'payroll_id=eq.' + payrollUUID },
+            function(payload) {
+                handleRealtimeGroupUpdate(payload);
+            }
+        )
+        .subscribe();
+
+    realtimeChannel = channel;
+    console.log('Realtime subscribed for payroll:', payrollUUID);
+}
+
+// ============================================================
+//  HANDLE REALTIME GROUP UPDATES (Live Update logic)
+// ============================================================
+function handleRealtimeGroupUpdate(payload) {
+    // Abaikan jika kita sendiri yang sedang simpan
+    if (isSaving) return;
+
+    var groupName = null;
+    var newWorkers = null;
+
+    // Tentukan jenis event (INSERT, UPDATE, DELETE)
+    if (payload.eventType === 'DELETE') {
+        // Jika kumpulan dipadam, kita perlu muat semula semula atau papar banner
+        // Kita papar banner sahaja untuk keselamatan
+        showBanner();
+        return;
     }
 
-    function refreshData() {
-        hideBanner();
-        loadDataFromSupabase();
-        if (realtimeChannel) {
-            supabase.removeChannel(realtimeChannel);
-            realtimeChannel = null;
-        }
-        setupRealtimeSubscription();
-        renderTabs();
-        renderTable();
+    // Ambil data dari payload (INSERT atau UPDATE)
+    if (payload.new) {
+        groupName = payload.new.group_name;
+        newWorkers = payload.new.workers;
+    } else if (payload.old) {
+        groupName = payload.old.group_name;
+        newWorkers = payload.old.workers;
     }
+
+    if (!groupName) return;
+
+    // Cari kumpulan dalam array tempatan
+    var foundIndex = -1;
+    for (var i = 0; i < groups.length; i++) {
+        if (groups[i].name === groupName) {
+            foundIndex = i;
+            break;
+        }
+    }
+
+    // Jika kumpulan TIADA dalam senarai tempatan (mungkin kumpulan baru),
+    // kita perlu reload untuk pastikan senarai lengkap.
+    if (foundIndex === -1) {
+        showBanner();
+        return;
+    }
+
+    // Jika kumpulan yang diubah sedang DIBUKA oleh pengguna (currentGroupIndex),
+    // jangan kemaskini automatik, tunjukkan banner sahaja.
+    if (foundIndex === currentGroupIndex) {
+        showBanner();
+        return;
+    }
+
+    // Jika kumpulan lain (bukan kumpulan aktif), KEMASKINI SECARA LANGSUNG!
+    groups[foundIndex].workers = newWorkers;
+    groups[foundIndex]._updated_at = payload.new ? payload.new.updated_at : groups[foundIndex]._updated_at;
+    
+    // Render semula jadual untuk paparkan perubahan
+    renderTable();
+}
 
     // ============================================================
     //  LOGIK FUNGSI & SYNC
