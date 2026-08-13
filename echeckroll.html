@@ -538,7 +538,7 @@
     }
 
     // ============================================================
-    //  AMBIL DATA CUTI BERBAYAR DARI SUPABASE (BARU)
+    //  AMBIL DATA CUTI BERBAYAR DARI SUPABASE
     // ============================================================
     async function loadLeavesFromSupabase() {
         var { data, error } = await supabase
@@ -573,10 +573,7 @@
                 }
             });
         } else {
-            optionsHtml += '<option value="0101 - Menuai Sawit - Buah (kg)">';
-            optionsHtml += '<option value="0201 - Kerja Lebih Masa (jam)">';
-            optionsHtml += '<option value="0301 - Merumput - Kimia (ha)">';
-            optionsHtml += '<option value="0401 - Pengangkutan Buah (tan)">';
+            optionsHtml += '';
         }
         datalist.innerHTML = optionsHtml;
     }
@@ -693,7 +690,7 @@
     }
 
     // ============================================================
-    //  RENDER TABLE (Dengan PAID_LEAVE_CODES digantikan dengan paidLeaveCodes)
+    //  RENDER TABLE
     // ============================================================
     function renderTable() {
         var tbody = document.getElementById('tableBody');
@@ -885,7 +882,6 @@
             if (presentLeaveCodes.length > 0) {
                 presentLeaveCodes.forEach(function(code) {
                     var label = LEAVE_MAP[code];
-                    // GANTI: PAID_LEAVE_CODES -> paidLeaveCodes
                     var isPaidLeave = paidLeaveCodes.includes(code);
                     var currentRate = worker.leaveRates[code] || 0;
                     var totalCuti = leaveCounts[code] || 0;
@@ -926,7 +922,6 @@
 
             var totalLeaveAmount = 0;
             presentLeaveCodes.forEach(function(code) {
-                // GANTI: PAID_LEAVE_CODES -> paidLeaveCodes
                 if (paidLeaveCodes.includes(code)) {
                     totalLeaveAmount += (leaveCounts[code] || 0) * (worker.leaveRates[code] || 0);
                 }
@@ -1036,7 +1031,6 @@
                 
                 Object.keys(worker.leaveRates).forEach(function(code) {
                     var ucCode = code.toUpperCase();
-                    // GANTI: PAID_LEAVE_CODES -> paidLeaveCodes
                     if (paidLeaveCodes.includes(ucCode)) {
                         var count = 0;
                         worker.hari.forEach(function(val) { 
@@ -1063,7 +1057,6 @@
                         }
                         allLeaves[code].dailyCount[idx]++;
                         allLeaves[code].totalCount++;
-                        // GANTI: PAID_LEAVE_CODES -> paidLeaveCodes
                         if (paidLeaveCodes.includes(code)) {
                             allLeaves[code].totalRates += (worker.leaveRates[code] || 0);
                             allLeaves[code].numWorkers++;
@@ -1197,7 +1190,6 @@
 
                 Object.keys(allLeaves).forEach(function(code) {
                     var l = allLeaves[code];
-                    // GANTI: PAID_LEAVE_CODES -> paidLeaveCodes
                     var isPaid = paidLeaveCodes.includes(code);
                     
                     var avgRate = l.numWorkers > 0 ? (l.totalRates / l.numWorkers) : 0;
@@ -1355,52 +1347,45 @@
         renderTable();
     }
 
+    // ============================================================
+    //  UPDATE ACT NAME (TANPA DUMMY FALLBACK, SOKONG CUSTOM)
+    // ============================================================
     function updateActName(wIdx, aIdx, value) {
         var group = groups[currentGroupIndex];
         var newKod = '';
         var newNama = value;
         var newKadar = 0;
 
-        // 1. Cuba match menggunakan regex (4 digit)
+        // 1. Cuba ekstrak 4 digit kod (contoh: "0101 - Menuai Sawit")
         var kodMatch = value.match(/^(\d{4})\s*-\s*(.*)/);
         if (kodMatch) {
             newKod = kodMatch[1];
             newNama = kodMatch[2];
             
-            // Cari kadar harga dari database berdasarkan kod
+            // Cari kadar dari database berdasarkan kod
             var foundRate = allRates.find(function(r) { return r.code === newKod; });
             if (foundRate) {
                 newKadar = foundRate.price;
             }
         } else {
-            // 2. Cuba match dari description database
+            // 2. Cuba padankan dengan description/kod dari database
             var foundRate = allRates.find(function(r) {
                 return value.toLowerCase().includes(r.description.toLowerCase()) || 
                        value.toLowerCase().includes(r.code.toLowerCase());
             });
-            
             if (foundRate) {
                 newKod = foundRate.code;
                 newNama = foundRate.description;
                 newKadar = foundRate.price;
             } 
-            // 3. Fallback manual
-            else {
-                if (value.toLowerCase().includes('menuai')) { newKod = '0101'; newNama = 'Menuai Sawit - Buah (kg)'; }
-                else if (value.toLowerCase().includes('lebih masa')) { newKod = '0201'; newNama = 'Kerja Lebih Masa (jam)'; }
-                else if (value.toLowerCase().includes('merumput')) { newKod = '0301'; newNama = 'Merumput - Kimia (ha)'; }
-                else if (value.toLowerCase().includes('pengangkutan')) { newKod = '0401'; newNama = 'Pengangkutan Buah (tan)'; }
-                else {
-                    newNama = value;
-                }
-            }
+            // 3. Tiada padanan -> simpan sebagai input custom
+            // (newKod kekal '', newNama kekal value)
         }
 
-        // Kemaskini Pekerja 1 (Master)
+        // Kemaskini Pekerja 1 (Master) dan sync ke semua
         if (group.workers[0] && group.workers[0].aktiviti[aIdx]) {
             group.workers[0].aktiviti[aIdx].kod = newKod;
             group.workers[0].aktiviti[aIdx].nama = newNama;
-            // Jika kadar baru dijumpai di database, set automatik
             if (newKadar > 0) {
                 group.workers[0].aktiviti[aIdx].kadar = newKadar;
             }
