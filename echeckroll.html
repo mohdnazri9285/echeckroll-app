@@ -1484,7 +1484,36 @@ function setupRealtimeSubscription() {
     realtimeChannel = channel;
     console.log('Realtime subscribed for payroll:', payrollUUID);
 }
+    
+// ============================================================
+//  BANNER FUNCTIONS (FIX: Pastikan Global Scope)
+// ============================================================
+function showBanner() {
+    // Jangan tunjukkan jika sedang simpan ATAU banner telah ditutup oleh pengguna
+    if (isSaving || bannerDismissed) return;
+    var banner = document.getElementById('realtimeBanner');
+    if (banner) banner.style.display = 'flex';
+}
 
+function hideBanner() {
+    bannerDismissed = true; // Rekod bahawa pengguna telah tutup banner
+    var banner = document.getElementById('realtimeBanner');
+    if (banner) banner.style.display = 'none';
+}
+
+function refreshData() {
+    bannerDismissed = false; // Reset supaya banner boleh muncul semula untuk perubahan lain
+    hideBanner();
+    loadDataFromSupabase();
+    if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+        realtimeChannel = null;
+    }
+    setupRealtimeSubscription();
+    renderTabs();
+    renderTable();
+}
+    
 // ============================================================
 //  HANDLE REALTIME GROUP UPDATES (Professional Conflict Logic)
 // ============================================================
