@@ -323,9 +323,6 @@
     </div>
 </div>
 
-<!-- ================= DATALIST GLOBAL UNTUK KUK ================= -->
-<datalist id="kuk-list-global"></datalist>
-
 <script>
     // ============================================================
     //  SUPABASE CONFIGURATION
@@ -354,6 +351,9 @@
 
     // Realtime channel reference
     var realtimeChannel = null;
+
+    // NEW: Flag untuk elakkan Real-time trigger semasa simpanan sendiri
+    var isSaving = false;
 
     // ============================================================
     //  LOGIN CHECK & LOAD PROJECT NAME
@@ -517,7 +517,7 @@
             // 1. Ambil payroll metadata
             var { data: payroll, error } = await supabase
                 .from('payrolls')
-                .select('id, is_closed, updated_at')
+                .select('id, is_closed, updated_at, last_updated_by')
                 .eq('project_id', currentProjectCode)
                 .eq('year', tahun)
                 .eq('month', bulan)
@@ -536,7 +536,7 @@
                 // 2. Ambil semua kumpulan untuk payroll ini
                 var { data: groupsData, error: gError } = await supabase
                     .from('payroll_groups')
-                    .select('group_name, workers, updated_at, order_index')
+                    .select('group_name, workers, updated_at, order_index, last_updated_by')
                     .eq('payroll_id', payroll.id)
                     .order('order_index', { ascending: true });
 
@@ -546,7 +546,8 @@
                 groups = groupsData.map(g => ({
                     name: g.group_name,
                     workers: g.workers,
-                    _updated_at: g.updated_at
+                    _updated_at: g.updated_at,
+                    _last_updated_by: g.last_updated_by
                 }));
 
                 currentGroupIndex = 0;
@@ -582,7 +583,6 @@
         
         if (!error && data) {
             allRates = data;
-            updateKukDatalist();
         } else {
             console.error('Error loading rates:', error);
         }
@@ -610,27 +610,7 @@
     }
 
     // ============================================================
-    //  KEMASKINI DATALIST GLOBAL
-    // ============================================================
-    function updateKukDatalist() {
-        var datalist = document.getElementById('kuk-list-global');
-        if (!datalist) return;
-
-        var optionsHtml = '';
-        if (allRates && allRates.length > 0) {
-            allRates.forEach(function(r) {
-                if (r.code && r.description) {
-                    optionsHtml += `<option value="${r.code} - ${r.description}">`;
-                }
-            });
-        } else {
-            optionsHtml += '';
-        }
-        datalist.innerHTML = optionsHtml;
-    }
-
-    // ============================================================
-    //  SIMPAN DATA KE SUPABASE (Dengan muat semula automatik)
+    //  SIMPAN DATA KE SUPABASE (Dengan last_updated_by & isSaving)
     // ============================================================
     async function simpanData() {
         if (!currentProjectCode) {
@@ -638,12 +618,14 @@
             return;
         }
 
+        isSaving = true; // <--- Tandakan sedang simpan
+
         var bulan = parseInt(document.getElementById('bulan').value);
         var tahun = parseInt(document.getElementById('tahun').value);
         var now = new Date().toISOString();
 
         try {
-            // 1. Upsert payroll (metadata)
+            // 1. Upsert payroll (metadata) - Tambah last_updated_by
             var { data: payroll, error: pError } = await supabase
                 .from('payrolls')
                 .upsert({
@@ -653,7 +635,8 @@
                     month: bulan,
                     is_closed: isClosed,
                     groups: [],
-                    updated_at: now
+                    updated_at: now,
+                    last_updated_by: currentUser.id
                 }, { onConflict: 'project_id, year, month' })
                 .select('id')
                 .single();
@@ -703,7 +686,10 @@
                             `Sila muat semula untuk melihat perubahan terkini.`
                         );
                         if (confirmReload) { location.reload(); return; } 
-                        else return;
+                        else {
+                            isSaving = false; // Reset jika batal
+                            return;
+                        }
                     }
                 }
 
@@ -714,7 +700,8 @@
                         group_name: g.name,
                         workers: g.workers,
                         order_index: i,
-                        updated_at: now
+                        updated_at: now,
+                        last_updated_by: currentUser.id
                     }, { onConflict: 'payroll_id, group_name' });
 
                 if (gError) throw gError;
@@ -723,11 +710,14 @@
             alert('✅ Data untuk ' + document.getElementById('bulan').options[bulan].text + ' ' + tahun + ' telah disimpan!');
             groups.forEach(g => g._updated_at = now);
 
-            // Muat semula data selepas simpan supaya data tidak hilang
-            await loadDataFromSupabase();
+            // JANGAN panggil loadDataFromSupabase() atau refreshData() di sini.
+            // Data tempatan masih sama. Hanya renderTable() untuk memastikan.
+            renderTable();
 
         } catch (err) {
             alert('❌ Ralat menyimpan data: ' + err.message);
+        } finally {
+            isSaving = false; // <--- Pastikan reset selepas selesai
         }
     }
 
@@ -759,7 +749,7 @@
     }
 
     // ============================================================
-    //  RENDER TABLE (Dengan peluasan dropdown aktiviti)
+    //  RENDER TABLE (Dengan dropdown select penuh)
     // ============================================================
     function renderTable() {
         var tbody = document.getElementById('tableBody');
@@ -899,12 +889,25 @@
             // --- Aktiviti Rows ---
             worker.aktiviti.forEach(function(act, aIdx) {
                 var row = document.createElement('tr');
-                // FIX: Paparkan nama walaupun kod kosong, tambah title untuk teks penuh
+                // FIX: Tukar input list kepada SELECT asli
                 var displayValue = act.kod ? act.kod + ' - ' + act.nama : act.nama;
+                var selectHtml = `<select class="editable-input" style="width:100%; text-align:left; max-width:none;" ${isEditable ? '' : 'disabled'} onchange="updateActName(${wIdx}, ${aIdx}, this.value)">
+                    <option value="">Taip kod / nama kerja</option>`;
+                
+                // Generate options from allRates
+                if (allRates && allRates.length > 0) {
+                    allRates.forEach(function(r) {
+                        var optVal = r.code + ' - ' + r.description;
+                        var selected = (optVal === displayValue) ? 'selected' : '';
+                        selectHtml += `<option value="${optVal}" ${selected}>${r.code} - ${r.description}</option>`;
+                    });
+                }
+                selectHtml += `</select>`;
+
                 row.innerHTML = `
                     <td><span class="del-btn" onclick="padamAktiviti(${wIdx}, ${aIdx})">✕</span></td>
                     <td class="row-label" style="padding-left:4px;">
-                        <input list="kuk-list-global" class="editable-input" style="text-align:left; width:100%; max-width:none;" value="${displayValue}" placeholder="Taip kod / nama kerja" title="${displayValue}" ${isEditable ? '' : 'disabled'} onchange="updateActName(${wIdx}, ${aIdx}, this.value)">
+                        ${selectHtml}
                     </td>
                     <td><input type="text" class="editable-input" value="${act.kod || ''}" ${isEditable ? '' : 'disabled'}></td>
                     <td><input type="text" class="editable-input" value="${act.unit || ''}" placeholder="PKT" ${isEditable ? '' : 'disabled'} onchange="updateActUnit(${wIdx}, ${aIdx}, this.value);"></td>
@@ -1385,7 +1388,7 @@
     }
 
     // ============================================================
-    //  REALTIME SUBSCRIPTION (Tapis perubahan sendiri)
+    //  REALTIME SUBSCRIPTION (Dengan isSaving)
     // ============================================================
     function setupRealtimeSubscription() {
         if (!currentProjectCode || !payrollUUID) {
@@ -1414,9 +1417,6 @@
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'payroll_groups', filter: 'payroll_id=eq.' + payrollUUID },
                 function(payload) {
-                    // Untuk payroll_groups, kita hanya papar banner. 
-                    // Namun, pengguna sendiri tidak akan trigger banner ini selepas simpan
-                    // kerana kita telah memuat semula data di akhir simpanData()
                     showBanner();
                 }
             )
@@ -1427,6 +1427,10 @@
     }
 
     function showBanner() {
+        // JANGAN tunjukkan banner jika kita sendiri yang sedang menyimpan data
+        if (isSaving) {
+            return;
+        }
         var banner = document.getElementById('realtimeBanner');
         banner.style.display = 'flex';
     }
