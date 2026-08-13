@@ -357,6 +357,8 @@
 
     // NEW: Flag untuk elakkan Real-time trigger semasa simpanan sendiri
     var isSaving = false;
+    // FIX: Flag untuk elakkan banner muncul semula selepas ditutup oleh pengguna
+    var bannerDismissed = false;
 
     // ============================================================
     //  LOGIN CHECK & LOAD PROJECT NAME
@@ -504,6 +506,7 @@
         }
 
         await loadDataFromSupabase();
+        bannerDismissed = false; // Reset semasa tukar bulan
         setupRealtimeSubscription();
         renderTabs();
         renderTable();
