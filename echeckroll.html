@@ -247,7 +247,7 @@
                         <option value="0">JANUARI</option><option value="1">FEBRUARI</option>
                         <option value="2">MAC</option><option value="3">APRIL</option>
                         <option value="4">MEI</option><option value="5">JUN</option>
-                        <option value="6" selected>JULAI</option><option value="7">OGOS</option>
+                        <option value="6">JULAI</option><option value="7">OGOS</option>
                         <option value="8">SEPTEMBER</option><option value="9">OKTOBER</option>
                         <option value="10">NOVEMBER</option><option value="11">DISEMBER</option>
                     </select>
@@ -361,6 +361,17 @@
     var bannerDismissed = false;
 
     // ============================================================
+    //  SET DEFAULT MONTH TO CURRENT (BARU)
+    // ============================================================
+    function setDefaultMonth() {
+        var now = new Date();
+        var month = now.getMonth(); // 0-11
+        var year = now.getFullYear();
+        document.getElementById('bulan').value = month;
+        document.getElementById('tahun').value = year;
+    }
+
+    // ============================================================
     //  LOGIN CHECK & LOAD PROJECT NAME
     // ============================================================
     async function checkUser() {
@@ -399,6 +410,7 @@
         document.getElementById('kumpulan').value = projectDisplayName;
 
         updateButtons();
+        setDefaultMonth(); // <--- SET DEFAULT MONTH HERE
         renderSidePanel();
         
         // Muat KUK dan Cuti Berbayar dahulu
@@ -426,27 +438,28 @@
     }
 
     // ============================================================
-    //  SIDEBAR & CALENDAR
+    //  SIDEBAR & CALENDAR (Dynamic Years)
     // ============================================================
     function renderSidePanel() {
         var panel = document.getElementById('sidePanel');
         var html = '';
         var currentMonth = parseInt(document.getElementById('bulan').value);
         var months = ['Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogos','Sep','Okt','Nov','Dis'];
+        var currentYear = new Date().getFullYear(); // <--- DYNAMIC YEAR
 
-        for (var y = 2026; y <= 2027; y++) {
+        for (var y = currentYear - 2; y <= currentYear + 2; y++) {
             html += `<h5 onclick="toggleYear(${y})">${y} <span id="arrow-${y}">▶</span></h5>`;
             html += `<div class="month-list" id="year-${y}">`;
             months.forEach(function(m, i) {
-                var isActive = (y === 2026 && i === currentMonth);
+                var isActive = (y === currentYear && i === currentMonth);
                 var activeClass = isActive ? 'active-bold' : '';
                 html += `<div class="month-item ${activeClass}" onclick="switchMonth(${y}, ${i})">${m}</div>`;
             });
             html += `</div>`;
         }
         panel.innerHTML = html;
-        document.getElementById('year-2026').classList.add('open');
-        document.getElementById('arrow-2026').innerText = '▼';
+        document.getElementById('year-' + currentYear).classList.add('open');
+        document.getElementById('arrow-' + currentYear).innerText = '▼';
     }
 
     function toggleYear(y) {
@@ -556,7 +569,7 @@
                     workers: g.workers,
                     _updated_at: g.updated_at,
                     _last_updated_by: g.last_updated_by,
-                    _order_index: g.order_index // <--- TAMBAH INI
+                    _order_index: g.order_index
                 }));
 
                 currentGroupIndex = 0;
@@ -1414,7 +1427,7 @@
     }
 
 // ============================================================
-//  REALTIME SUBSCRIPTION (Dengan Live Updates)
+//  REALTIME SUBSCRIPTION (Dengan Live Updates & FIX payrolls)
 // ============================================================
 function setupRealtimeSubscription() {
     if (!currentProjectCode || !payrollUUID) {
@@ -1433,9 +1446,9 @@ function setupRealtimeSubscription() {
             'postgres_changes',
             { event: '*', schema: 'public', table: 'payrolls', filter: 'project_id=eq.' + currentProjectCode },
             function(payload) {
-                // Jangan tunjukkan banner jika perubahan dilakukan oleh pengguna sendiri
-                if (payload.new && payload.new.user_id === currentUser.id) return;
-                if (payload.old && payload.old.user_id === currentUser.id) return;
+                // FIX: Guna last_updated_by untuk kenal pasti perubahan sendiri
+                if (payload.new && payload.new.last_updated_by === currentUser.id) return;
+                if (payload.old && payload.old.last_updated_by === currentUser.id) return;
                 showBanner();
             }
         )
