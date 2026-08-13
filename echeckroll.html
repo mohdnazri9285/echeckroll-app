@@ -323,6 +323,9 @@
     </div>
 </div>
 
+<!-- ================= DATALIST GLOBAL UNTUK KUK ================= -->
+<datalist id="kuk-list-global"></datalist>
+
 <script>
     // ============================================================
     //  SUPABASE CONFIGURATION
@@ -586,9 +589,11 @@
         if (!error && data) {
             allRates = data;
             console.log('✅ Kadar upah dimuatkan:', allRates.length);
+            updateKukDatalist();
         } else {
             console.error('❌ Error loading rates:', error);
             allRates = [];
+            updateKukDatalist();
         }
     }
 
@@ -611,6 +616,27 @@
             // Fallback ke senarai keras jika database gagal
             paidLeaveCodes = ['CA', 'CT', 'MC', 'CB', 'HAJI', 'CM', 'OFF', 'WAD', 'CBN', 'CP', 'CE', 'CK'];
         }
+    }
+
+    // ============================================================
+    //  KEMASKINI DATALIST GLOBAL
+    // ============================================================
+    function updateKukDatalist() {
+        var datalist = document.getElementById('kuk-list-global');
+        if (!datalist) return;
+
+        var optionsHtml = '';
+        if (allRates && allRates.length > 0) {
+            allRates.forEach(function(r) {
+                if (r.code && r.description) {
+                    optionsHtml += `<option value="${r.code} - ${r.description}">`;
+                }
+            });
+        } else {
+            // Fallback kosong (tiada pilihan)
+            optionsHtml += '';
+        }
+        datalist.innerHTML = optionsHtml;
     }
 
     // ============================================================
@@ -762,7 +788,7 @@
     }
 
     // ============================================================
-    //  RENDER TABLE (Dengan basic dropdown SELECT)
+    //  RENDER TABLE (Dengan input list untuk taip & dropdown penuh)
     // ============================================================
     function renderTable() {
         var tbody = document.getElementById('tableBody');
@@ -884,7 +910,7 @@
             var headerActRow = document.createElement('tr');
             headerActRow.style.backgroundColor = '#fff9c4';
             headerActRow.style.borderTop = '2px solid #ddd';
-            // FIX: Lebarkan lajur AKTIVITI KERJA untuk select penuh
+            // FIX: Lebarkan lajur AKTIVITI KERJA untuk input yang luas
             headerActRow.innerHTML = `
                 <td></td>
                 <td class="row-label" style="text-align:center; font-weight:bold; padding-left:5px; min-width:300px; border-right:1px solid #b0bec5;">AKTIVITI KERJA</td>
@@ -902,27 +928,12 @@
             // --- Aktiviti Rows ---
             worker.aktiviti.forEach(function(act, aIdx) {
                 var row = document.createElement('tr');
-
-                // FIX: Generate basic select dropdown
-                var displayValue = act.kod ? act.kod + ' - ' + act.nama : '';
-                var selectHtml = `<select class="editable-input" style="text-align:left; width:100%; max-width:none; min-width:300px;" ${isEditable ? '' : 'disabled'} onchange="updateActName(${wIdx}, ${aIdx}, this.value)">
-                    <option value="">Pilih aktiviti kerja</option>`;
-
-                if (allRates && allRates.length > 0) {
-                    allRates.forEach(function(r) {
-                        var optVal = r.code + ' - ' + r.description;
-                        var selected = (optVal === displayValue) ? 'selected' : '';
-                        selectHtml += `<option value="${optVal}" ${selected} title="${optVal}">${r.code} - ${r.description}</option>`;
-                    });
-                } else {
-                    selectHtml += `<option value="" disabled>Tiada data KUK</option>`;
-                }
-                selectHtml += `</select>`;
-
+                // FIX: Gunakan input list untuk pastikan fungsi taip dan dropdown berfungsi
+                var displayValue = act.kod ? act.kod + ' - ' + act.nama : act.nama;
                 row.innerHTML = `
                     <td><span class="del-btn" onclick="padamAktiviti(${wIdx}, ${aIdx})">✕</span></td>
                     <td class="row-label" style="padding-left:4px;">
-                        ${selectHtml}
+                        <input list="kuk-list-global" class="editable-input" style="text-align:left; width:100%; max-width:none; min-width:300px;" value="${displayValue}" placeholder="Taip kod / nama kerja" title="${displayValue}" ${isEditable ? '' : 'disabled'} onchange="updateActName(${wIdx}, ${aIdx}, this.value)">
                     </td>
                     <td><input type="text" class="editable-input" value="${act.kod || ''}" ${isEditable ? '' : 'disabled'}></td>
                     <td><input type="text" class="editable-input" value="${act.unit || ''}" placeholder="PKT" ${isEditable ? '' : 'disabled'} onchange="updateActUnit(${wIdx}, ${aIdx}, this.value);"></td>
@@ -1502,31 +1513,36 @@
     }
 
     // ============================================================
-    //  UPDATE ACT NAME (FIX: menggunakan select, tiada fallback)
+    //  UPDATE ACT NAME (FIX: Tiada fallback yang salah, simpan custom)
     // ============================================================
     function updateActName(wIdx, aIdx, value) {
         var group = groups[currentGroupIndex];
         var newKod = '';
-        var newNama = '';
+        var newNama = value;
         var newKadar = 0;
 
-        // Jika value kosong, set kosong
-        if (value && value.trim() !== '') {
-            // Ekstrak kod dan nama dari pilihan select yang tepat
-            var kodMatch = value.match(/^(\d{4})\s*-\s*(.*)/);
-            if (kodMatch) {
-                newKod = kodMatch[1];
-                newNama = kodMatch[2];
-                
-                // Cari kadar harga dari database berdasarkan kod
-                var foundRate = allRates.find(function(r) { return r.code === newKod; });
-                if (foundRate) {
-                    newKadar = foundRate.price;
-                }
-            }
+        // 1. Cuba ekstrak 4 digit kod
+        var kodMatch = value.match(/^(\d{4})\s*-\s*(.*)/);
+        if (kodMatch) {
+            newKod = kodMatch[1];
+            newNama = kodMatch[2];
+            var foundRate = allRates.find(function(r) { return r.code === newKod; });
+            if (foundRate) newKadar = foundRate.price;
+        } else {
+            // 2. Cuba padankan dengan description/kod dari database
+            var foundRate = allRates.find(function(r) {
+                return value.toLowerCase().includes(r.description.toLowerCase()) || 
+                       value.toLowerCase().includes(r.code.toLowerCase());
+            });
+            if (foundRate) {
+                newKod = foundRate.code;
+                newNama = foundRate.description;
+                newKadar = foundRate.price;
+            } 
+            // 3. Jika tiada padanan, simpan sebagai input custom (newKod kekal '')
         }
 
-        // Kemaskini Pekerja 1 (Master) dan sync ke semua
+        // Kemaskini Pekerja 1 (Master)
         if (group.workers[0] && group.workers[0].aktiviti[aIdx]) {
             group.workers[0].aktiviti[aIdx].kod = newKod;
             group.workers[0].aktiviti[aIdx].nama = newNama;
