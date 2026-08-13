@@ -405,6 +405,8 @@
 
         renderTabs();
         updateCalendar();
+        // Pastikan banner tidak muncul selepas login
+        hideBanner();
     }
 
     function doLogout() {
@@ -586,8 +588,12 @@
         
         if (!error && data) {
             allRates = data;
+            updateKukDatalist();
+            console.log('✅ Kadar upah dimuatkan:', allRates.length);
         } else {
-            console.error('Error loading rates:', error);
+            console.error('❌ Error loading rates:', error);
+            allRates = [];
+            updateKukDatalist();
         }
     }
 
@@ -610,6 +616,27 @@
             // Fallback ke senarai keras jika database gagal
             paidLeaveCodes = ['CA', 'CT', 'MC', 'CB', 'HAJI', 'CM', 'OFF', 'WAD', 'CBN', 'CP', 'CE', 'CK'];
         }
+    }
+
+    // ============================================================
+    //  KEMASKINI DATALIST GLOBAL
+    // ============================================================
+    function updateKukDatalist() {
+        var datalist = document.getElementById('kuk-list-global');
+        if (!datalist) return;
+
+        var optionsHtml = '';
+        if (allRates && allRates.length > 0) {
+            allRates.forEach(function(r) {
+                if (r.code && r.description) {
+                    optionsHtml += `<option value="${r.code} - ${r.description}">`;
+                }
+            });
+        } else {
+            // Fallback kosong (tiada pilihan)
+            optionsHtml += '';
+        }
+        datalist.innerHTML = optionsHtml;
     }
 
     // ============================================================
@@ -901,7 +928,7 @@
             // --- Aktiviti Rows ---
             worker.aktiviti.forEach(function(act, aIdx) {
                 var row = document.createElement('tr');
-                // FIX: Kembali ke input list untuk fungsi taip
+                // FIX: Gunakan input list untuk memastikan fungsi taip dan dropdown berfungsi
                 var displayValue = act.kod ? act.kod + ' - ' + act.nama : act.nama;
                 row.innerHTML = `
                     <td><span class="del-btn" onclick="padamAktiviti(${wIdx}, ${aIdx})">✕</span></td>
@@ -1765,8 +1792,6 @@
     // ============================================================
     window.onload = async function() {
         await checkUser();
-        // Pastikan banner tidak muncul selepas login
-        hideBanner();
     };
 </script>
 </body>
