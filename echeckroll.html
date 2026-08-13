@@ -829,10 +829,12 @@
             // --- Aktiviti Rows ---
             worker.aktiviti.forEach(function(act, aIdx) {
                 var row = document.createElement('tr');
+                // FIX: Paparkan nama walaupun kod kosong
+                var displayValue = act.kod ? act.kod + ' - ' + act.nama : act.nama;
                 row.innerHTML = `
                     <td><span class="del-btn" onclick="padamAktiviti(${wIdx}, ${aIdx})">✕</span></td>
                     <td class="row-label" style="padding-left:4px;">
-                        <input list="kuk-list-global" class="editable-input" style="text-align:left; width:100%;" value="${act.kod ? act.kod + ' - ' + act.nama : ''}" placeholder="Taip kod / nama kerja" ${isEditable ? '' : 'disabled'} onchange="updateActName(${wIdx}, ${aIdx}, this.value)">
+                        <input list="kuk-list-global" class="editable-input" style="text-align:left; width:100%;" value="${displayValue}" placeholder="Taip kod / nama kerja" ${isEditable ? '' : 'disabled'} onchange="updateActName(${wIdx}, ${aIdx}, this.value)">
                     </td>
                     <td><input type="text" class="editable-input" value="${act.kod || ''}" ${isEditable ? '' : 'disabled'}></td>
                     <td><input type="text" class="editable-input" value="${act.unit || ''}" placeholder="PKT" ${isEditable ? '' : 'disabled'} onchange="updateActUnit(${wIdx}, ${aIdx}, this.value);"></td>
@@ -1485,10 +1487,11 @@
 
     function tambahPekerja() {
         var group = groups[currentGroupIndex];
+        // FIX: Aktiviti kosong untuk pekerja baru (tiada dummy)
         var newWorker = {
             id: Date.now(), nama: 'PEKERJA BARU', noKP: 'XXXXXXXXXXXX', umur: 30, jantina: 'L',
             hari: Array(31).fill(''),
-            aktiviti: group.workers.length > 0 ? JSON.parse(JSON.stringify(group.workers[0].aktiviti)) : [{ kod: '0101', nama: 'Menuai Sawit - Buah (kg)', unit: '', blok: '', kadar: 0.50, kuantitiHarian: Array(31).fill(0) }],
+            aktiviti: [], // <--- KOSONG
             elaun_motorsikal: 0, elaun_rumah: 0,
             potongan: group.workers.length > 0 ? JSON.parse(JSON.stringify(group.workers[0].potongan)) : [ { label: 'KWSP', nilai: 0 } ],
             leaveRates: group.workers.length > 0 ? JSON.parse(JSON.stringify(group.workers[0].leaveRates)) : {},
@@ -1560,11 +1563,12 @@
     function addNewGroup() {
         var defaultPotongan = [ { label: 'KWSP', nilai: 0 }, { label: 'SOCSO', nilai: 0 }, { label: 'SIP', nilai: 0 } ];
         var newGroup = {
+            id: nextGroupId++,
             name: 'Kumpulan ' + (groups.length + 1),
             workers: [{
                 id: Date.now(), nama: 'PEKERJA BARU', noKP: 'XXXXXXXXXXXX', umur: 30, jantina: 'L',
                 hari: Array(31).fill(''),
-                aktiviti: [{ kod: '0101', nama: 'Menuai Sawit - Buah (kg)', unit: '', blok: '', kadar: 0.50, kuantitiHarian: Array(31).fill(0) }],
+                aktiviti: [], // <--- KOSONG
                 elaun_motorsikal: 0, elaun_rumah: 0,
                 potongan: JSON.parse(JSON.stringify(defaultPotongan)),
                 leaveRates: {}, afcCheck: Array(31).fill(false), fcCheck: Array(31).fill(false)
