@@ -8,7 +8,6 @@
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="manifest" href="site.webmanifest">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -657,7 +656,7 @@
     }
 
     // ============================================================
-    //  SIMPAN DATA KE SUPABASE (FIX: UPSERT BY GROUP, ONLY IF CHANGED)
+    //  SIMPAN DATA KE SUPABASE (FIX: HANYA SEMAK KONFLIK JIKA BERUBAH)
     // ============================================================
     async function simpanData() {
         if (!currentProjectCode) {
@@ -696,24 +695,8 @@
                 var g = groups[i];
                 var isGroupChanged = false;
 
-                // Semak konflik pada kumpulan ini
+                // Semak sama ada data benar-benar berubah (pekerja ATAU order_index)
                 if (g._updated_at) {
-                    var { data: checkRow } = await supabase
-                        .from('payroll_groups')
-                        .select('updated_at')
-                        .eq('payroll_id', payroll.id)
-                        .eq('group_name', g.name)
-                        .single();
-
-                    if (checkRow && checkRow.updated_at !== g._updated_at) {
-                        var confirmReload = confirm(
-                            `⚠️ Kumpulan "${g.name}" telah diubah oleh pengguna lain!\nSila muat semula.`
-                        );
-                        if (confirmReload) { location.reload(); return; } 
-                        else { isSaving = false; return; }
-                    }
-
-                    // Semak sama ada data benar-benar berubah (pekerja ATAU order_index)
                     var { data: existingGroup } = await supabase
                         .from('payroll_groups')
                         .select('workers, order_index')
@@ -734,6 +717,24 @@
                 } else {
                     // Kumpulan baru -> dianggap berubah
                     isGroupChanged = true;
+                }
+
+                // FIX: SEMAK KONFLIK HANYA JIKA KUMPULAN INI BENAR-BENAR BERUBAH
+                if (isGroupChanged && g._updated_at) {
+                    var { data: checkRow } = await supabase
+                        .from('payroll_groups')
+                        .select('updated_at')
+                        .eq('payroll_id', payroll.id)
+                        .eq('group_name', g.name)
+                        .single();
+
+                    if (checkRow && checkRow.updated_at !== g._updated_at) {
+                        var confirmReload = confirm(
+                            `⚠️ Kumpulan "${g.name}" telah diubah oleh pengguna lain!\nSila muat semula.`
+                        );
+                        if (confirmReload) { location.reload(); return; } 
+                        else { isSaving = false; return; }
+                    }
                 }
 
                 // Bina objek data untuk disimpan (tanpa updated_at jika tiada perubahan)
