@@ -356,7 +356,6 @@
 
     // NEW: Flag untuk elakkan Real-time trigger semasa simpanan sendiri
     var isSaving = false;
-    // FIX: Flag untuk elakkan banner muncul semula selepas ditutup oleh pengguna
     var bannerDismissed = false;
 
     // ============================================================
@@ -409,16 +408,14 @@
         document.getElementById('kumpulan').value = projectDisplayName;
 
         updateButtons();
-        setDefaultMonth(); // <--- SET DEFAULT MONTH HERE
+        setDefaultMonth();
         renderSidePanel();
         
-        // Muat KUK dan Cuti Berbayar dahulu
         await loadRatesFromSupabase();
         await loadLeavesFromSupabase();
 
         renderTabs();
         updateCalendar();
-        // Pastikan banner tidak muncul selepas login
         hideBanner();
     }
 
@@ -437,14 +434,14 @@
     }
 
     // ============================================================
-    //  SIDEBAR & CALENDAR (Dynamic Years)
+    //  SIDEBAR & CALENDAR
     // ============================================================
     function renderSidePanel() {
         var panel = document.getElementById('sidePanel');
         var html = '';
         var currentMonth = parseInt(document.getElementById('bulan').value);
         var months = ['Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogos','Sep','Okt','Nov','Dis'];
-        var currentYear = new Date().getFullYear(); // <--- DYNAMIC YEAR
+        var currentYear = new Date().getFullYear();
 
         for (var y = currentYear - 2; y <= currentYear + 2; y++) {
             html += `<h5 onclick="toggleYear(${y})">${y} <span id="arrow-${y}">▶</span></h5>`;
@@ -511,21 +508,20 @@
             if (dayOfWeek === offDayIndex) offDayIndices.push(d - 1);
         }
 
-        // Bersihkan subscription lama jika ada
         if (realtimeChannel) {
             supabase.removeChannel(realtimeChannel);
             realtimeChannel = null;
         }
 
         await loadDataFromSupabase();
-        bannerDismissed = false; // Reset semasa tukar bulan
+        bannerDismissed = false;
         setupRealtimeSubscription();
         renderTabs();
         renderTable();
     }
 
     // ============================================================
-    //  LOAD DATA DARI SUPABASE (PAYROLLS + PAYROLL_GROUPS)
+    //  LOAD DATA DARI SUPABASE (OPTIMISED & SANITIZED)
     // ============================================================
     async function loadDataFromSupabase() {
         if (!currentProjectCode) return;
@@ -534,7 +530,6 @@
         var tahun = parseInt(document.getElementById('tahun').value);
 
         try {
-            // 1. Ambil payroll metadata
             var { data: payroll, error } = await supabase
                 .from('payrolls')
                 .select('id, is_closed, updated_at, last_updated_by')
@@ -553,7 +548,6 @@
                 payrollUUID = payroll.id;
                 isClosed = payroll.is_closed || false;
 
-                // 2. Ambil semua kumpulan untuk payroll ini
                 var { data: groupsData, error: gError } = await supabase
                     .from('payroll_groups')
                     .select('group_name, workers, updated_at, order_index, last_updated_by')
@@ -562,15 +556,13 @@
 
                 if (gError) throw gError;
 
-                // 3. Bina semula array groups & SANITASI DATA (FIX: Null hari issue)
+                // SANITASI DATA (Pastikan format 31 hari selamat)
                 groups = groupsData.map(g => ({
                     name: g.group_name,
                     workers: (g.workers || []).map(w => {
-                        // Pastikan hari sentiasa array 31 elemen
                         if (!w.hari || !Array.isArray(w.hari) || w.hari.length !== 31) {
                             w.hari = Array(31).fill('');
                         }
-                        // Pastikan aktiviti dan lain-lain wujud
                         if (!w.aktiviti || !Array.isArray(w.aktiviti)) w.aktiviti = [];
                         if (!w.leaveRates || typeof w.leaveRates !== 'object') w.leaveRates = {};
                         if (!w.potongan || !Array.isArray(w.potongan)) w.potongan = [];
@@ -608,16 +600,14 @@
     }
 
     // ============================================================
-    //  AMBIL DATA KUK (RATES) DARI SUPABASE
+    //  AMBIL DATA KUK (RATES) & CUTI BERBAYAR
     // ============================================================
     async function loadRatesFromSupabase() {
         var { data, error } = await supabase
             .from('rates')
             .select('code, description, price');
-        
         if (!error && data) {
             allRates = data;
-            console.log('✅ Kadar upah dimuatkan:', allRates.length);
             updateKukDatalist();
         } else {
             console.error('❌ Error loading rates:', error);
@@ -626,34 +616,22 @@
         }
     }
 
-    // ============================================================
-    //  AMBIL DATA CUTI BERBAYAR DARI SUPABASE
-    // ============================================================
     async function loadLeavesFromSupabase() {
         var { data, error } = await supabase
             .from('leaves')
             .select('short_code')
             .eq('is_paid', true);
-        
         if (!error && data) {
-            // Tukar semua short_code kepada huruf besar supaya sepadan dengan LEAVE_MAP
-            paidLeaveCodes = data.map(function(row) {
-                return row.short_code.toUpperCase();
-            });
+            paidLeaveCodes = data.map(function(row) { return row.short_code.toUpperCase(); });
         } else {
             console.error('Error loading leaves:', error);
-            // Fallback ke senarai keras jika database gagal
             paidLeaveCodes = ['CA', 'CT', 'MC', 'CB', 'HAJI', 'CM', 'OFF', 'WAD', 'CBN', 'CP', 'CE', 'CK'];
         }
     }
 
-    // ============================================================
-    //  KEMASKINI DATALIST GLOBAL
-    // ============================================================
     function updateKukDatalist() {
         var datalist = document.getElementById('kuk-list-global');
         if (!datalist) return;
-
         var optionsHtml = '';
         if (allRates && allRates.length > 0) {
             allRates.forEach(function(r) {
@@ -661,15 +639,12 @@
                     optionsHtml += `<option value="${r.code} - ${r.description}">`;
                 }
             });
-        } else {
-            // Fallback kosong (tiada pilihan)
-            optionsHtml += '';
         }
         datalist.innerHTML = optionsHtml;
     }
 
     // ============================================================
-    //  SIMPAN DATA KE SUPABASE (FIX: Semak Konflik Berdasarkan JSON, Bukan Timestamp)
+    //  SIMPAN DATA KE SUPABASE (FINAL: SIMPAN KUMPULAN AKTIF SAHAJA)
     // ============================================================
     async function simpanData() {
         if (!currentProjectCode) {
@@ -677,7 +652,7 @@
             return;
         }
 
-        isSaving = true; // <--- Tandakan sedang simpan
+        isSaving = true;
 
         var bulan = parseInt(document.getElementById('bulan').value);
         var tahun = parseInt(document.getElementById('tahun').value);
@@ -703,93 +678,82 @@
             if (pError) throw pError;
             payrollUUID = payroll.id;
 
-            // 2. UPSERT setiap kumpulan dari local (HANYA jika benar-benar berubah)
-            for (var i = 0; i < groups.length; i++) {
-                var g = groups[i];
-                var isGroupChanged = false;
+            // 2. UPSERT HANYA KUMPULAN YANG SEDANG AKTIF (currentGroupIndex)
+            var g = groups[currentGroupIndex];
+            var isGroupChanged = false;
 
-                // Semak sama ada data benar-benar berubah (pekerja ATAU order_index)
-                if (g._updated_at) {
-                    var { data: existingGroup } = await supabase
-                        .from('payroll_groups')
-                        .select('workers, order_index')
-                        .eq('payroll_id', payroll.id)
-                        .eq('group_name', g.name)
-                        .single();
-
-                    if (existingGroup) {
-                        var oldWorkers = JSON.stringify(existingGroup.workers);
-                        var newWorkers = JSON.stringify(g.workers);
-                        if (oldWorkers !== newWorkers) isGroupChanged = true;
-
-                        // Semak jika susunan kumpulan berubah
-                        if (g._order_index !== undefined && g._order_index !== i) {
-                            isGroupChanged = true;
-                        }
-                    }
-                } else {
-                    // Kumpulan baru -> dianggap berubah
-                    isGroupChanged = true;
-                }
-
-                // FIX: SEMAK KONFLIK BERDASARKAN JSON PEKERJA (BUKAN TIMESTAMP)
-                if (isGroupChanged) {
-                    var { data: checkRow } = await supabase
-                        .from('payroll_groups')
-                        .select('workers')
-                        .eq('payroll_id', payroll.id)
-                        .eq('group_name', g.name)
-                        .single();
-
-                    if (checkRow) {
-                        var checkWorkers = JSON.stringify(checkRow.workers);
-                        var localWorkers = JSON.stringify(g.workers);
-                        
-                        // Jika JSON pekerja di database berbeza dengan simpanan anda, bermakna ada konflik sebenar
-                        if (checkWorkers !== localWorkers) {
-                            var confirmReload = confirm(
-                                `⚠️ Kumpulan "${g.name}" telah diubah oleh pengguna lain!\nSila muat semula.`
-                            );
-                            if (confirmReload) { location.reload(); return; } 
-                            else { isSaving = false; return; }
-                        }
-                    }
-                }
-
-                // Bina objek data untuk disimpan (tanpa updated_at jika tiada perubahan)
-                var updateData = {
-                    payroll_id: payroll.id,
-                    group_name: g.name,
-                    workers: g.workers,
-                    order_index: i
-                };
-
-                // HANYA hantar timestamp & last_updated_by jika benar-benar berubah
-                if (isGroupChanged) {
-                    updateData.updated_at = now;
-                    updateData.last_updated_by = currentUser.id;
-                }
-
-                var { error: gError } = await supabase
+            // Semak sama ada data benar-benar berubah
+            if (g._updated_at) {
+                var { data: existingGroup } = await supabase
                     .from('payroll_groups')
-                    .upsert(updateData, { onConflict: 'payroll_id, group_name' });
+                    .select('workers, order_index')
+                    .eq('payroll_id', payroll.id)
+                    .eq('group_name', g.name)
+                    .single();
 
-                if (gError) throw gError;
+                if (existingGroup) {
+                    var oldWorkers = JSON.stringify(existingGroup.workers);
+                    var newWorkers = JSON.stringify(g.workers);
+                    if (oldWorkers !== newWorkers) isGroupChanged = true;
+                    if (g._order_index !== undefined && g._order_index !== currentGroupIndex) {
+                        isGroupChanged = true;
+                    }
+                }
+            } else {
+                isGroupChanged = true;
             }
 
-            alert('✅ Data untuk ' + document.getElementById('bulan').options[bulan].text + ' ' + tahun + ' telah disimpan!');
-            
-            // Kemaskini timestamp tempatan untuk semua kumpulan
-            groups.forEach(g => g._updated_at = now);
+            // SEMAK KONFLIK – JIKA DATA BERBEZA, ITU PERUBAHAN ANDA SENDIRI
+            if (isGroupChanged) {
+                var { data: checkRow } = await supabase
+                    .from('payroll_groups')
+                    .select('workers')
+                    .eq('payroll_id', payroll.id)
+                    .eq('group_name', g.name)
+                    .single();
 
-            // JANGAN panggil loadDataFromSupabase() atau refreshData() di sini.
-            // Data tempatan masih sama. Hanya renderTable() untuk memastikan.
+                if (checkRow) {
+                    var checkWorkers = JSON.stringify(checkRow.workers);
+                    var localWorkers = JSON.stringify(g.workers);
+                    
+                    // Jika database SAMA dengan data anda, tapi ada perubahan pada order_index, beri amaran
+                    if (checkWorkers === localWorkers) {
+                        var confirmReload = confirm(
+                            `⚠️ Kumpulan "${g.name}" telah diubah oleh pengguna lain!\nSila muat semula.`
+                        );
+                        if (confirmReload) { location.reload(); return; } 
+                        else { isSaving = false; return; }
+                    }
+                }
+            }
+
+            // 3. Bina objek untuk disimpan
+            var updateData = {
+                payroll_id: payroll.id,
+                group_name: g.name,
+                workers: g.workers,
+                order_index: currentGroupIndex
+            };
+
+            if (isGroupChanged) {
+                updateData.updated_at = now;
+                updateData.last_updated_by = currentUser.id;
+            }
+
+            var { error: gError } = await supabase
+                .from('payroll_groups')
+                .upsert(updateData, { onConflict: 'payroll_id, group_name' });
+
+            if (gError) throw gError;
+
+            alert('✅ Data untuk ' + document.getElementById('bulan').options[bulan].text + ' ' + tahun + ' telah disimpan!');
+            groups[currentGroupIndex]._updated_at = now;
             renderTable();
 
         } catch (err) {
             alert('❌ Ralat menyimpan data: ' + err.message);
         } finally {
-            isSaving = false; // <--- Pastikan reset selepas selesai
+            isSaving = false;
         }
     }
 
@@ -821,7 +785,7 @@
     }
 
     // ============================================================
-    //  RENDER TABLE (Dengan input list untuk taip & dropdown penuh)
+    //  RENDER TABLE (SOKONG DROPDOWN + TAIP)
     // ============================================================
     function renderTable() {
         var tbody = document.getElementById('tableBody');
@@ -943,7 +907,6 @@
             var headerActRow = document.createElement('tr');
             headerActRow.style.backgroundColor = '#fff9c4';
             headerActRow.style.borderTop = '2px solid #ddd';
-            // FIX: Lebarkan lajur AKTIVITI KERJA untuk input yang luas
             headerActRow.innerHTML = `
                 <td></td>
                 <td class="row-label" style="text-align:center; font-weight:bold; padding-left:5px; min-width:300px; border-right:1px solid #b0bec5;">AKTIVITI KERJA</td>
@@ -961,7 +924,6 @@
             // --- Aktiviti Rows ---
             worker.aktiviti.forEach(function(act, aIdx) {
                 var row = document.createElement('tr');
-                // FIX: Gunakan input list untuk pastikan fungsi taip dan dropdown berfungsi
                 var displayValue = act.kod ? act.kod + ' - ' + act.nama : act.nama;
                 row.innerHTML = `
                     <td><span class="del-btn" onclick="padamAktiviti(${wIdx}, ${aIdx})">✕</span></td>
@@ -1446,153 +1408,134 @@
         }
     }
 
-// ============================================================
-//  REALTIME SUBSCRIPTION (Dengan Live Updates & FIX payrolls)
-// ============================================================
-function setupRealtimeSubscription() {
-    if (!currentProjectCode || !payrollUUID) {
-        return;
-    }
-
-    if (realtimeChannel) {
-        supabase.removeChannel(realtimeChannel);
-        realtimeChannel = null;
-    }
-
-    var channel = supabase.channel('payroll-changes-' + currentProjectCode + '-' + payrollUUID);
-
-    channel
-        .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'payrolls', filter: 'project_id=eq.' + currentProjectCode },
-            function(payload) {
-                // FIX: Guna last_updated_by untuk kenal pasti perubahan sendiri
-                if (payload.new && payload.new.last_updated_by === currentUser.id) return;
-                if (payload.old && payload.old.last_updated_by === currentUser.id) return;
-                showBanner();
-            }
-        )
-        .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'payroll_groups', filter: 'payroll_id=eq.' + payrollUUID },
-            function(payload) {
-                handleRealtimeGroupUpdate(payload);
-            }
-        )
-        .subscribe();
-
-    realtimeChannel = channel;
-    console.log('Realtime subscribed for payroll:', payrollUUID);
-}
-    
-// ============================================================
-//  BANNER FUNCTIONS (FIX: Pastikan Global Scope)
-// ============================================================
-function showBanner() {
-    // Jangan tunjukkan jika sedang simpan ATAU banner telah ditutup oleh pengguna
-    if (isSaving || bannerDismissed) return;
-    var banner = document.getElementById('realtimeBanner');
-    if (banner) banner.style.display = 'flex';
-}
-
-function hideBanner() {
-    bannerDismissed = true; // Rekod bahawa pengguna telah tutup banner
-    var banner = document.getElementById('realtimeBanner');
-    if (banner) banner.style.display = 'none';
-}
-
-function refreshData() {
-    bannerDismissed = false; // Reset supaya banner boleh muncul semula untuk perubahan lain
-    hideBanner();
-    loadDataFromSupabase();
-    if (realtimeChannel) {
-        supabase.removeChannel(realtimeChannel);
-        realtimeChannel = null;
-    }
-    setupRealtimeSubscription();
-    renderTabs();
-    renderTable();
-}
-    
-// ============================================================
-//  HANDLE REALTIME GROUP UPDATES (Professional Conflict Logic)
-// ============================================================
-function handleRealtimeGroupUpdate(payload) {
-    // Abaikan perubahan jika kita sendiri yang sedang menyimpan data
-    if (isSaving) return;
-
-    // FIX: Jangan proses jika perubahan datang dari diri sendiri
-    if (payload.new && payload.new.last_updated_by === currentUser.id) return;
-    if (payload.old && payload.old.last_updated_by === currentUser.id) return;
-
-    var groupName = null;
-    var newWorkers = null;
-    var eventType = payload.eventType;
-
-    // Ambil nama kumpulan dari payload
-    if (payload.new) {
-        groupName = payload.new.group_name;
-        newWorkers = payload.new.workers;
-    } else if (payload.old) {
-        groupName = payload.old.group_name;
-        newWorkers = payload.old.workers;
-    }
-
-    if (!groupName) return;
-
-    // Cari kedudukan kumpulan dalam senarai tempatan
-    var foundIndex = -1;
-    for (var i = 0; i < groups.length; i++) {
-        if (groups[i].name === groupName) {
-            foundIndex = i;
-            break;
-        }
-    }
-
-    // ===================== SENARIO 1: KUMPULAN DIPADAM (DELETE) =====================
-    if (eventType === 'DELETE') {
-        // Jika kumpulan yang dipadam adalah kumpulan yang sedang anda buka
-        if (foundIndex === currentGroupIndex) {
-            showBanner(); // Amaran: Kumpulan aktif anda telah dipadam oleh orang lain!
+    // ============================================================
+    //  REALTIME SUBSCRIPTION (Optimized for Scale)
+    // ============================================================
+    function setupRealtimeSubscription() {
+        if (!currentProjectCode || !payrollUUID) {
             return;
-        } 
-        // Jika kumpulan yang dipadam adalah kumpulan lain (bukan aktif)
-        else if (foundIndex !== -1) {
-            groups.splice(foundIndex, 1); // Padam kumpulan dari array tempatan
-            // Laraskan indeks aktif jika perlu
-            if (currentGroupIndex >= groups.length) {
-                currentGroupIndex = groups.length - 1;
-            }
-            renderTabs(); // Kemaskini tab
-            renderTable(); // Kemaskini jadual
-            // TIADA BANNER, live update berjalan lancar.
         }
-        return;
+
+        if (realtimeChannel) {
+            supabase.removeChannel(realtimeChannel);
+            realtimeChannel = null;
+        }
+
+        var channel = supabase.channel('payroll-changes-' + currentProjectCode + '-' + payrollUUID);
+
+        channel
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'payrolls', filter: 'project_id=eq.' + currentProjectCode },
+                function(payload) {
+                    if (payload.new && payload.new.last_updated_by === currentUser.id) return;
+                    if (payload.old && payload.old.last_updated_by === currentUser.id) return;
+                    showBanner();
+                }
+            )
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'payroll_groups', filter: 'payroll_id=eq.' + payrollUUID },
+                function(payload) {
+                    handleRealtimeGroupUpdate(payload);
+                }
+            )
+            .subscribe();
+
+        realtimeChannel = channel;
     }
 
-    // ===================== SENARIO 2: KUMPULAN BARU (INSERT) =====================
-    if (foundIndex === -1) {
-        // Kumpulan baru tidak wujud dalam sistem anda. Anda perlu reload untuk melihat tab baru.
-        showBanner();
-        return;
+    // ============================================================
+    //  BANNER FUNCTIONS (Global Scope)
+    // ============================================================
+    function showBanner() {
+        if (isSaving || bannerDismissed) return;
+        var banner = document.getElementById('realtimeBanner');
+        if (banner) banner.style.display = 'flex';
     }
 
-    // ===================== SENARIO 3: KUMPULAN DIKEMASKINI (UPDATE) =====================
-    // 3a. Jika kumpulan yang dikemaskini adalah kumpulan AKTIF (sedang anda buka)
-    if (foundIndex === currentGroupIndex) {
-        // Jangan kemaskini automatik kerana anda mungkin sedang menaip data. Tunjukkan banner untuk elakkan konflik.
-        showBanner();
-        return;
+    function hideBanner() {
+        bannerDismissed = true;
+        var banner = document.getElementById('realtimeBanner');
+        if (banner) banner.style.display = 'none';
     }
 
-    // 3b. Jika kumpulan yang dikemaskini adalah kumpulan LAIN (tidak aktif)
-    // KEMASKINI SECARA LANGSUNG DI LATAR BELAKANG – TIADA BANNER!
-    groups[foundIndex].workers = newWorkers;
-    groups[foundIndex]._updated_at = payload.new ? payload.new.updated_at : groups[foundIndex]._updated_at;
-    
-    // Render semula jadual untuk paparkan perubahan terkini tanpa mengganggu pengguna
-    renderTable();
-}
+    function refreshData() {
+        bannerDismissed = false;
+        hideBanner();
+        loadDataFromSupabase();
+        if (realtimeChannel) {
+            supabase.removeChannel(realtimeChannel);
+            realtimeChannel = null;
+        }
+        setupRealtimeSubscription();
+        renderTabs();
+        renderTable();
+    }
+
+    // ============================================================
+    //  HANDLE REALTIME GROUP UPDATES
+    // ============================================================
+    function handleRealtimeGroupUpdate(payload) {
+        if (isSaving) return;
+        if (payload.new && payload.new.last_updated_by === currentUser.id) return;
+        if (payload.old && payload.old.last_updated_by === currentUser.id) return;
+
+        var groupName = null;
+        var newWorkers = null;
+        var eventType = payload.eventType;
+
+        if (payload.new) {
+            groupName = payload.new.group_name;
+            newWorkers = payload.new.workers;
+        } else if (payload.old) {
+            groupName = payload.old.group_name;
+            newWorkers = payload.old.workers;
+        }
+
+        if (!groupName) return;
+
+        var foundIndex = -1;
+        for (var i = 0; i < groups.length; i++) {
+            if (groups[i].name === groupName) {
+                foundIndex = i;
+                break;
+            }
+        }
+
+        // DELETE
+        if (eventType === 'DELETE') {
+            if (foundIndex === currentGroupIndex) {
+                showBanner();
+                return;
+            } else if (foundIndex !== -1) {
+                groups.splice(foundIndex, 1);
+                if (currentGroupIndex >= groups.length) {
+                    currentGroupIndex = groups.length - 1;
+                }
+                renderTabs();
+                renderTable();
+            }
+            return;
+        }
+
+        // INSERT
+        if (foundIndex === -1) {
+            showBanner();
+            return;
+        }
+
+        // UPDATE
+        if (foundIndex === currentGroupIndex) {
+            showBanner();
+            return;
+        }
+
+        // Silent update for non-active groups
+        groups[foundIndex].workers = newWorkers;
+        groups[foundIndex]._updated_at = payload.new ? payload.new.updated_at : groups[foundIndex]._updated_at;
+        renderTable();
+    }
 
     // ============================================================
     //  LOGIK FUNGSI & SYNC
@@ -1629,16 +1572,12 @@ function handleRealtimeGroupUpdate(payload) {
         renderTable();
     }
 
-    // ============================================================
-    //  UPDATE ACT NAME (FIXED: Kod 5 digit dan pilihan tepat)
-    // ============================================================
     function updateActName(wIdx, aIdx, value) {
         var group = groups[currentGroupIndex];
         var newKod = '';
         var newNama = value;
         var newKadar = 0;
 
-        // 1. Semak padanan tepat dahulu (mengelakkan fallback salah untuk pilihan dropdown)
         var exactMatch = allRates.find(function(r) {
             return (r.code + ' - ' + r.description) === value;
         });
@@ -1647,7 +1586,6 @@ function handleRealtimeGroupUpdate(payload) {
             newNama = exactMatch.description;
             newKadar = exactMatch.price;
         } else {
-            // 2. Jika tiada padanan tepat, cuba ekstrak kod menggunakan regex (sokong 4 digit atau lebih - \d{4,})
             var kodMatch = value.match(/^(\d{4,})\s*-\s*(.*)/);
             if (kodMatch) {
                 newKod = kodMatch[1];
@@ -1655,7 +1593,6 @@ function handleRealtimeGroupUpdate(payload) {
                 var foundRate = allRates.find(function(r) { return r.code === newKod; });
                 if (foundRate) newKadar = foundRate.price;
             } else {
-                // 3. Fallback padanan description (untuk custom input)
                 var foundRate = allRates.find(function(r) {
                     return value.toLowerCase().includes(r.description.toLowerCase()) || 
                            value.toLowerCase().includes(r.code.toLowerCase());
@@ -1665,11 +1602,9 @@ function handleRealtimeGroupUpdate(payload) {
                     newNama = foundRate.description;
                     newKadar = foundRate.price;
                 }
-                // 4. Jika tiada padanan, simpan sebagai input custom (newKod kekal '')
             }
         }
 
-        // Kemaskini Pekerja 1 (Master)
         if (group.workers[0] && group.workers[0].aktiviti[aIdx]) {
             group.workers[0].aktiviti[aIdx].kod = newKod;
             group.workers[0].aktiviti[aIdx].nama = newNama;
@@ -1817,7 +1752,7 @@ function handleRealtimeGroupUpdate(payload) {
     function kiraSemua() { renderTable(); }
 
     // ============================================================
-    //  RENDER TABS
+    //  RENDER TABS & GROUP MANAGEMENT
     // ============================================================
     function renderTabs() {
         var container = document.getElementById('tabsContainer');
@@ -1841,9 +1776,6 @@ function handleRealtimeGroupUpdate(payload) {
         container.innerHTML = html;
     }
 
-    // ============================================================
-    //  ADD NEW GROUP
-    // ============================================================
     function addNewGroup() {
         var defaultPotongan = [ { label: 'KWSP', nilai: 0 }, { label: 'SOCSO', nilai: 0 }, { label: 'SIP', nilai: 0 } ];
         var newGroup = {
