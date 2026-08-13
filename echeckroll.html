@@ -579,7 +579,7 @@
     }
 
     // ============================================================
-    //  SIMPAN DATA KE SUPABASE
+    //  SIMPAN DATA KE SUPABASE (DIBETULKAN - TAMBAH groups: [])
     // ============================================================
     async function simpanData() {
         if (!currentProjectCode) {
@@ -592,7 +592,7 @@
         var now = new Date().toISOString();
 
         try {
-            // 1. Upsert payroll (metadata)
+            // 1. Upsert payroll (metadata) - Tambah groups: [] untuk elakkan NULL
             var { data: payroll, error: pError } = await supabase
                 .from('payrolls')
                 .upsert({
@@ -601,6 +601,7 @@
                     year: tahun,
                     month: bulan,
                     is_closed: isClosed,
+                    groups: [], // <--- FIX: Hantar array kosong untuk memenuhi NOT NULL
                     updated_at: now
                 }, { onConflict: 'project_id, year, month' })
                 .select('id')
@@ -1487,7 +1488,6 @@
 
     function tambahPekerja() {
         var group = groups[currentGroupIndex];
-        // FIX: Aktiviti kosong untuk pekerja baru (tiada dummy)
         var newWorker = {
             id: Date.now(), nama: 'PEKERJA BARU', noKP: 'XXXXXXXXXXXX', umur: 30, jantina: 'L',
             hari: Array(31).fill(''),
