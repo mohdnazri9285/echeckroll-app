@@ -8,7 +8,6 @@
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="manifest" href="site.webmanifest">
 
     <!-- Supabase Client -->
@@ -240,7 +239,7 @@
                 <div class="content-section active" id="sec-dashboard">
                     <h2><i class="fas fa-chart-pie"></i> Ringkasan & Monitoring</h2>
 
-                    <!-- FILTER MONTH/YEAR (NEW) -->
+                    <!-- FILTER MONTH/YEAR -->
                     <div class="filter-area">
                         <div>
                             <label for="adminMonth">BULAN:</label>
@@ -260,7 +259,6 @@
                             </select>
                         </div>
                     </div>
-                    <!-- ============================================== -->
 
                     <!-- Meters & Close Transaction -->
                     <div id="closeTransactionArea">
@@ -273,7 +271,6 @@
                         <!-- Populated by JS -->
                     </div>
 
-                    <!-- Alert Box -->
                     <div id="alertContainer">
                         <i class="fas fa-exclamation-triangle"></i> 
                         <span id="alertText">Tiada amaran buat masa ini.</span>
@@ -284,7 +281,6 @@
                         <!-- Populated by JS -->
                     </div>
                 </div>
-                <!-- ====================================================== -->
 
                 <!-- KADAR UPAH -->
                 <div class="content-section" id="sec-rates">
@@ -395,7 +391,6 @@
         </div>
     </div>
 </div>
-<!-- ================================================= -->
 
 <script>
     // ============================================================
@@ -949,7 +944,7 @@
     }
 
     // ============================================================
-    // EXCEL UPLOAD FUNCTIONS (Sama seperti sebelumnya)
+    // EXCEL UPLOAD FUNCTIONS
     // ============================================================
     function readExcelFile(fileId) {
         return new Promise(function(resolve, reject) {
