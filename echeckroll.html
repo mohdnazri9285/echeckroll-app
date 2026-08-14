@@ -1818,12 +1818,54 @@
 
     function switchGroup(idx) { currentGroupIndex = idx; renderTabs(); renderTable(); }
 
+// ============================================================
+//  REMOVE GROUP (DELETE TERUS KE DATABASE)
+// ============================================================
     function removeGroup(idx) {
-        if (groups.length <= 1) { alert('Tidak boleh padam kumpulan terakhir.'); return; }
-        if (!confirm('Padam kumpulan ini? (Pekerja di dalamnya akan turut terpadam)')) return;
-        groups.splice(idx, 1);
-        if (currentGroupIndex >= groups.length) currentGroupIndex = groups.length - 1;
-        renderTabs(); renderTable();
+        if (groups.length <= 1) {
+            alert('Tidak boleh padam kumpulan terakhir.');
+            return;
+        }
+
+        var groupName = groups[idx].name;
+        if (!confirm('Padam kumpulan "' + groupName + '"?\n(Pekerja di dalamnya akan turut terpadam)')) {
+            return;
+        }
+
+        // Jika belum ada payrollUUID (kumpulan baru belum pernah simpan),
+        // kita hanya padam dari tempatan sahaja.
+        if (!payrollUUID) {
+            groups.splice(idx, 1);
+            if (currentGroupIndex >= groups.length) {
+                currentGroupIndex = groups.length - 1;
+            }
+            renderTabs();
+            renderTable();
+            return;
+        }
+
+        // Lakukan DELETE ke Supabase
+        supabase
+            .from('payroll_groups')
+            .delete()
+            .eq('payroll_id', payrollUUID)
+            .eq('group_name', groupName)
+            .then(function(result) {
+                if (result.error) {
+                    alert('❌ Ralat memadam kumpulan: ' + result.error.message);
+                    return;
+                }
+
+                // Padam dari senarai tempatan
+                groups.splice(idx, 1);
+                if (currentGroupIndex >= groups.length) {
+                    currentGroupIndex = groups.length - 1;
+                }
+                renderTabs();
+                renderTable();
+                
+                alert('✅ Kumpulan "' + groupName + '" berjaya dipadam dari sistem!');
+            });
     }
 
     // ============================================================
