@@ -709,7 +709,7 @@
 
             renderMeters(gridData, isHQ);
             renderGrid(gridData, entities, isHQ, daysInMonth);
-            renderAlert(gridData, isHQ);
+            renderAlert(gridData, isHQ, daysInMonth); // <-- DI SINI SAYA BETULKAN TAMBAHAN PARAMETER
             renderTransactionButtons(gridData, isHQ);
 
         } catch (err) {
@@ -826,7 +826,8 @@
         container.innerHTML = html;
     }
 
-    function renderAlert(gridData, isHQ) {
+    // <-- DI SINI SAYA BETULKAN FUNGSI renderAlert (TAMBAH PARAMETER daysInMonth)
+    function renderAlert(gridData, isHQ, daysInMonth) {
         var alertBox = document.getElementById('alertContainer');
         var alertText = document.getElementById('alertText');
         var hasData = false;
@@ -961,7 +962,6 @@
 
         var workersByPayroll = {};
         if (relevantPayrollIds.length > 0) {
-            // Di sini kita guna await, jadi fungsi perlu async
             var { data: groupsData } = await supabase
                 .from('payroll_groups')
                 .select('payroll_id, workers')
@@ -1024,6 +1024,11 @@
         html += `</tbody></table></div>`;
         body.innerHTML = html;
         overlay.style.display = 'flex';
+    }
+
+    function closeModal(event) {
+        if (event && event.target !== event.currentTarget) return;
+        document.getElementById('modalOverlay').style.display = 'none';
     }
 
     // ============================================================
