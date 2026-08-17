@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>Developer - eCheckroll</title>
 
-   <!-- Favicon & Manifest -->
     <link rel="shortcut icon" href="image/favicon/favicon.ico" type="image/x-icon">
     <link rel="apple-touch-icon" sizes="180x180" href="image/favicon/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="image/favicon/favicon-32x32.png">
@@ -204,6 +203,12 @@
                         <div class="meter-card"><h3 id="cRates">0</h3><span>Kadar Upah</span></div>
                         <div class="meter-card"><h3 id="cLeaves">0</h3><span>Kod Cuti</span></div>
                         <div class="meter-card"><h3 id="cPayrolls">0</h3><span>Rekod Gaji (Payrolls)</span></div>
+                        <!-- TAMBAHAN: Meter Pengguna Aktif -->
+                        <div class="meter-card" style="border-left-color: #1976d2;">
+                            <h3 id="activeUsersMeter">0</h3>
+                            <span>Pengguna Aktif (5 minit)</span>
+                            <span class="sub-text">FS / AFC / FC / Admin / Dev</span>
+                        </div>
                     </div>
                     <div class="dev-card">
                         <h3><i class="fas fa-plug"></i> Sambungan Supabase</h3>
@@ -285,6 +290,8 @@
     var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtha3pveWt6eGtyeWVncXlieHpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0OTg2ODEsImV4cCI6MjEwMjA3NDY4MX0.n3L8mQsm3CNAC0ahEumu0bQMEC_9H2uaKQ4Htt_ga9c';
     var supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    var heartbeatInterval = null;
+
     // ============================================================
     // AUTH CHECK
     // ============================================================
@@ -300,6 +307,7 @@
         document.getElementById('devUser').value = storedName || 'Developer';
         document.getElementById('statusHeader').value = 'Connected to Supabase';
         updateConnectionStatus();
+        startHeartbeat(); // Mulakan heartbeat supaya developer juga kelihatan aktif
         loadAllData();
     }
 
@@ -321,6 +329,50 @@
         document.querySelector(`.side-menu-item[onclick="switchSection('${id}')"]`).classList.add('active');
         document.querySelectorAll('.content-section').forEach(function(el) { el.classList.remove('active'); });
         document.getElementById('sec-' + id).classList.add('active');
+    }
+
+    // ============================================================
+    // HEARTBEAT (Active User Tracker)
+    // ============================================================
+    function startHeartbeat() {
+        if (!currentUser || heartbeatInterval) return;
+
+        var currentUser = {
+            id: localStorage.getItem('echeckroll_user_id'),
+            role: localStorage.getItem('echeckroll_user_role'),
+            name: localStorage.getItem('echeckroll_user_name')
+        };
+
+        async function sendHeartbeat() {
+            try {
+                await supabase
+                    .from('user_sessions')
+                    .upsert({
+                        user_id: currentUser.id,
+                        last_active: new Date().toISOString(),
+                        role: currentUser.role,
+                        name: currentUser.name
+                    }, { onConflict: 'user_id' });
+            } catch (err) { /* Abaikan ralat offline */ }
+        }
+
+        sendHeartbeat();
+        heartbeatInterval = setInterval(sendHeartbeat, 60000);
+    }
+
+    async function loadActiveUsers() {
+        var fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        var meterEl = document.getElementById('activeUsersMeter');
+        if (!meterEl) return;
+        
+        var { count, error } = await supabase
+            .from('user_sessions')
+            .select('user_id', { count: 'exact', head: true })
+            .gte('last_active', fiveMinsAgo);
+
+        if (!error) {
+            meterEl.innerText = count || 0;
+        }
     }
 
     // ============================================================
@@ -369,6 +421,9 @@
         document.getElementById('cRates').innerText = counts[2].count || 0;
         document.getElementById('cLeaves').innerText = counts[3].count || 0;
         document.getElementById('cPayrolls').innerText = counts[4].count || 0;
+
+        // Muat meter pengguna aktif
+        await loadActiveUsers();
 
         loadUsersTable();
         loadProjectsTable();
