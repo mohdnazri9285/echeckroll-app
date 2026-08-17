@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>eCheckroll - Sistem Pintar</title>
     
-   <!-- Favicon & Manifest -->
+    <!-- Favicon & Manifest -->
     <link rel="shortcut icon" href="image/favicon/favicon.ico" type="image/x-icon">
     <link rel="apple-touch-icon" sizes="180x180" href="image/favicon/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="image/favicon/favicon-32x32.png">
@@ -86,6 +86,7 @@
 
         .main-layout { display: flex; gap: 8px; flex-grow: 1; overflow: hidden; }
 
+        /* Side panel (desktop) */
         .side-panel { 
             width: 110px; 
             background: linear-gradient(135deg, #c62828, #b71c1c);
@@ -169,6 +170,27 @@
         }
         #realtimeBanner .btn-reload:hover { background: #6b5200; }
 
+        /* ===== MOBILE DATE SELECTORS (BARU) ===== */
+        .mobile-date-selectors {
+            display: none;
+            gap: 5px;
+            align-items: center;
+            margin-right: auto;
+        }
+        .mobile-date-selectors select {
+            padding: 4px 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 12px;
+            background: white;
+            font-weight: bold;
+        }
+        .mobile-date-selectors label {
+            font-size: 11px;
+            font-weight: bold;
+            color: #555;
+        }
+
         /* ===== PRINT LAYOUT ===== */
         .print-only { display: none !important; }
 
@@ -203,13 +225,16 @@
             .print-title-row td { font-size: 16px !important; font-weight: bold !important; background: white !important; border: none !important; padding: 5px 0 !important; }
         }
 
+        /* ===== MOBILE SPECIFIC ===== */
         @media (max-width: 768px) {
-            .header { grid-template-columns: 1fr; gap: 5px; }
+            /* Hide desktop header grid */
+            .header { display: none !important; }
+            /* Hide side panel */
+            .side-panel { display: none !important; }
+            /* Show mobile date selectors */
+            .mobile-date-selectors { display: flex !important; }
+            /* Other mobile adjustments */
             .main-layout { flex-direction: column; }
-            .side-panel { width: 100%; display: flex; flex-wrap: wrap; padding: 5px; overflow-x: auto; }
-            .side-panel h5 { flex: 1; min-width: 60px; }
-            .month-list { display: flex !important; flex-wrap: wrap; gap: 5px; padding: 0; }
-            .month-item { padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.1); }
             .tabs-container { padding-bottom: 5px; }
             body { height: auto; overflow-y: auto; }
             .container { height: auto !important; overflow-y: auto !important; }
@@ -241,6 +266,7 @@
                 <span class="toggle-text"><i class="fas fa-chevron-up" id="toggleIcon"></i> Sembunyi / Tunjuk Menu</span>
             </div>
 
+            <!-- Desktop Header -->
             <div class="header">
                 <div>
                     <label>BULAN</label>
@@ -271,6 +297,23 @@
             </div>
 
             <div class="action-bar">
+                <!-- Mobile Date Selectors (hanya nampak di mobile) -->
+                <div class="mobile-date-selectors">
+                    <label>Bulan:</label>
+                    <select id="mobileBulan" onchange="switchMonth(document.getElementById('mobileTahun').value, this.value)">
+                        <option value="0">Jan</option><option value="1">Feb</option>
+                        <option value="2">Mac</option><option value="3">Apr</option>
+                        <option value="4">Mei</option><option value="5">Jun</option>
+                        <option value="6">Jul</option><option value="7">Ogos</option>
+                        <option value="8">Sep</option><option value="9">Okt</option>
+                        <option value="10">Nov</option><option value="11">Dis</option>
+                    </select>
+                    <label>Tahun:</label>
+                    <select id="mobileTahun" onchange="switchMonth(this.value, document.getElementById('mobileBulan').value)">
+                        <!-- populated by JS -->
+                    </select>
+                </div>
+
                 <button class="btn btn-primary btn-sm" onclick="kiraSemua()">🔄 Kira</button>
                 <button class="btn btn-outline btn-sm" onclick="tambahPekerja()">➕ Tambah Pekerja</button>
                 <button class="btn btn-print btn-sm" onclick="prepareAndPrint()">🖨️ Cetak</button>
@@ -295,6 +338,7 @@
         </div>
 
         <div class="main-layout">
+            <!-- Side panel (desktop) -->
             <div class="side-panel" id="sidePanel">
                 <!-- Populated by JS -->
             </div>
@@ -356,12 +400,15 @@
     // Realtime channel reference
     var realtimeChannel = null;
 
-    // NEW: Flag untuk elakkan Real-time trigger semasa simpanan sendiri
+    // Flag untuk elakkan Real-time trigger semasa simpanan sendiri
     var isSaving = false;
     var bannerDismissed = false;
 
+    // === OFFLINE QUEUE ===
+    var offlineQueue = JSON.parse(localStorage.getItem('offlinePayrollQueue')) || [];
+
     // ============================================================
-    //  SET DEFAULT MONTH TO CURRENT (BARU)
+    //  SET DEFAULT MONTH TO CURRENT
     // ============================================================
     function setDefaultMonth() {
         var now = new Date();
@@ -369,6 +416,23 @@
         var year = now.getFullYear();
         document.getElementById('bulan').value = month;
         document.getElementById('tahun').value = year;
+        // Also sync mobile selectors
+        document.getElementById('mobileBulan').value = month;
+        populateMobileYear();
+        document.getElementById('mobileTahun').value = year;
+    }
+
+    function populateMobileYear() {
+        var select = document.getElementById('mobileTahun');
+        var currentYear = new Date().getFullYear();
+        select.innerHTML = '';
+        for (var y = currentYear - 2; y <= currentYear + 2; y++) {
+            var opt = document.createElement('option');
+            opt.value = y;
+            opt.innerText = y;
+            if (y === currentYear) opt.selected = true;
+            select.appendChild(opt);
+        }
     }
 
     // ============================================================
@@ -419,6 +483,9 @@
         renderTabs();
         updateCalendar();
         hideBanner();
+
+        // Start keyboard navigation
+        setupKeyboardNavigation();
     }
 
     function doLogout() {
@@ -472,6 +539,9 @@
     function switchMonth(year, monthIndex) {
         document.getElementById('tahun').value = year;
         document.getElementById('bulan').selectedIndex = monthIndex;
+        // Sync mobile selectors
+        document.getElementById('mobileTahun').value = year;
+        document.getElementById('mobileBulan').value = monthIndex;
         renderSidePanel();
         updateCalendar();
     }
@@ -646,11 +716,52 @@
     }
 
     // ============================================================
-    //  SIMPAN DATA KE SUPABASE (FINAL: SIMPAN KUMPULAN AKTIF SAHAJA)
+    //  NAVIGASI KEYBOARD (TAB & ENTER SAHAJA)
+    // ============================================================
+    function setupKeyboardNavigation() {
+        document.addEventListener('keydown', function(e) {
+            var active = document.activeElement;
+            if (!active || !active.matches('#tableBody input:not(:disabled)')) return;
+
+            var key = e.key;
+            if (key !== 'Tab' && key !== 'Enter') return;
+
+            e.preventDefault();
+
+            var allInputs = Array.from(document.querySelectorAll('#tableBody input:not(:disabled)'));
+            var idx = allInputs.indexOf(active);
+            var step = (key === 'Tab' && e.shiftKey) ? -1 : 1;
+            var nextIdx = idx + step;
+
+            if (nextIdx >= 0 && nextIdx < allInputs.length) {
+                allInputs[nextIdx].focus();
+            }
+        });
+    }
+
+    // ============================================================
+    //  SIMPAN DATA KE SUPABASE (Dengan Sokongan Offline)
     // ============================================================
     async function simpanData() {
         if (!currentProjectCode) {
             alert('Tiada projek dikaitkan dengan akaun ini.');
+            return;
+        }
+
+        // === OFFLINE SUPPORT ===
+        if (!navigator.onLine) {
+            var dataToQueue = {
+                project_id: currentProjectCode,
+                user_id: currentUser.id,
+                year: parseInt(document.getElementById('tahun').value),
+                month: parseInt(document.getElementById('bulan').value),
+                groups: JSON.parse(JSON.stringify(groups)),
+                is_closed: isClosed,
+                timestamp: new Date().toISOString()
+            };
+            offlineQueue.push(dataToQueue);
+            localStorage.setItem('offlinePayrollQueue', JSON.stringify(offlineQueue));
+            alert('⚠️ Tiada internet. Data telah disimpan di peranti anda. Sistem akan sync secara automatik apabila internet kembali.');
             return;
         }
 
@@ -756,6 +867,86 @@
             alert('❌ Ralat menyimpan data: ' + err.message);
         } finally {
             isSaving = false;
+        }
+    }
+
+    // ============================================================
+    //  AUTO-SYNC OFFLINE DATA (Bila internet pulih)
+    // ============================================================
+    window.addEventListener('online', function() {
+        if (offlineQueue.length > 0) {
+            alert('✅ Internet dijumpai! Sistem sedang menyegerakkan data offline anda...');
+            syncOfflineData();
+        }
+    });
+
+    async function syncOfflineData() {
+        while (offlineQueue.length > 0) {
+            var item = offlineQueue.shift();
+            try {
+                // Simpan semula data ke Supabase menggunakan logik yang sama
+                // Kita perlu pastikan payroll dan payroll_groups di-upsert
+                var bulan = item.month;
+                var tahun = item.year;
+                var now = new Date().toISOString();
+
+                var { data: payroll, error: pError } = await supabase
+                    .from('payrolls')
+                    .upsert({
+                        project_id: item.project_id,
+                        user_id: item.user_id,
+                        year: tahun,
+                        month: bulan,
+                        is_closed: item.is_closed,
+                        groups: [],
+                        updated_at: now,
+                        last_updated_by: item.user_id
+                    }, { onConflict: 'project_id, year, month' })
+                    .select('id')
+                    .single();
+
+                if (pError) throw pError;
+
+                // Simpan semua kumpulan (bukan hanya aktif) – kita simpan semua semasa offline
+                var groupsData = item.groups;
+                for (var i = 0; i < groupsData.length; i++) {
+                    var g = groupsData[i];
+                    var { error: gError } = await supabase
+                        .from('payroll_groups')
+                        .upsert({
+                            payroll_id: payroll.id,
+                            group_name: g.name,
+                            workers: g.workers,
+                            order_index: i,
+                            updated_at: now,
+                            last_updated_by: item.user_id
+                        }, { onConflict: 'payroll_id, group_name' });
+
+                    if (gError) throw gError;
+                }
+
+                // Padam kumpulan yang mungkin telah dipadam offline
+                var localNames = groupsData.map(g => g.name);
+                var { error: delError } = await supabase
+                    .from('payroll_groups')
+                    .delete()
+                    .eq('payroll_id', payroll.id)
+                    .not('group_name', 'in', localNames);
+
+                if (delError) throw delError;
+
+                // Kemaskini queue selepas berjaya
+                localStorage.setItem('offlinePayrollQueue', JSON.stringify(offlineQueue));
+            } catch (err) {
+                // Jika gagal, masukkan balik ke queue dan berhenti
+                offlineQueue.unshift(item);
+                localStorage.setItem('offlinePayrollQueue', JSON.stringify(offlineQueue));
+                alert('❌ Ralat sync offline: ' + err.message + '. Data akan dicuba semula kemudian.');
+                break;
+            }
+        }
+        if (offlineQueue.length === 0) {
+            alert('✅ Semua data offline telah disegerakkan!');
         }
     }
 
@@ -1818,9 +2009,9 @@
 
     function switchGroup(idx) { currentGroupIndex = idx; renderTabs(); renderTable(); }
 
-// ============================================================
-//  REMOVE GROUP (DELETE TERUS KE DATABASE)
-// ============================================================
+    // ============================================================
+    //  REMOVE GROUP (DELETE TERUS KE DATABASE)
+    // ============================================================
     function removeGroup(idx) {
         if (groups.length <= 1) {
             alert('Tidak boleh padam kumpulan terakhir.');
@@ -1832,8 +2023,6 @@
             return;
         }
 
-        // Jika belum ada payrollUUID (kumpulan baru belum pernah simpan),
-        // kita hanya padam dari tempatan sahaja.
         if (!payrollUUID) {
             groups.splice(idx, 1);
             if (currentGroupIndex >= groups.length) {
@@ -1844,7 +2033,6 @@
             return;
         }
 
-        // Lakukan DELETE ke Supabase
         supabase
             .from('payroll_groups')
             .delete()
@@ -1855,15 +2043,12 @@
                     alert('❌ Ralat memadam kumpulan: ' + result.error.message);
                     return;
                 }
-
-                // Padam dari senarai tempatan
                 groups.splice(idx, 1);
                 if (currentGroupIndex >= groups.length) {
                     currentGroupIndex = groups.length - 1;
                 }
                 renderTabs();
                 renderTable();
-                
                 alert('✅ Kumpulan "' + groupName + '" berjaya dipadam dari sistem!');
             });
     }
