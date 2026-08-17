@@ -227,13 +227,9 @@
 
         /* ===== MOBILE SPECIFIC ===== */
         @media (max-width: 768px) {
-            /* Hide desktop header grid */
             .header { display: none !important; }
-            /* Hide side panel */
             .side-panel { display: none !important; }
-            /* Show mobile date selectors */
             .mobile-date-selectors { display: flex !important; }
-            /* Other mobile adjustments */
             .main-layout { flex-direction: column; }
             .tabs-container { padding-bottom: 5px; }
             body { height: auto; overflow-y: auto; }
@@ -407,6 +403,9 @@
     // === OFFLINE QUEUE ===
     var offlineQueue = JSON.parse(localStorage.getItem('offlinePayrollQueue')) || [];
 
+    // === HEARTBEAT INTERVAL ===
+    var heartbeatInterval = null;
+
     // ============================================================
     //  SET DEFAULT MONTH TO CURRENT
     // ============================================================
@@ -480,12 +479,14 @@
         await loadRatesFromSupabase();
         await loadLeavesFromSupabase();
 
+        // --- MULAKAN HEARTBEAT & NAVIGASI ---
+        startHeartbeat();
+        setupKeyboardNavigation();
+        // -------------------------------------
+
         renderTabs();
         updateCalendar();
         hideBanner();
-
-        // Start keyboard navigation
-        setupKeyboardNavigation();
     }
 
     function doLogout() {
@@ -713,6 +714,29 @@
             });
         }
         datalist.innerHTML = optionsHtml;
+    }
+
+    // ============================================================
+    //  HEARTBEAT (Active User Tracker)
+    // ============================================================
+    function startHeartbeat() {
+        if (!currentUser || heartbeatInterval) return;
+
+        async function sendHeartbeat() {
+            try {
+                await supabase
+                    .from('user_sessions')
+                    .upsert({
+                        user_id: currentUser.id,
+                        last_active: new Date().toISOString(),
+                        role: currentUser.role,
+                        name: currentUser.name
+                    }, { onConflict: 'user_id' });
+            } catch (err) { /* Abaikan ralat offline */ }
+        }
+
+        sendHeartbeat();
+        heartbeatInterval = setInterval(sendHeartbeat, 60000);
     }
 
     // ============================================================
