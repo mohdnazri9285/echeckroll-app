@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>Admin - eCheckroll FPMSB</title>
 
-    <!-- Favicon & Manifest -->
     <link rel="shortcut icon" href="image/favicon/favicon.ico" type="image/x-icon">
     <link rel="apple-touch-icon" sizes="180x180" href="image/favicon/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="image/favicon/favicon-32x32.png">
@@ -273,6 +272,7 @@
                         <!-- Populated by JS -->
                     </div>
 
+                    <!-- Alert Box -->
                     <div id="alertContainer">
                         <i class="fas fa-exclamation-triangle"></i> 
                         <span id="alertText">Tiada amaran buat masa ini.</span>
@@ -283,6 +283,7 @@
                         <!-- Populated by JS -->
                     </div>
                 </div>
+                <!-- ====================================================== -->
 
                 <!-- KADAR UPAH -->
                 <div class="content-section" id="sec-rates">
@@ -393,6 +394,7 @@
         </div>
     </div>
 </div>
+<!-- ================================================= -->
 
 <script>
     // ============================================================
@@ -403,8 +405,8 @@
     var supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     var currentUser = null;
-    var projectsCache = []; // To hold all projects
-    var payrollsCache = []; // Cache for current month's payrolls
+    var projectsCache = [];
+    var payrollsCache = [];
 
     // ============================================================
     // AUTH CHECK
@@ -459,11 +461,49 @@
     }
 
     // ============================================================
+    // HEARTBEAT (ACTIVE USER) - Tambahan untuk Admin
+    // ============================================================
+    function startHeartbeat() {
+        if (!currentUser) return;
+        async function sendHeartbeat() {
+            try {
+                await supabase
+                    .from('user_sessions')
+                    .upsert({
+                        user_id: currentUser.id,
+                        last_active: new Date().toISOString(),
+                        role: currentUser.role,
+                        name: currentUser.name
+                    }, { onConflict: 'user_id' });
+            } catch (err) { /* Abaikan */ }
+        }
+        sendHeartbeat();
+        setInterval(sendHeartbeat, 60000);
+    }
+
+    async function loadActiveUsers() {
+        var fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        var meterEl = document.getElementById('activeUsersMeter');
+        if (!meterEl) return;
+        
+        var { count, error } = await supabase
+            .from('user_sessions')
+            .select('user_id', { count: 'exact', head: true })
+            .gte('last_active', fiveMinsAgo);
+
+        if (!error) {
+            meterEl.innerText = count || 0;
+        }
+    }
+
+    // ============================================================
     // MAIN LOADER
     // ============================================================
     async function loadAllData() {
         populateYearDropdown();
         await loadProjectsCache();
+        startHeartbeat(); // Mula heartbeat
+        await loadActiveUsers();
         await loadDashboard();
         loadTables();
         loadWeeklyOffs();
@@ -488,14 +528,16 @@
     }
 
     // ============================================================
-    // DASHBOARD LOADER (UPDATED TO USE payroll_groups)
+    // DASHBOARD LOADER (DIBAIKI UNTUK PAYROLL_GROUPS)
     // ============================================================
     async function loadDashboard() {
         var month = parseInt(document.getElementById('adminMonth').value);
         var year = parseInt(document.getElementById('adminYear').value);
         var daysInMonth = new Date(year, month + 1, 0).getDate();
 
-        // 1. Fetch payrolls for this month
+        await loadActiveUsers(); // Refresh meter aktif
+
+        // Fetch all payrolls for this month
         var { data: payrolls, error } = await supabase
             .from('payrolls')
             .select('*')
@@ -509,32 +551,9 @@
             payrollsCache = payrolls || [];
         }
 
-        // 2. Fetch all payroll_groups for the fetched payrolls
-        var payrollIds = payrollsCache.map(function(p) { return p.id; });
-        var workersByPayroll = {};
-        if (payrollIds.length > 0) {
-            var { data: groupsData, error: gError } = await supabase
-                .from('payroll_groups')
-                .select('payroll_id, workers')
-                .in('payroll_id', payrollIds);
-
-            if (!gError && groupsData) {
-                groupsData.forEach(function(g) {
-                    if (!workersByPayroll[g.payroll_id]) {
-                        workersByPayroll[g.payroll_id] = [];
-                    }
-                    // concatenate workers from each group
-                    if (g.workers && Array.isArray(g.workers)) {
-                        workersByPayroll[g.payroll_id].push(...g.workers);
-                    }
-                });
-            }
-        }
-
-        // 3. Determine which entities to show (regions for HQ, projects for Wilayah)
         var isHQ = currentUser.role === 'HQ';
         var entities = [];
-        var entityMap = {}; 
+        var entityMap = {};
 
         if (isHQ) {
             var regions = {};
@@ -573,7 +592,26 @@
             return;
         }
 
-        // 4. Build grid data structure
+        // Kumpulkan workers dari payroll_groups
+        var payrollIds = payrollsCache.map(p => p.id);
+        var workersByPayroll = {};
+        if (payrollIds.length > 0) {
+            var { data: groupsData, error: gError } = await supabase
+                .from('payroll_groups')
+                .select('payroll_id, workers')
+                .in('payroll_id', payrollIds);
+            
+            if (!gError && groupsData) {
+                groupsData.forEach(function(g) {
+                    if (!workersByPayroll[g.payroll_id]) workersByPayroll[g.payroll_id] = [];
+                    (g.workers || []).forEach(function(w) {
+                        workersByPayroll[g.payroll_id].push(w);
+                    });
+                });
+            }
+        }
+
+        // Build grid data structure
         var gridData = {};
         entities.forEach(function(e) {
             var key = e.id;
@@ -589,23 +627,19 @@
             };
         });
 
-        // 5. Process payrolls using workersByPayroll map
+        // Process payrolls
         payrollsCache.forEach(function(pay) {
             var projectId = pay.project_id;
             var isClosed = pay.is_closed || false;
             var workers = workersByPayroll[pay.id] || [];
 
-            // Find which entity this project belongs to
             var entityKey = null;
             if (isHQ) {
                 var proj = projectsCache.find(function(p) { return p.id === projectId; });
                 if (proj) entityKey = proj.region;
             } else {
-                if (projectId === entityKey) entityKey = projectId;
-                else {
-                    var proj = projectsCache.find(function(p) { return p.id === projectId && p.region === currentUser.region; });
-                    if (proj) entityKey = projectId;
-                }
+                var proj = projectsCache.find(function(p) { return p.id === projectId && p.region === currentUser.region; });
+                if (proj) entityKey = projectId;
             }
 
             if (!entityKey || !gridData[entityKey]) return;
@@ -627,10 +661,10 @@
             });
         });
 
-        // Render Meters, Grid, Alert, and Buttons
+        // Render Meters
         renderMeters(gridData, isHQ);
         renderGrid(gridData, entities, isHQ, daysInMonth);
-        renderAlert(gridData, isHQ, daysInMonth); // <-- PASS daysInMonth
+        renderAlert(gridData, isHQ);
         renderTransactionButtons(gridData, isHQ);
     }
 
@@ -650,6 +684,8 @@
         var gross = totalGajiAktiviti + totalElaun;
 
         if (worker.leaveRates && worker.hari) {
+            // Menggunakan paidLeaveCodes yang diambil secara dinamik di echeckroll, tapi di sini kita pakai array static
+            var PAID_LEAVE_CODES = ['CA', 'CT', 'MC', 'CB', 'HAJI', 'CM', 'OFF', 'WAD', 'CBN', 'CP', 'CE', 'CK'];
             Object.keys(worker.leaveRates).forEach(function(code) {
                 var ucCode = code.toUpperCase();
                 if (PAID_LEAVE_CODES.indexOf(ucCode) !== -1) {
@@ -665,7 +701,7 @@
     }
 
     // ============================================================
-    // RENDER METERS
+    // RENDER METERS (TAMBAH ACTIVE USERS)
     // ============================================================
     function renderMeters(gridData, isHQ) {
         var container = document.getElementById('metersContainer');
@@ -686,12 +722,22 @@
                 <div class="meter-card"><h3>RM ${totalGross.toFixed(2)}</h3><span>Jumlah Gaji Kasar (Bulan Ini)</span></div>
                 <div class="meter-card"><h3>${activeEntities}</h3><span>Wilayah Aktif</span></div>
                 <div class="meter-card"><h3>${totalEntries}</h3><span>Penggunaan Data (Bulan Ini)</span><span class="sub-text">Bilangan Entri Kehadiran/Cuti</span></div>
+                <div class="meter-card" style="border-left-color: #1976d2;">
+                    <h3 id="activeUsersMeter">0</h3>
+                    <span>Pengguna Aktif (5 minit)</span>
+                    <span class="sub-text">FS / AFC / FC / Admin</span>
+                </div>
             `;
         } else {
             html += `
                 <div class="meter-card"><h3>${totalWorkers}</h3><span>Jumlah Pekerja (Bulan Ini)</span></div>
                 <div class="meter-card"><h3>RM ${totalGross.toFixed(2)}</h3><span>Jumlah Gaji Kasar (Bulan Ini)</span></div>
                 <div class="meter-card"><h3>${activeEntities}</h3><span>Rancangan Aktif</span></div>
+                <div class="meter-card" style="border-left-color: #1976d2;">
+                    <h3 id="activeUsersMeter">0</h3>
+                    <span>Pengguna Aktif (5 minit)</span>
+                    <span class="sub-text">FS / AFC / FC / Admin</span>
+                </div>
             `;
         }
         container.innerHTML = html;
@@ -714,7 +760,6 @@
             var rowClass = data.entries > 0 ? '' : '';
             html += '<tr>';
             var label = e.type === 'region' ? e.id : (e.name || e.id);
-            // On click, open modal (now async)
             html += '<td class="grid-row-label" onclick="openModal(\'' + e.id + '\', \'' + (isHQ ? 'region' : 'project') + '\')">' + label + '</td>';
 
             for (var d = 0; d < daysInMonth; d++) {
@@ -737,9 +782,9 @@
     }
 
     // ============================================================
-    // RENDER ALERT (FIX: Tambah parameter daysInMonth)
+    // RENDER ALERT
     // ============================================================
-    function renderAlert(gridData, isHQ, daysInMonth) {
+    function renderAlert(gridData, isHQ) {
         var alertBox = document.getElementById('alertContainer');
         var alertText = document.getElementById('alertText');
         var hasData = false;
@@ -844,9 +889,9 @@
     }
 
     // ============================================================
-    // MODAL (POPUP) LOGIC - UPDATED TO USE payroll_groups
+    // MODAL (POPUP) LOGIC (DIBAIKI UNTUK PAYROLL_GROUPS)
     // ============================================================
-    async function openModal(entityId, entityType) {
+    function openModal(entityId, entityType) {
         var overlay = document.getElementById('modalOverlay');
         var title = document.getElementById('modalTitle');
         var body = document.getElementById('modalBody');
@@ -866,27 +911,29 @@
             }
         }
 
-        // Collect relevant payrolls & groups
         var totalWorkers = 0, totalGross = 0, totalEntries = 0;
         var projectData = {};
 
-        var selectedProjectIds = projects.map(function(p) { return p.id; });
+        // Ambil payroll_ids dan kemudian groups dari payroll_groups
+        var projectIds = projects.map(function(p) { return p.id; });
         var relevantPayrolls = payrollsCache.filter(function(pay) {
-            return selectedProjectIds.includes(pay.project_id);
+            return projectIds.indexOf(pay.project_id) !== -1;
         });
         var relevantPayrollIds = relevantPayrolls.map(function(p) { return p.id; });
 
         var workersByPayroll = {};
         if (relevantPayrollIds.length > 0) {
-            var { data: groupsData, error: gError } = await supabase
+            var { data: groupsData } = await supabase
                 .from('payroll_groups')
                 .select('payroll_id, workers')
                 .in('payroll_id', relevantPayrollIds);
-
-            if (!gError && groupsData) {
+            
+            if (groupsData) {
                 groupsData.forEach(function(g) {
                     if (!workersByPayroll[g.payroll_id]) workersByPayroll[g.payroll_id] = [];
-                    if (g.workers) workersByPayroll[g.payroll_id].push(...g.workers);
+                    (g.workers || []).forEach(function(w) {
+                        workersByPayroll[g.payroll_id].push(w);
+                    });
                 });
             }
         }
@@ -946,7 +993,7 @@
     }
 
     // ============================================================
-    // EXCEL UPLOAD FUNCTIONS
+    // EXCEL UPLOAD FUNCTIONS (Sama seperti sebelum)
     // ============================================================
     function readExcelFile(fileId) {
         return new Promise(function(resolve, reject) {
@@ -1194,11 +1241,6 @@
         if (error) alert('❌ Ralat: ' + error.message);
         else { alert('✅ Tetapan hari cuti untuk ' + projectId + ' telah dikemaskini.'); loadWeeklyOffs(); }
     }
-
-    // ============================================================
-    // PAID LEAVE CODES (untuk pengiraan gaji)
-    // ============================================================
-    var PAID_LEAVE_CODES = ['CA', 'CT', 'MC', 'CB', 'HAJI', 'CM', 'OFF', 'WAD', 'CBN', 'CP', 'CE', 'CK'];
 
     // ============================================================
     // BOOT UP
