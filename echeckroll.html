@@ -126,10 +126,19 @@
         .editable-input { width: 100%; border: none; background: transparent; text-align: center; font-size: 11px; padding: 0; font-family: inherit; }
         .editable-input:focus { outline: 2px solid #2e7d32; background: #e8f5e9; }
         .editable-input.number { text-align: right; padding-right: 2px; }
-        .editable-input:disabled { background: #e0e0e0; color: #777; }
+        
+        /* ===== PEMBETULAN CSS: DISABLED INPUT (LUTSINAR, TIADA WARNA KELABU) ===== */
+        .editable-input:disabled, .daily-input:disabled {
+            background: transparent !important;
+            color: #333 !important;
+            opacity: 1 !important;
+            cursor: default !important;
+            -webkit-text-fill-color: #333 !important; /* Untuk keserasian Safari */
+        }
+        /* ====================================================================== */
+
         .daily-input { width: 100%; border: none; background: #fffde7; text-align: center; font-size: 11px; padding: 2px 0; }
         .daily-input:focus { outline: 2px solid #1976d2; background: #ffffff; }
-        .daily-input:disabled { background: #e0e0e0; color: #777; }
 
         .check-sm { width: 14px; height: 14px; cursor: pointer; }
         .check-afc { accent-color: #1976d2; }
@@ -1087,11 +1096,8 @@
             for (var d = 0; d < 31; d++) {
                 var isOff = offDayIndices.includes(d);
                 var isDisabled = d >= daysInMonth;
-                // --- PEMBETULAN DI SINI ---
-                // Input kehadiran hanya dikunci jika hari tamat ATAU user tiada hak edit. 
-                // Ia TIDAK dikunci berdasarkan nilai (CA, CT, dll) supaya user boleh betulkan kesilapan.
+                // Input kehadiran hanya dikunci jika hari tamat ATAU user tiada hak edit.
                 var inputDisabled = isDisabled || !canEditData;
-                // ---------------------------
 
                 var bg = isDisabled ? '#e0e0e0' : (isOff ? '#ffcdd2' : '#ffecb3');
                 var val = (worker.hari && worker.hari[d]) ? worker.hari[d] : '';
