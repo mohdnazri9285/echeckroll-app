@@ -47,17 +47,14 @@
             pointer-events: auto;
         }
 
-        /* ===== INITIAL MAINTENANCE TEXT (DIPERBAIKI) ===== */
+        /* ===== INITIAL MAINTENANCE TEXT ===== */
         #maintenance-text {
             position: absolute;
             z-index: 2;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
-            transition: opacity 0.5s ease;
-            
-            /* --- PENAMBAHBAIKAN UTAMA: OVERLAY GELAP DI BELAKANG TEKS --- */
-            background: rgba(0, 0, 0, 0.55); /* Lapisan latar belakang hitam lutsinar */
+            background: rgba(0, 0, 0, 0.55);
             padding: 30px 50px;
             border-radius: 16px;
             backdrop-filter: blur(2px);
@@ -66,6 +63,7 @@
             box-shadow: 0 15px 40px rgba(0,0,0,0.6);
             color: white;
             max-width: 85%;
+            transition: opacity 0.5s ease;
         }
         #maintenance-text h1 {
             font-size: 3rem;
@@ -124,45 +122,27 @@
             border-bottom: 1px solid rgba(255,255,255,0.15);
             flex-shrink: 0;
         }
-        .avatar-container {
-            position: relative;
-            width: 44px; height: 54px;
+
+        /* --- GANTIAN: AVATAR MENGGUNAKAN GAMBAR --- */
+        .chat-avatar {
+            width: 50px;
+            height: 50px;
             flex-shrink: 0;
-        }
-        .avatar-head {
-            width: 22px; height: 22px;
-            background: #fce4c6;
             border-radius: 50%;
-            margin: 0 auto 2px auto;
-            position: relative;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            overflow: hidden;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .avatar-head::after {
-            content: ""; position: absolute; top: 6px; left: 4px;
-            width: 4px; height: 4px; background: #333; border-radius: 50%;
-            box-shadow: 10px 0 0 #333;
+        .chat-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
-        .avatar-head::before {
-            content: ""; position: absolute; top: 11px; left: 6px;
-            width: 10px; height: 3px; background: #333; border-radius: 4px;
-        }
-        .avatar-body {
-            width: 34px; height: 28px;
-            background: #e0e0e0;
-            border-radius: 4px 4px 10px 10px;
-            margin: 0 auto;
-            position: relative;
-        }
-        .avatar-pocket {
-            position: absolute; bottom: 4px; left: 4px;
-            width: 10px; height: 8px;
-            border: 1px solid rgba(0,0,0,0.15);
-            border-radius: 2px;
-        }
-        .avatar-pocket img {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 8px; height: auto;
-        }
+        /* ---------------------------------------- */
+
         .chat-info { flex: 1; }
         .chat-info h3 { margin: 0; font-size: 16px; display: flex; align-items: center; gap: 6px; }
         .chat-info p { margin: 2px 0 0 0; font-size: 11px; opacity: 0.7; }
@@ -274,7 +254,7 @@
         .action-btn.primary:hover { background: #e68a00; transform: scale(1.02); }
         .action-btn.secondary { border-color: rgba(255,255,255,0.3); }
 
-        /* --- Reopen Button (muncul selepas chat ditutup) --- */
+        /* --- Reopen Button --- */
         #reopen-btn {
             display: none;
             position: absolute;
@@ -317,6 +297,7 @@
             #dialog-box { padding: 15px; max-width: 95%; top: 45%; }
             .bubble { font-size: 13px; padding: 8px 12px; }
             .action-btn { font-size: 11px; padding: 6px 12px; }
+            .chat-avatar { width: 40px; height: 40px; }
             #reopen-btn { bottom: 20px; right: 20px; padding: 12px 18px; font-size: 12px; }
         }
     </style>
@@ -327,7 +308,7 @@
     <div id="bg-layer"></div>
     <div id="overlay"></div>
 
-    <!-- INITIAL MAINTENANCE TEXT (KOTAK GELAP DITAMBAH) -->
+    <!-- INITIAL MAINTENANCE TEXT -->
     <div id="maintenance-text">
         <h1>eCheckroll FPMSB</h1>
         <p>is currently under maintenance. We'll be back soon.</p>
@@ -335,7 +316,7 @@
 
     <!-- REOPEN CHAT BUTTON -->
     <button id="reopen-btn" onclick="reopenChat()">
-        <i class="fas fa-robot"></i> Buka Perbualan
+        <i class="fas fa-comments"></i> Buka Perbualan
     </button>
 
     <!-- LIVE CHAT DIALOG -->
@@ -343,14 +324,11 @@
         
         <!-- Chat Header -->
         <div class="chat-header">
-            <div class="avatar-container">
-                <div class="avatar-head"></div>
-                <div class="avatar-body">
-                    <div class="avatar-pocket">
-                        <img src="image/logo.png" alt="FPMSB Logo">
-                    </div>
-                </div>
+            <!-- AVATAR BARU: Gambar customer support -->
+            <div class="chat-avatar">
+                <img src="image/chat-avatar.png" alt="Pembantu IT">
             </div>
+
             <div class="chat-info">
                 <h3>Pembantu IT eCheckroll <span class="online-dot"></span></h3>
                 <p>Biasanya membalas dalam masa 1 saat</p>
