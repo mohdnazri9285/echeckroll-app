@@ -1,5 +1,12 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/maintenance.html" }
-  ]
+    { "source": "/login.html", "destination": "/maintenance.html" },
+    { "source": "/admin.html", "destination": "/maintenance.html" },
+    { "source": "/echeckroll.html", "destination": "/maintenance.html" },
+    { "source": "/developer.html", "destination": "/maintenance.html" },
+    { "source": "/reset-password.html", "destination": "/maintenance.html" },
+    { "source": "/index.html", "destination": "/maintenance.html" },
+    { "source": "/", "destination": "/maintenance.html" }
+  ],
+  "cleanUrls": false
 }
