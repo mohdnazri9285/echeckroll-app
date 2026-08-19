@@ -86,7 +86,6 @@
 
         .main-layout { display: flex; gap: 8px; flex-grow: 1; overflow: hidden; }
 
-        /* Side panel (desktop) */
         .side-panel { 
             width: 110px; 
             background: linear-gradient(135deg, #c62828, #b71c1c);
@@ -170,7 +169,7 @@
         }
         #realtimeBanner .btn-reload:hover { background: #6b5200; }
 
-        /* ===== MOBILE DATE SELECTORS (BARU) ===== */
+        /* ===== MOBILE DATE SELECTORS ===== */
         .mobile-date-selectors {
             display: none;
             gap: 5px;
@@ -311,7 +310,7 @@
                 </div>
 
                 <button class="btn btn-primary btn-sm" onclick="kiraSemua()">🔄 Kira</button>
-                <button class="btn btn-outline btn-sm" onclick="tambahPekerja()">➕ Tambah Pekerja</button>
+                <button class="btn btn-outline btn-sm" onclick="tambahPekerja()" id="btnTambahPekerja">➕ Tambah Pekerja</button>
                 <button class="btn btn-print btn-sm" onclick="prepareAndPrint()">🖨️ Cetak</button>
                 <button class="btn btn-outline btn-sm" onclick="simpanData()" style="background:#e3f2fd; border-color:#1976d2;">💾 Simpan Data</button>
                 
@@ -334,7 +333,6 @@
         </div>
 
         <div class="main-layout">
-            <!-- Side panel (desktop) -->
             <div class="side-panel" id="sidePanel">
                 <!-- Populated by JS -->
             </div>
@@ -1015,7 +1013,14 @@
             </td></tr>`;
             return;
         }
-        var isEditable = !isClosed;
+
+        // ===== KAWALAN PERANAN =====
+        var canEditData = !isClosed && (currentUser.role === 'FS' || currentUser.role === 'HQ' || currentUser.role === 'Wilayah' || currentUser.role === 'DEV');
+        var isAFC = currentUser.role === 'AFC';
+        var isFC = currentUser.role === 'FC';
+        // ==================================
+
+        var isEditable = !isClosed; // Untuk input/data lain – hanya akan digunakan jika canEditData
 
         // --- 1. RENDER INDIVIDUAL WORKERS ---
         group.workers.forEach(function(worker, wIdx) {
@@ -1058,19 +1063,20 @@
 
             var dataRow = document.createElement('tr');
             dataRow.className = 'worker-data-row';
+            // Input nama, noKP, umur, jantina – hanya boleh edit jika canEditData
             dataRow.innerHTML = `
                 <td style="background:#fff9c4; font-weight:bold; font-size:12px;">${wIdx + 1}</td>
                 <td style="background:#fff9c4; font-weight:bold; font-size:12px; text-align:left;">
-                    <input type="text" class="editable-input" value="${worker.nama}" ${isEditable ? '' : 'disabled'} onchange="groups[${currentGroupIndex}].workers[${wIdx}].nama = this.value;">
+                    <input type="text" class="editable-input" value="${worker.nama}" ${canEditData ? '' : 'disabled'} onchange="groups[${currentGroupIndex}].workers[${wIdx}].nama = this.value;">
                 </td>
                 <td style="background:#fff9c4; font-weight:bold; font-size:12px;">
-                    <input type="text" class="editable-input" value="${worker.noKP}" ${isEditable ? '' : 'disabled'} onchange="groups[${currentGroupIndex}].workers[${wIdx}].noKP = this.value;">
+                    <input type="text" class="editable-input" value="${worker.noKP}" ${canEditData ? '' : 'disabled'} onchange="groups[${currentGroupIndex}].workers[${wIdx}].noKP = this.value;">
                 </td>
                 <td style="background:#fff9c4; font-weight:bold; font-size:12px;">
-                    <input type="number" class="editable-input number" value="${worker.umur}" ${isEditable ? '' : 'disabled'} onchange="groups[${currentGroupIndex}].workers[${wIdx}].umur = parseInt(this.value) || 0;">
+                    <input type="number" class="editable-input number" value="${worker.umur}" ${canEditData ? '' : 'disabled'} onchange="groups[${currentGroupIndex}].workers[${wIdx}].umur = parseInt(this.value) || 0;">
                 </td>
                 <td style="background:#fff9c4; font-weight:bold; font-size:12px;">
-                    <select class="editable-input" ${isEditable ? '' : 'disabled'} onchange="groups[${currentGroupIndex}].workers[${wIdx}].jantina = this.value;">
+                    <select class="editable-input" ${canEditData ? '' : 'disabled'} onchange="groups[${currentGroupIndex}].workers[${wIdx}].jantina = this.value;">
                         <option value="L" ${worker.jantina === 'L' ? 'selected' : ''}>L</option>
                         <option value="P" ${worker.jantina === 'P' ? 'selected' : ''}>P</option>
                     </select>
@@ -1081,12 +1087,19 @@
             for (var d = 0; d < 31; d++) {
                 var isOff = offDayIndices.includes(d);
                 var isDisabled = d >= daysInMonth;
+                // Disable daily input if: isDisabled OR (not canEditData) OR (hari is a leave code)
+                var dayValue = (worker.hari && worker.hari[d]) ? worker.hari[d] : '';
+                var isLeaveDay = LEAVE_MAP[dayValue.toUpperCase()] !== undefined && dayValue.toUpperCase() !== 'H' && dayValue.toUpperCase() !== 'HHM' && dayValue.toUpperCase() !== 'HCU' && dayValue !== '1';
+                // Actually, present codes: '1', 'H', 'HHM', 'HCU'. Leave codes are anything else in LEAVE_MAP.
+                var isPresentCode = dayValue === '1' || dayValue.toUpperCase() === 'H' || dayValue.toUpperCase() === 'HHM' || dayValue.toUpperCase() === 'HCU';
+                var inputDisabled = isDisabled || !canEditData || (dayValue && !isPresentCode);
+                // If the worker is on leave, disable the input and clear any quantity? Not clearing, but it's disabled.
                 var bg = isDisabled ? '#e0e0e0' : (isOff ? '#ffcdd2' : '#ffecb3');
-                var val = (worker.hari && worker.hari[d]) ? worker.hari[d] : '';
+                var val = dayValue;
                 if (val === '1') totalHariBekerja += 1;
                 dataRow.innerHTML += `
                     <td style="background:${bg}; padding:0;">
-                        <input type="text" class="daily-input" value="${val}" ${isDisabled || !isEditable ? 'disabled' : ''} onchange="updateKehadiran(${wIdx}, ${d}, this.value)">
+                        <input type="text" class="daily-input" value="${val}" ${inputDisabled ? 'disabled' : ''} onchange="updateKehadiran(${wIdx}, ${d}, this.value)">
                     </td>
                 `;
             }
@@ -1116,7 +1129,7 @@
                     var bg = d >= daysInMonth ? '#e0e0e0' : '';
                     row.innerHTML += `<td style="background:${bg};"></td>`;
                 }
-                row.innerHTML += `<td></td><td></td><td><input type="number" class="editable-input number" value="${worker[el.field]}" ${isEditable ? '' : 'disabled'} step="0.01" onchange="updateElaun(${wIdx}, '${el.field}', this.value);">`;
+                row.innerHTML += `<td></td><td></td><td><input type="number" class="editable-input number" value="${worker[el.field]}" ${canEditData ? '' : 'disabled'} step="0.01" onchange="updateElaun(${wIdx}, '${el.field}', this.value);">`;
                 workerBlock.appendChild(row);
             });
 
@@ -1145,19 +1158,21 @@
                 row.innerHTML = `
                     <td><span class="del-btn" onclick="padamAktiviti(${wIdx}, ${aIdx})">✕</span></td>
                     <td class="row-label" style="padding-left:4px;">
-                        <input list="kuk-list-global" class="editable-input" style="text-align:left; width:100%; max-width:none; min-width:300px;" value="${displayValue}" placeholder="Taip kod / nama kerja" title="${displayValue}" ${isEditable ? '' : 'disabled'} onchange="updateActName(${wIdx}, ${aIdx}, this.value)">
+                        <input list="kuk-list-global" class="editable-input" style="text-align:left; width:100%; max-width:none; min-width:300px;" value="${displayValue}" placeholder="Taip kod / nama kerja" title="${displayValue}" ${canEditData ? '' : 'disabled'} onchange="updateActName(${wIdx}, ${aIdx}, this.value)">
                     </td>
-                    <td><input type="text" class="editable-input" value="${act.kod || ''}" ${isEditable ? '' : 'disabled'}></td>
-                    <td><input type="text" class="editable-input" value="${act.unit || ''}" placeholder="PKT" ${isEditable ? '' : 'disabled'} onchange="updateActUnit(${wIdx}, ${aIdx}, this.value);"></td>
-                    <td><input type="text" class="editable-input" value="${act.blok || ''}" placeholder="Blok" ${isEditable ? '' : 'disabled'} onchange="updateActBlok(${wIdx}, ${aIdx}, this.value);"></td>
+                    <td><input type="text" class="editable-input" value="${act.kod || ''}" ${canEditData ? '' : 'disabled'}></td>
+                    <td><input type="text" class="editable-input" value="${act.unit || ''}" placeholder="PKT" ${canEditData ? '' : 'disabled'} onchange="updateActUnit(${wIdx}, ${aIdx}, this.value);"></td>
+                    <td><input type="text" class="editable-input" value="${act.blok || ''}" placeholder="Blok" ${canEditData ? '' : 'disabled'} onchange="updateActBlok(${wIdx}, ${aIdx}, this.value);"></td>
                 `;
 
                 var totalQty = 0;
                 for (var d = 0; d < 31; d++) {
                     var isOff = offDayIndices.includes(d);
                     var dayValue = worker.hari[d] || '';
-                    var isLeaveDay = LEAVE_MAP[dayValue.toUpperCase()] !== undefined;
-                    var isDisabled = d >= daysInMonth || !isEditable || isLeaveDay;
+                    var isLeaveDay = LEAVE_MAP[dayValue.toUpperCase()] !== undefined && dayValue.toUpperCase() !== 'H' && dayValue.toUpperCase() !== 'HHM' && dayValue.toUpperCase() !== 'HCU' && dayValue !== '1';
+                    var isPresent = dayValue === '1' || dayValue.toUpperCase() === 'H' || dayValue.toUpperCase() === 'HHM' || dayValue.toUpperCase() === 'HCU';
+                    // Disable daily qty if: day is disabled OR (not canEditData) OR (worker is not present) OR is leave day
+                    var isDisabled = d >= daysInMonth || !canEditData || !isPresent || isLeaveDay;
                     var bg = (d >= daysInMonth ? '#e0e0e0' : '#fffde7');
                     var val = act.kuantitiHarian[d] || 0;
                     if (val != 0) totalQty += val;
@@ -1166,7 +1181,7 @@
                 var totalJumlah = totalQty * act.kadar;
                 row.innerHTML += `
                     <td class="total-row">${totalQty.toFixed(2)}</td>
-                    <td class="total-row"><input type="number" class="editable-input number" style="width:100%;" value="${act.kadar}" ${isEditable ? '' : 'disabled'} step="0.01" onchange="updateActKadar(${wIdx}, ${aIdx}, this.value);"></td>
+                    <td class="total-row"><input type="number" class="editable-input number" style="width:100%;" value="${act.kadar}" ${canEditData ? '' : 'disabled'} step="0.01" onchange="updateActKadar(${wIdx}, ${aIdx}, this.value);"></td>
                     <td class="total-row">${totalJumlah.toFixed(2)}</td>
                     <td></td>
                 `;
@@ -1175,7 +1190,7 @@
 
             // --- Tambah Aktiviti ---
             var addRow = document.createElement('tr');
-            addRow.innerHTML = `<td></td><td class="row-label" style="padding-left:4px;"><button class="btn btn-outline btn-sm" onclick="tambahAktiviti(${wIdx})" ${isEditable ? '' : 'disabled'}>➕ Aktiviti</button></td><td></td><td></td><td></td>`;
+            addRow.innerHTML = `<td></td><td class="row-label" style="padding-left:4px;"><button class="btn btn-outline btn-sm" onclick="tambahAktiviti(${wIdx})" ${canEditData ? '' : 'disabled'}>➕ Aktiviti</button></td><td></td><td></td><td></td>`;
             for (var d = 0; d < 31; d++) { addRow.innerHTML += `<td style="background:${d>=daysInMonth?'#e0e0e0':''};"></td>`; }
             addRow.innerHTML += `<td></td><td></td><td></td><td></td>`;
             workerBlock.appendChild(addRow);
@@ -1217,7 +1232,7 @@
                     row.innerHTML += `
                         <td class="total-row">${totalCuti}</td>
                         <td class="total-row">
-                            <input type="number" class="editable-input number" style="width:100%;" value="${currentRate}" ${!isPaidLeave || !isEditable ? 'disabled' : ''} step="0.01" onchange="updateLeaveRate(${wIdx}, '${code}', this.value);">
+                            <input type="number" class="editable-input number" style="width:100%;" value="${currentRate}" ${(!isPaidLeave || !canEditData) ? 'disabled' : ''} step="0.01" onchange="updateLeaveRate(${wIdx}, '${code}', this.value);">
                         </td>
                         <td class="total-row">${totalJumlahCuti.toFixed(2)}</td>
                         <td></td>
@@ -1253,19 +1268,19 @@
                 row.innerHTML = `
                     <td><span class="del-btn" onclick="padamPotongan(${wIdx}, ${pIdx})">✕</span></td>
                     <td class="deduction-row" style="text-align:left; padding-left:8px;">
-                        <input type="text" class="editable-input" style="text-align:left;" value="${p.label}" ${isEditable ? '' : 'disabled'} onchange="updatePotonganLabel(${wIdx}, ${pIdx}, this.value);">
+                        <input type="text" class="editable-input" style="text-align:left;" value="${p.label}" ${canEditData ? '' : 'disabled'} onchange="updatePotonganLabel(${wIdx}, ${pIdx}, this.value);">
                     </td>
                     <td></td><td></td><td></td>
                     <td colspan="31" style="background:#f5f5f5; border-left:1px solid #b0bec5; border-right:1px solid #b0bec5;"></td>
                     <td></td><td></td>
-                    <td class="deduction-row"><input type="number" class="editable-input number" value="${p.nilai}" ${isEditable ? '' : 'disabled'} step="0.01" onchange="updatePotonganNilai(${wIdx}, ${pIdx}, this.value);"></td>
+                    <td class="deduction-row"><input type="number" class="editable-input number" value="${p.nilai}" ${canEditData ? '' : 'disabled'} step="0.01" onchange="updatePotonganNilai(${wIdx}, ${pIdx}, this.value);"></td>
                     <td></td>
                 `;
                 workerBlock.appendChild(row);
             });
 
             var addDedRow = document.createElement('tr');
-            addDedRow.innerHTML = `<td></td><td class="row-label" style="padding-left:8px;"><button class="btn btn-outline btn-sm" onclick="tambahPotongan(${wIdx})" ${isEditable ? '' : 'disabled'}>➕ Tambah Potongan</button></td><td></td><td></td><td></td><td colspan="31" style="background:#f5f5f5; border-left:1px solid #b0bec5; border-right:1px solid #b0bec5;"></td><td></td><td></td><td></td><td></td>`;
+            addDedRow.innerHTML = `<td></td><td class="row-label" style="padding-left:8px;"><button class="btn btn-outline btn-sm" onclick="tambahPotongan(${wIdx})" ${canEditData ? '' : 'disabled'}>➕ Tambah Potongan</button></td><td></td><td></td><td></td><td colspan="31" style="background:#f5f5f5; border-left:1px solid #b0bec5; border-right:1px solid #b0bec5;"></td><td></td><td></td><td></td><td></td>`;
             workerBlock.appendChild(addDedRow);
 
             var totalPotongan = worker.potongan.reduce(function(sum, p) { return sum + (p.nilai || 0); }, 0);
@@ -1554,7 +1569,6 @@
                 var isOff = offDayIndices.includes(d);
                 var isDisabled = d >= daysInMonth || isClosed;
                 var bg = isOff ? '#ffcdd2' : (isDisabled ? '#e0e0e0' : '');
-                var isAFC = currentUser && currentUser.role === 'AFC';
                 var allChecked = group.workers.every(function(w) { return w.afcCheck[d]; });
                 sumAfcRow.innerHTML += `
                     <td style="background:${bg};">
@@ -1577,7 +1591,6 @@
                 var isOff = offDayIndices.includes(d);
                 var isDisabled = d >= daysInMonth || isClosed;
                 var bg = isOff ? '#ffcdd2' : (isDisabled ? '#e0e0e0' : '');
-                var isFC = currentUser && currentUser.role === 'FC';
                 var allChecked = group.workers.every(function(w) { return w.fcCheck[d]; });
                 sumFcRow.innerHTML += `
                     <td style="background:${bg};">
@@ -1772,7 +1785,10 @@
         if (syncEnabled) {
             group.workers.forEach(function(w) {
                 if (w.id !== worker.id && w.aktiviti[aIdx]) {
-                    w.aktiviti[aIdx].kuantitiHarian[day] = isNaN(numVal) ? 0 : numVal;
+                    // Hanya salin kepada pekerja yang HADIR pada hari tersebut (hari[day] === '1')
+                    if (w.hari[day] === '1') {
+                        w.aktiviti[aIdx].kuantitiHarian[day] = isNaN(numVal) ? 0 : numVal;
+                    }
                 }
             });
         }
@@ -1923,6 +1939,8 @@
     }
 
     function tambahPekerja() {
+        // Hanya FS, HQ, Wilayah, DEV boleh tambah pekerja
+        if (!canEditData()) { alert('Anda tidak dibenarkan menambah pekerja.'); return; }
         var group = groups[currentGroupIndex];
         var newWorker = {
             id: Date.now(), nama: 'PEKERJA BARU', noKP: 'XXXXXXXXXXXX', umur: 30, jantina: 'L',
@@ -1938,11 +1956,17 @@
     }
 
     function padamPekerja(wIdx) {
+        // Hanya FS, HQ, Wilayah, DEV boleh padam pekerja
+        if (!canEditData()) { alert('Anda tidak dibenarkan memadam pekerja.'); return; }
         var group = groups[currentGroupIndex];
         if (group.workers.length <= 1) { alert('Tidak boleh padam pekerja terakhir.'); return; }
         if (!confirm('Padam pekerja ini?')) return;
         group.workers.splice(wIdx, 1);
         renderTable();
+    }
+
+    function canEditData() {
+        return currentUser && (currentUser.role === 'FS' || currentUser.role === 'HQ' || currentUser.role === 'Wilayah' || currentUser.role === 'DEV');
     }
 
     function updateButtons() {
@@ -1994,6 +2018,7 @@
     }
 
     function addNewGroup() {
+        if (!canEditData()) { alert('Anda tidak dibenarkan menambah kumpulan.'); return; }
         var defaultPotongan = [ { label: 'KWSP', nilai: 0 }, { label: 'SOCSO', nilai: 0 }, { label: 'SIP', nilai: 0 } ];
         var newGroup = {
             id: nextGroupId++,
@@ -2041,6 +2066,8 @@
             alert('Tidak boleh padam kumpulan terakhir.');
             return;
         }
+
+        if (!canEditData()) { alert('Anda tidak dibenarkan memadam kumpulan.'); return; }
 
         var groupName = groups[idx].name;
         if (!confirm('Padam kumpulan "' + groupName + '"?\n(Pekerja di dalamnya akan turut terpadam)')) {
