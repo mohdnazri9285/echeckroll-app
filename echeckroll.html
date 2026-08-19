@@ -1087,15 +1087,14 @@
             for (var d = 0; d < 31; d++) {
                 var isOff = offDayIndices.includes(d);
                 var isDisabled = d >= daysInMonth;
-                // Disable daily input if: isDisabled OR (not canEditData) OR (hari is a leave code)
-                var dayValue = (worker.hari && worker.hari[d]) ? worker.hari[d] : '';
-                var isLeaveDay = LEAVE_MAP[dayValue.toUpperCase()] !== undefined && dayValue.toUpperCase() !== 'H' && dayValue.toUpperCase() !== 'HHM' && dayValue.toUpperCase() !== 'HCU' && dayValue !== '1';
-                // Actually, present codes: '1', 'H', 'HHM', 'HCU'. Leave codes are anything else in LEAVE_MAP.
-                var isPresentCode = dayValue === '1' || dayValue.toUpperCase() === 'H' || dayValue.toUpperCase() === 'HHM' || dayValue.toUpperCase() === 'HCU';
-                var inputDisabled = isDisabled || !canEditData || (dayValue && !isPresentCode);
-                // If the worker is on leave, disable the input and clear any quantity? Not clearing, but it's disabled.
+                // --- PEMBETULAN DI SINI ---
+                // Input kehadiran hanya dikunci jika hari tamat ATAU user tiada hak edit. 
+                // Ia TIDAK dikunci berdasarkan nilai (CA, CT, dll) supaya user boleh betulkan kesilapan.
+                var inputDisabled = isDisabled || !canEditData;
+                // ---------------------------
+
                 var bg = isDisabled ? '#e0e0e0' : (isOff ? '#ffcdd2' : '#ffecb3');
-                var val = dayValue;
+                var val = (worker.hari && worker.hari[d]) ? worker.hari[d] : '';
                 if (val === '1') totalHariBekerja += 1;
                 dataRow.innerHTML += `
                     <td style="background:${bg}; padding:0;">
@@ -1569,6 +1568,7 @@
                 var isOff = offDayIndices.includes(d);
                 var isDisabled = d >= daysInMonth || isClosed;
                 var bg = isOff ? '#ffcdd2' : (isDisabled ? '#e0e0e0' : '');
+                var isAFC = currentUser && currentUser.role === 'AFC';
                 var allChecked = group.workers.every(function(w) { return w.afcCheck[d]; });
                 sumAfcRow.innerHTML += `
                     <td style="background:${bg};">
@@ -1591,6 +1591,7 @@
                 var isOff = offDayIndices.includes(d);
                 var isDisabled = d >= daysInMonth || isClosed;
                 var bg = isOff ? '#ffcdd2' : (isDisabled ? '#e0e0e0' : '');
+                var isFC = currentUser && currentUser.role === 'FC';
                 var allChecked = group.workers.every(function(w) { return w.fcCheck[d]; });
                 sumFcRow.innerHTML += `
                     <td style="background:${bg};">
