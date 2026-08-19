@@ -18,7 +18,7 @@
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body, html { margin: 0; padding: 0; height: 100vh; overflow: hidden; width: 100%; }
 
-        /* ===== BACKGROUND LAYER (UBAH KEPADA .jpg) ===== */
+        /* ===== BACKGROUND LAYER ===== */
         #bg-layer {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -47,26 +47,39 @@
             pointer-events: auto;
         }
 
-        /* ===== INITIAL MAINTENANCE TEXT ===== */
+        /* ===== INITIAL MAINTENANCE TEXT (DIPERBAIKI) ===== */
         #maintenance-text {
             position: absolute;
             z-index: 2;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            color: white;
             text-align: center;
-            text-shadow: 0 4px 20px rgba(0,0,0,0.8);
             transition: opacity 0.5s ease;
+            
+            /* --- PENAMBAHBAIKAN UTAMA: OVERLAY GELAP DI BELAKANG TEKS --- */
+            background: rgba(0, 0, 0, 0.55); /* Lapisan latar belakang hitam lutsinar */
+            padding: 30px 50px;
+            border-radius: 16px;
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+            color: white;
+            max-width: 85%;
         }
         #maintenance-text h1 {
             font-size: 3rem;
-            margin-bottom: 10px;
+            margin: 0 0 10px 0;
             letter-spacing: 1px;
+            font-weight: 700;
+            text-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
         #maintenance-text p {
             font-size: 1.2rem;
+            margin: 0;
             opacity: 0.9;
-            margin-top: 0;
+            font-weight: 400;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.5);
         }
         #maintenance-text.hidden {
             opacity: 0;
@@ -298,6 +311,7 @@
 
         /* ===== MOBILE RESPONSIVE ===== */
         @media (max-width: 480px) {
+            #maintenance-text { padding: 20px 25px; max-width: 90%; }
             #maintenance-text h1 { font-size: 2rem; }
             #maintenance-text p { font-size: 1rem; }
             #dialog-box { padding: 15px; max-width: 95%; top: 45%; }
@@ -313,13 +327,13 @@
     <div id="bg-layer"></div>
     <div id="overlay"></div>
 
-    <!-- INITIAL MAINTENANCE TEXT -->
+    <!-- INITIAL MAINTENANCE TEXT (KOTAK GELAP DITAMBAH) -->
     <div id="maintenance-text">
         <h1>eCheckroll FPMSB</h1>
         <p>is currently under maintenance. We'll be back soon.</p>
     </div>
 
-    <!-- REOPEN CHAT BUTTON (muncul selepas chat ditutup) -->
+    <!-- REOPEN CHAT BUTTON -->
     <button id="reopen-btn" onclick="reopenChat()">
         <i class="fas fa-robot"></i> Buka Perbualan
     </button>
@@ -489,7 +503,7 @@
         }
 
         // ============================================================
-        //  DIALOG BUKA / TUTUP (TERMASUK BUTANG BUKA SEMULA)
+        //  DIALOG BUKA / TUTUP
         // ============================================================
 
         function showDialog() {
@@ -500,7 +514,6 @@
             reopenBtn.style.display = 'none';
             isChatOpen = true;
 
-            // Reset chat if it was closed before
             if (messagesEl.children.length === 0) {
                 setTimeout(function() {
                     var welcome = document.createElement('div');
@@ -518,7 +531,7 @@
             document.getElementById('bg-layer').classList.remove('blurred');
             document.getElementById('overlay').classList.remove('active');
             document.getElementById('maintenance-text').classList.remove('hidden');
-            reopenBtn.style.display = 'flex'; // Tunjukkan butang buka semula
+            reopenBtn.style.display = 'flex';
             isChatOpen = false;
         }
 
