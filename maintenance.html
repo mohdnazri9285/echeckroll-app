@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Maintenance - eCheckroll FPMSB</title>
+
+    <link rel="shortcut icon" href="image/favicon/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="image/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="image/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="image/favicon/favicon-16x16.png">
+    <link rel="manifest" href="image/favicon/site.webmanifest">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        /* ===== GLOBAL RESET ===== */
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body, html { margin: 0; padding: 0; height: 100vh; overflow: hidden; width: 100%; }
+
+        /* ===== BACKGROUND LAYER (UBAH KEPADA .jpg) ===== */
+        #bg-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: url('image/fix.jpg') no-repeat center center;
+            background-size: cover;
+            z-index: 0;
+            transition: filter 0.8s ease, transform 0.8s ease;
+        }
+        #bg-layer.blurred {
+            filter: blur(8px) brightness(0.6);
+            transform: scale(1.05);
+        }
+
+        /* ===== OVERLAY DARKEN ===== */
+        #overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 1;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+            pointer-events: none;
+        }
+        #overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* ===== INITIAL MAINTENANCE TEXT ===== */
+        #maintenance-text {
+            position: absolute;
+            z-index: 2;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            text-align: center;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.8);
+            transition: opacity 0.5s ease;
+        }
+        #maintenance-text h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+        #maintenance-text p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-top: 0;
+        }
+        #maintenance-text.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* ===== DIALOG BOX (CHAT UI) ===== */
+        #dialog-box {
+            position: absolute;
+            z-index: 3;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            width: 90%;
+            max-width: 600px;
+            max-height: 85vh;
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 24px;
+            padding: 20px 20px 15px 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        #dialog-box.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* --- Chat Header --- */
+        .chat-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.15);
+            flex-shrink: 0;
+        }
+        .avatar-container {
+            position: relative;
+            width: 44px; height: 54px;
+            flex-shrink: 0;
+        }
+        .avatar-head {
+            width: 22px; height: 22px;
+            background: #fce4c6;
+            border-radius: 50%;
+            margin: 0 auto 2px auto;
+            position: relative;
+        }
+        .avatar-head::after {
+            content: ""; position: absolute; top: 6px; left: 4px;
+            width: 4px; height: 4px; background: #333; border-radius: 50%;
+            box-shadow: 10px 0 0 #333;
+        }
+        .avatar-head::before {
+            content: ""; position: absolute; top: 11px; left: 6px;
+            width: 10px; height: 3px; background: #333; border-radius: 4px;
+        }
+        .avatar-body {
+            width: 34px; height: 28px;
+            background: #e0e0e0;
+            border-radius: 4px 4px 10px 10px;
+            margin: 0 auto;
+            position: relative;
+        }
+        .avatar-pocket {
+            position: absolute; bottom: 4px; left: 4px;
+            width: 10px; height: 8px;
+            border: 1px solid rgba(0,0,0,0.15);
+            border-radius: 2px;
+        }
+        .avatar-pocket img {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px; height: auto;
+        }
+        .chat-info { flex: 1; }
+        .chat-info h3 { margin: 0; font-size: 16px; display: flex; align-items: center; gap: 6px; }
+        .chat-info p { margin: 2px 0 0 0; font-size: 11px; opacity: 0.7; }
+        .online-dot {
+            display: inline-block; width: 8px; height: 8px;
+            background: #4caf50; border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+        /* --- Chat Messages Area --- */
+        #chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px 5px 15px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 250px;
+            max-height: 55vh;
+        }
+        #chat-messages::-webkit-scrollbar { width: 4px; }
+        #chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
+
+        /* --- Chat Bubbles --- */
+        .msg-row {
+            display: flex;
+            width: 100%;
+            margin-bottom: 4px;
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .msg-row.bot { justify-content: flex-start; }
+        .msg-row.user { justify-content: flex-end; }
+
+        .bubble {
+            max-width: 85%;
+            padding: 10px 14px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+            word-wrap: break-word;
+            position: relative;
+        }
+        .bubble.bot-bubble {
+            background: rgba(255, 255, 255, 0.95);
+            color: #222;
+            border-bottom-left-radius: 4px;
+        }
+        .bubble.user-bubble {
+            background: #ff9800;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .bubble b { color: #ff9800; }
+        .bubble.user-bubble b { color: #fff; }
+
+        /* --- Typing Indicator --- */
+        .typing-indicator {
+            background: rgba(255, 255, 255, 0.95);
+            color: #222;
+            padding: 12px 16px;
+            border-radius: 16px;
+            border-bottom-left-radius: 4px;
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            max-width: 70px;
+        }
+        .typing-indicator span {
+            display: inline-block;
+            width: 6px; height: 6px;
+            background: #999;
+            border-radius: 50%;
+            animation: typing 1.4s infinite both;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); background: #999; }
+            30% { transform: translateY(-6px); background: #555; }
+        }
+
+        /* --- Action Area (Menu / Butang) --- */
+        #chat-actions {
+            flex-shrink: 0;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+        }
+        .action-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 8px 14px;
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+        }
+        .action-btn:hover { background: rgba(255, 255, 255, 0.25); border-color: #ff9800; }
+        .action-btn.primary { background: #ff9800; border-color: #ff9800; color: #222; font-weight: 600; }
+        .action-btn.primary:hover { background: #e68a00; transform: scale(1.02); }
+        .action-btn.secondary { border-color: rgba(255,255,255,0.3); }
+
+        /* --- Reopen Button (muncul selepas chat ditutup) --- */
+        #reopen-btn {
+            display: none;
+            position: absolute;
+            z-index: 4;
+            bottom: 40px;
+            right: 40px;
+            background: #ff9800;
+            color: #222;
+            border: none;
+            border-radius: 50px;
+            padding: 14px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 6px 25px rgba(0,0,0,0.5);
+            transition: 0.2s;
+            align-items: center;
+            gap: 10px;
+        }
+        #reopen-btn:hover { transform: scale(1.05); background: #e68a00; }
+        #reopen-btn i { font-size: 18px; }
+
+        /* --- Close Button --- */
+        .chat-close-area {
+            flex-shrink: 0;
+            text-align: right;
+            padding-top: 8px;
+        }
+        .close-btn {
+            background: transparent; border: none; color: rgba(255,255,255,0.5);
+            font-size: 12px; cursor: pointer; text-decoration: underline;
+        }
+        .close-btn:hover { color: white; }
+
+        /* ===== MOBILE RESPONSIVE ===== */
+        @media (max-width: 480px) {
+            #maintenance-text h1 { font-size: 2rem; }
+            #maintenance-text p { font-size: 1rem; }
+            #dialog-box { padding: 15px; max-width: 95%; top: 45%; }
+            .bubble { font-size: 13px; padding: 8px 12px; }
+            .action-btn { font-size: 11px; padding: 6px 12px; }
+            #reopen-btn { bottom: 20px; right: 20px; padding: 12px 18px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- BACKGROUND & OVERLAY -->
+    <div id="bg-layer"></div>
+    <div id="overlay"></div>
+
+    <!-- INITIAL MAINTENANCE TEXT -->
+    <div id="maintenance-text">
+        <h1>eCheckroll FPMSB</h1>
+        <p>is currently under maintenance. We'll be back soon.</p>
+    </div>
+
+    <!-- REOPEN CHAT BUTTON (muncul selepas chat ditutup) -->
+    <button id="reopen-btn" onclick="reopenChat()">
+        <i class="fas fa-robot"></i> Buka Perbualan
+    </button>
+
+    <!-- LIVE CHAT DIALOG -->
+    <div id="dialog-box">
+        
+        <!-- Chat Header -->
+        <div class="chat-header">
+            <div class="avatar-container">
+                <div class="avatar-head"></div>
+                <div class="avatar-body">
+                    <div class="avatar-pocket">
+                        <img src="image/logo.png" alt="FPMSB Logo">
+                    </div>
+                </div>
+            </div>
+            <div class="chat-info">
+                <h3>Pembantu IT eCheckroll <span class="online-dot"></span></h3>
+                <p>Biasanya membalas dalam masa 1 saat</p>
+            </div>
+        </div>
+
+        <!-- Messages Area -->
+        <div id="chat-messages">
+            <!-- Messages will be injected here -->
+        </div>
+
+        <!-- Actions / Menu -->
+        <div id="chat-actions">
+            <!-- Buttons will be injected here -->
+        </div>
+
+        <!-- Footer Close -->
+        <div class="chat-close-area">
+            <button class="close-btn" onclick="closeDialog()">Tutup Perbualan</button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  DATA: 10 Soalan & Jawapan
+        // ============================================================
+        var faqData = {
+            q1: { q: "Bagaimana cara mula menggunakan eCheckroll?", a: "Mula-mula, anda perlu log masuk menggunakan No. Kakitangan dan Kata Laluan anda. Selepas masuk, pastikan pilih bulan dan tahun yang betul. Kemudian, klik butang + untuk menambah kumpulan pekerja atau mula isi data pada kumpulan yang sedia ada." },
+            q2: { q: "Apa yang perlu dilakukan jika terlupa kata laluan?", a: "Jangan risau. Di halaman log masuk, ada pautan 'Lupa Kata Laluan?'. Klik pautan itu, masukkan No. Kakitangan anda. Sistem akan memberikan kata laluan sementara. Selepas masuk, disarankan untuk menukar kata laluan tersebut." },
+            q3: { q: "Bagaimana nak tambah pekerja baru dalam kumpulan?", a: "Buka kumpulan yang anda mahu tambah pekerja. Di bahagian atas skrin, klik butang '+ Tambah Pekerja'. Sistem akan tambah satu baris pekerja baharu. Anda hanya perlu isi nama, nombor KP, dan umur." },
+            q4: { q: "Macam mana nak isi kehadiran harian dan aktiviti kerja?", a: "Untuk kehadiran, anda taip '1' pada sel hari tersebut (cth: 1 untuk hadir, CT untuk cuti tahunan). Untuk aktiviti kerja, scroll ke bawah jadual pekerja. Anda boleh taip nama kerja (cth: Menuai Sawit) atau kod kerja. Sistem akan mengira gaji secara automatik." },
+            q5: { q: "Apa fungsi butang 'Produktiviti Sama'?", a: "Butang ini membantu menjimatkan masa. Jika anda tandakan kotak 'Produktiviti Sama', kuantiti aktiviti yang anda taip untuk Pekerja 1 akan disalin secara automatik ke semua pekerja lain dalam kumpulan tersebut." },
+            q6: { q: "Bagaimana menambah atau menukar nama kumpulan?", a: "Untuk tambah kumpulan baharu, klik butang '+' di hujung senarai tab kumpulan. Untuk menukar nama kumpulan, anda boleh 'double-click' pada nama tab kumpulan tersebut. Ia akan bertukar menjadi kotak input untuk anda taip nama baharu." },
+            q7: { q: "Apakah perbezaan peranan FS, AFC, dan FC?", a: "FS (Field Supervisor) bertugas mengisi data gaji dan kehadiran. AFC (Assistant Field Coordinator) membuat semakan dengan menandakan kotak semak pada data. FC (Field Coordinator) bertugas membuat pengesahan akhir dan menekan butang 'Tutup Urusniaga' untuk mengunci bulan tersebut." },
+            q8: { q: "Bagaimana nak cetak laporan gaji bulan ini?", a: "Untuk mencetak, pergi ke bahagian jadual kumpulan dan klik butang '🖨️ Cetak' di bahagian atas skrin. Sistem akan sediakan format laporan gaji yang siap untuk dicetak terus menggunakan pencetak di pejabat anda." },
+            q9: { q: "Apa yang berlaku jika tersilap masukkan data?", a: "Jika anda tersilap dan bulan masih belum ditutup oleh FC, anda boleh buka semula kumpulan tersebut dan terus ubah data. Data akan disimpan semula. Jika bulan sudah ditutup, anda perlukan bantuan FC atau Admin untuk membuka semula urusniaga." },
+            q10: { q: "Kenapa perlukan internet? Apa jadi kalau internet putus?", a: "Sistem kami direka dengan sokongan luar talian. Jika internet putus di ladang, anda boleh terus mengisi data dan tekan 'Simpan Data'. Data akan disimpan di telefon/komputer anda. Apabila internet kembali, sistem akan menyegerakkan data secara automatik. Tiada data hilang." }
+        };
+
+        // ============================================================
+        //  STATE MANAGEMENT
+        // ============================================================
+        var availableQuestions = Object.keys(faqData);
+        var isProcessing = false;
+        var isChatOpen = false;
+
+        var messagesEl = document.getElementById('chat-messages');
+        var actionsEl = document.getElementById('chat-actions');
+        var reopenBtn = document.getElementById('reopen-btn');
+
+        // ============================================================
+        //  FUNGSI UTAMA CHAT
+        // ============================================================
+
+        function renderMenu() {
+            actionsEl.innerHTML = '';
+            if (availableQuestions.length === 0) {
+                var btn = document.createElement('button');
+                btn.className = 'action-btn secondary';
+                btn.innerText = 'Tiada soalan lagi. Klik "Kembali" untuk menu utama.';
+                btn.disabled = true;
+                actionsEl.appendChild(btn);
+                return;
+            }
+
+            availableQuestions.forEach(function(key) {
+                var btn = document.createElement('button');
+                btn.className = 'action-btn';
+                btn.innerText = faqData[key].q;
+                btn.onclick = function() { sendQuestion(key); };
+                actionsEl.appendChild(btn);
+            });
+        }
+
+        function sendQuestion(key) {
+            if (isProcessing) return;
+            isProcessing = true;
+
+            var index = availableQuestions.indexOf(key);
+            if (index !== -1) availableQuestions.splice(index, 1);
+
+            addMessage(key, 'user');
+
+            actionsEl.innerHTML = '<div style="width:100%; text-align:center; font-size:12px; opacity:0.6; padding:5px;">Robot sedang menaip...</div>';
+
+            setTimeout(function() {
+                addMessage(key, 'bot');
+                showPostReplyActions();
+                isProcessing = false;
+            }, 1500);
+        }
+
+        function addMessage(key, type) {
+            var data = faqData[key];
+            var row = document.createElement('div');
+            row.className = 'msg-row ' + (type === 'user' ? 'user' : 'bot');
+
+            var bubble = document.createElement('div');
+            bubble.className = 'bubble ' + (type === 'user' ? 'user-bubble' : 'bot-bubble');
+
+            if (type === 'bot') {
+                bubble.innerHTML = '<b>Pembantu IT:</b><br>' + data.a;
+            } else {
+                bubble.innerText = data.q;
+            }
+
+            row.appendChild(bubble);
+            messagesEl.appendChild(row);
+            scrollToBottom();
+        }
+
+        function showPostReplyActions() {
+            actionsEl.innerHTML = '';
+            
+            var wrapper = document.createElement('div');
+            wrapper.style.display = 'flex'; wrapper.style.gap = '8px'; wrapper.style.width = '100%'; wrapper.style.justifyContent = 'center';
+
+            var backBtn = document.createElement('button');
+            backBtn.className = 'action-btn secondary';
+            backBtn.innerText = '↩ Kembali (Pilih soalan lain)';
+            backBtn.onclick = function() { goBackToMenu(); };
+            wrapper.appendChild(backBtn);
+
+            var doneBtn = document.createElement('button');
+            doneBtn.className = 'action-btn primary';
+            doneBtn.innerText = '✓ Selesai';
+            doneBtn.onclick = function() { finishChat(); };
+            wrapper.appendChild(doneBtn);
+
+            actionsEl.appendChild(wrapper);
+        }
+
+        function goBackToMenu() {
+            actionsEl.innerHTML = '';
+            renderMenu();
+            scrollToBottom();
+        }
+
+        function finishChat() {
+            var row = document.createElement('div');
+            row.className = 'msg-row bot';
+            var bubble = document.createElement('div');
+            bubble.className = 'bubble bot-bubble';
+            bubble.innerHTML = '<b>Pembantu IT:</b><br>Baik, terima kasih! Sistem akan kembali tidak lama lagi. Sila bersabar.';
+            row.appendChild(bubble);
+            messagesEl.appendChild(row);
+            scrollToBottom();
+
+            actionsEl.innerHTML = '<div style="width:100%; text-align:center; font-size:12px; opacity:0.6; padding:5px;">Perbualan tamat.</div>';
+        }
+
+        // ============================================================
+        //  DIALOG BUKA / TUTUP (TERMASUK BUTANG BUKA SEMULA)
+        // ============================================================
+
+        function showDialog() {
+            document.getElementById('bg-layer').classList.add('blurred');
+            document.getElementById('overlay').classList.add('active');
+            document.getElementById('maintenance-text').classList.add('hidden');
+            document.getElementById('dialog-box').classList.add('active');
+            reopenBtn.style.display = 'none';
+            isChatOpen = true;
+
+            // Reset chat if it was closed before
+            if (messagesEl.children.length === 0) {
+                setTimeout(function() {
+                    var welcome = document.createElement('div');
+                    welcome.className = 'msg-row bot';
+                    welcome.innerHTML = '<div class="bubble bot-bubble"><b>Pembantu IT:</b><br>Selamat datang! eCheckroll sedang dinaik taraf. Saya boleh bantu anda dengan apa-apa soalan mengenai sistem ini. Klik mana-mana soalan di bawah.</div>';
+                    messagesEl.appendChild(welcome);
+                    renderMenu();
+                    scrollToBottom();
+                }, 300);
+            }
+        }
+
+        function closeDialog() {
+            document.getElementById('dialog-box').classList.remove('active');
+            document.getElementById('bg-layer').classList.remove('blurred');
+            document.getElementById('overlay').classList.remove('active');
+            document.getElementById('maintenance-text').classList.remove('hidden');
+            reopenBtn.style.display = 'flex'; // Tunjukkan butang buka semula
+            isChatOpen = false;
+        }
+
+        function reopenChat() {
+            showDialog();
+        }
+
+        // ============================================================
+        //  UTILITY
+        // ============================================================
+        function scrollToBottom() {
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        // Timer: Buka dialog automatik selepas 2 saat
+        setTimeout(showDialog, 2000);
+
+    </script>
+</body>
+</html>
