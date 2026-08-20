@@ -1331,13 +1331,14 @@
                     var sum = act.kuantitiHarian.reduce(function(a,b) { return a+b; }, 0);
                     workerGross += sum * act.kadar;
                     
-                    var key = (act.kod || '') + '|' + (act.unit || '') + '|' + (act.blok || '');
+                    // <--- UBAH DI SINI: TAMBAH NAMA AKTIVITI KE DALAM KEY --->
+                    var key = (act.kod || '') + '|' + (act.unit || '') + '|' + (act.blok || '') + '|' + (act.nama || '');
                     
                     if (!allActivities[key]) {
                         var firstWorkerRate = 0;
                         if (group.workers.length > 0) {
                             var match = group.workers[0].aktiviti.find(function(a) { 
-                                return ((a.kod || '') + '|' + (a.unit || '') + '|' + (a.blok || '')) === key;
+                                return ((a.kod || '') + '|' + (a.unit || '') + '|' + (a.blok || '') + '|' + (a.nama || '')) === key;
                             });
                             if (match) firstWorkerRate = match.kadar || 0;
                         }
